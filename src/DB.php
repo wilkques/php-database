@@ -708,7 +708,7 @@ class DB
     /**
      * @param string|callable|exception $error
      * 
-     * @throws BadRequestException|Exception
+     * @throws \Exception
      * 
      * @return static
      */
