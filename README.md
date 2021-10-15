@@ -1,9 +1,9 @@
-# DB
+# Database
 
 ## Notice
 
-1. 僅為了 `MySQL` 設計
-1. 此為簡易 `DB` 操作
+1. 目前只有 `MySQL`
+1. 此為簡易 Database 操作
 1. 暫無 `join` 功能，但可以利用 method `query` 自己寫 SQL Query
 
 ## ENV
@@ -15,11 +15,11 @@
 ## Methods
 
 ```php
-$drive = new \Wilkques\DB\PDO\MySql('<database host>', '<database username>', '<database password>', 'database name>');
+$drive = new \Wilkques\Database\PDO\MySql('<database host>', '<database username>', '<database password>', 'database name>');
 
-$grammar = new \Wilkques\DB\Grammar\MySql;
+$grammar = new \Wilkques\Database\Grammar\MySql;
 
-$db = \Wilkques\DB\DB::connection($drive)->grammar($grammar);
+$db = \Wilkques\Database\DB::connection($drive)->grammar($grammar);
 
 $model = $db->table('<table name>');
 ```
