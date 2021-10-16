@@ -37,14 +37,15 @@ abstract class Grammar implements GrammarInterface
      * @param string $key
      * @param string $condition
      * @param string $andOr
+     * @param string $value
      * 
      * @return static
      */
-    public function setConditionQuery($key, $condition, $andOr = "AND")
+    public function setConditionQuery($key, $condition, $andOr = "AND", $value = "?")
     {
         if ($this->conditionQuery != "") $this->conditionQuery .= " {$andOr} ";
 
-        $this->conditionQuery .= "`{$key}` {$condition} ?";
+        $this->conditionQuery .= "`{$key}` {$condition} {$value}";
 
         return $this;
     }
@@ -146,6 +147,78 @@ abstract class Grammar implements GrammarInterface
         $query = implode(", ", array_fill(0, count($data), "?"));
 
         return $this->withConditionData($data)->withConditionQuery("`{$column}` IN ({$query})");
+    }
+
+    /**
+     * @param string|array $column
+     * 
+     * @return static
+     */
+    public function whereNull($column)
+    {
+        if (is_array($column)) {
+            array_map(function ($item) {
+                $this->setConditionQuery($item, "IS", "AND", "NULL");
+            }, $column);
+        } else if (is_string($column)) {
+            $this->setConditionQuery($column, "IS", "AND", "NULL");
+        }
+
+        return $this;
+    }
+
+    /**
+     * @param string|array $column
+     * 
+     * @return static
+     */
+    public function whereOrNull($column)
+    {
+        if (is_array($column)) {
+            array_map(function ($item) {
+                $this->setConditionQuery($item, "IS", "OR", "NULL");
+            }, $column);
+        } else if (is_string($column)) {
+            $this->setConditionQuery($column, "IS", "OR", "NULL");
+        }
+
+        return $this;
+    }
+
+    /**
+     * @param string|array $column
+     * 
+     * @return static
+     */
+    public function whereNotNull($column)
+    {
+        if (is_array($column)) {
+            array_map(function ($item) {
+                $this->setConditionQuery($item, "IS NOT", "AND", "NULL");
+            }, $column);
+        } else if (is_string($column)) {
+            $this->setConditionQuery($column, "IS NOT", "AND", "NULL");
+        }
+
+        return $this;
+    }
+
+    /**
+     * @param string|array $column
+     * 
+     * @return static
+     */
+    public function whereOrNotNull($column)
+    {
+        if (is_array($column)) {
+            array_map(function ($item) {
+                $this->setConditionQuery($item, "IS NOT", "OR", "NULL");
+            }, $column);
+        } else if (is_string($column)) {
+            $this->setConditionQuery($column, "IS NOT", "OR", "NULL");
+        }
+
+        return $this;
     }
 
     /**

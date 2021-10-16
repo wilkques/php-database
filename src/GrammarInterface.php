@@ -55,6 +55,34 @@ interface GrammarInterface
      */
     public function orWhere($key, $condition = null, $value = null);
 
+     /**
+     * @param string|array $column
+     * 
+     * @return static
+     */
+    public function whereNull($column);
+
+    /**
+     * @param string|array $column
+     * 
+     * @return static
+     */
+    public function whereOrNull($column);
+
+    /**
+     * @param string|array $column
+     * 
+     * @return static
+     */
+    public function whereNotNull($column);
+
+    /**
+     * @param string|array $column
+     * 
+     * @return static
+     */
+    public function whereOrNotNull($column);
+
     /**
      * @param string $lock
      * 

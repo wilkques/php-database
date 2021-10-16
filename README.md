@@ -35,28 +35,6 @@ $model = $db->table('<table name>');
     $model->select("`<columnName1>`, `<columnName2>`, `<columnName3>`");
     ```
 
-1. `where`
-
-    ```php
-
-    $model->where([
-        ['<columnName1>', "=", '<columnValue1>'],
-    ]);
-
-    // or
-
-    $model->where('<columnName1>', "=", '<columnValue1>');
-    ```
-
-1. `whereIn`
-
-    ```php
-
-    $model->whereIn('<columnName1>', [
-        ['<columnValue1>', '<columnValue2>'],
-    ]);
-    ```
-
 1. `limit`
 
     ```php
@@ -119,9 +97,77 @@ $model = $db->table('<table name>');
     ]);
     ```
 
+### Where
+
+1. `where`
+
+    ```php
+
+    $model->where([
+        ['<columnName1>', "=", '<columnValue1>'],
+    ]);
+
+    // or
+
+    $model->where('<columnName1>', "=", '<columnValue1>');
+    ```
+
+1. `whereIn`
+
+    ```php
+
+    $model->whereIn('<columnName1>', [
+        ['<columnValue1>', '<columnValue2>'],
+    ]);
+    ```
+
+1. `whereNull`
+
+    ```php
+
+    $model->whereNull('<columnName1>');
+
+    // or
+
+    $model->whereNull(['<columnName1>']);
+    ```
+
+1. `whereOrNull`
+
+    ```php
+
+    $model->whereOrNull('<columnName1>');
+
+    // or
+
+    $model->whereNull(['<columnName1>']);
+    ```
+
+1. `whereNotNull`
+
+    ```php
+
+    $model->whereNotNull('<columnName1>');
+
+    // or
+
+    $model->whereNotNull(['<columnName1>']);
+    ```
+
+1. `whereOrNotNull`
+
+    ```php
+
+    $model->whereOrNotNull('<columnName1>');
+
+    // or
+
+    $model->whereOrNotNull(['<columnName1>']);
+    ```
+
 ### 輸出錯誤
 
-1. `throws`
+1. `throws` 搜尋結果為空
 
     ```php
 

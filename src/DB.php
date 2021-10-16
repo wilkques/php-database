@@ -26,6 +26,10 @@ namespace Wilkques\Database;
  * @method static static where(array|string $key, $condition = null, $value = null) set where
  * @method static static orWhere(array|string $key, $condition = null, $value = null)
  * @method static static whereIn(string $column, array $data)
+ * @method static static whereNull(string|array $column)
+ * @method static static whereOrNull(string|array $column)
+ * @method static static whereNotNull(string|array $column)
+ * @method static static whereOrNotNull(string|array $column)
  * @method static static beginTransaction()
  * @method static static commit()
  * @method static static rollBack()
@@ -33,7 +37,7 @@ namespace Wilkques\Database;
  * @method static static lockForUpdate() set for update lock
  * @method static static sharedLock() set shared lock
  * @method static static currentPage(int $currentPage) set now page
- * @method static static prePage(int $prePage) set prepage 
+ * @method static static prePage(int $prePage) set prepage
  */
 class DB
 {
@@ -144,7 +148,7 @@ class DB
      */
     protected function columnBindQuery($query, $column, $options = "")
     {
-        $query .= $query == "" ? "`{$column}`{$options}" : ", `{$column}`{$options}";
+        $query .= $query == "" ? "{$column}{$options}" : ", {$column}{$options}";
 
         return $query;
     }
@@ -632,7 +636,9 @@ class DB
     {
         $bindQuery = $this->getBindQuery();
 
-        return $this->columnBindQuery($bindQuery, $query);
+        $bindQuery .= $bindQuery == "" ? "{$query}" : ", {$query}";
+
+        return $bindQuery;
     }
 
     /**
@@ -708,7 +714,7 @@ class DB
     /**
      * @param string|callable|exception $error
      * 
-     * @throws \Exception
+     * @throws BadRequestException|Exception
      * 
      * @return static
      */
