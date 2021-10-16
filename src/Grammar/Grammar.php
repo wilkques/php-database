@@ -7,11 +7,152 @@ use Wilkques\Database\GrammarInterface;
 abstract class Grammar implements GrammarInterface
 {
     /** @var string */
+    protected $query;
+    /** @var string */
+    protected $table;
+    /** @var string */
+    protected $bindColumnQuery = "";
+    /** @var string */
+    protected $bindQuery = "";
+    /** @var integer */
+    protected $prePage = 10;
+    /** @var integer */
+    protected $currentPage = 1;
+    /** @var string */
+    protected $orderBy = "";
+    /** @var string */
+    protected $groupBy = "";
+    /** @var integer */
+    protected $limit = null;
+    /** @var integer */
+    protected $offset = null;
+    /** @var string */
     protected $conditionQuery = "";
-    /** @var array */
-    protected $conditionData = [];
     /** @var string */
     protected $lock = "";
+
+    /**
+     * @param string $table
+     * 
+     * @return static
+     */
+    public function setTable($table)
+    {
+        $this->table = $table;
+
+        return $this;
+    }
+
+    /**
+     * @return string
+     */
+    public function getTable()
+    {
+        return $this->table;
+    }
+
+    /**
+     * @param string $query
+     * @param string $column
+     * @param string $options
+     * 
+     * @return string
+     */
+    protected function columnBindQuery($query, $column, $options = "")
+    {
+        $query .= $query == "" ? "{$column}{$options}" : ", {$column}{$options}";
+
+        return $query;
+    }
+
+    /**
+     * @param string $query
+     * 
+     * @return static
+     */
+    protected function selectBindQuery($query)
+    {
+        $query = preg_replace("/(\s+as\s+)/i", "` AS `", $query);
+
+        $bindQuery = $this->getBindQuery();
+
+        return $this->setBindQuery($this->columnBindQuery($bindQuery, $query));
+    }
+
+    /**
+     * @param string $bindQuery
+     * 
+     * @return static
+     */
+    public function setBindQuery($bindQuery = "")
+    {
+        $this->bindQuery = $bindQuery;
+
+        return $this;
+    }
+
+    /**
+     * @return string
+     */
+    public function getBindQuery()
+    {
+        return $this->bindQuery;
+    }
+
+    /**
+     * @param string $bindColumnQuery
+     * 
+     * @return static
+     */
+    public function setBindColumnQuery($bindColumnQuery = "")
+    {
+        $this->bindColumnQuery = $bindColumnQuery;
+
+        return $this;
+    }
+
+    /**
+     * @return string
+     */
+    public function getBindColumnQuery()
+    {
+        return $this->bindColumnQuery;
+    }
+
+    /**
+     * @param string $key
+     * @param string $condition
+     * 
+     * @return static
+     */
+    protected function updateBindQuery($key, $condition)
+    {
+        $bindQuery = $this->getBindQuery();
+
+        $query = " {$condition} ?";
+
+        return $this->setBindQuery($this->columnBindQuery($bindQuery, $key, $query));
+    }
+
+    /**
+     * @param array $data
+     * 
+     * @return static
+     */
+    public function compilerUpdate($data)
+    {
+        $this->setLimit()->setOffset()->setBindQuery();
+
+        array_map(function ($item, $index) {
+            if (is_array($item)) $this->compilerUpdate($item);
+
+            $this->updateBindQuery($index, "=");
+        }, $data, array_keys($data));
+
+        return $this->setQuery(
+            "UPDATE `{$this->getTable()}` SET {$this->getBindQuery()} WHERE {$this->getConditionQuery()}"
+        );
+    }
 
     /**
      * @param string $conditionQuery
@@ -51,174 +192,11 @@ abstract class Grammar implements GrammarInterface
     }
 
     /**
-     * @param mixed|null $conditionData
-     * 
-     * @return static
+     * @return string
      */
-    public function withConditionData($conditionData = null)
+    protected function compilerWhere()
     {
-        $this->conditionData = $conditionData;
-
-        return $this;
-    }
-
-    /**
-     * @param mixed $conditionData
-     * 
-     * @return static
-     */
-    public function setConditionData($conditionData)
-    {
-        $this->conditionData[] = $conditionData;
-
-        return $this;
-    }
-
-    /**
-     * @return array
-     */
-    public function getConditionData()
-    {
-        return $this->conditionData;
-    }
-
-    /**
-     * @param array|string $key
-     * @param string $condition
-     * @param mixed $value
-     * 
-     * @return static
-     */
-    public function where($key, $condition = null, $value = null)
-    {
-        if (is_array($key)) {
-            array_map(function ($item) {
-                // $this->where(...$item);
-
-                call_user_func_array(array($this, 'where'), $item);
-            }, $key);
-
-            return $this;
-        }
-
-        return $this->setConditionData($value)
-            ->setConditionQuery($key, $condition);
-    }
-
-    /**
-     * @param array|string $key
-     * @param string $condition
-     * @param mixed $value
-     * 
-     * @return static
-     */
-    public function orWhere($key, $condition = null, $value = null)
-    {
-        if (is_array($key)) {
-            array_map(function ($item) {
-                // $this->orWhere(...$item);
-
-                call_user_func_array(array($this, 'orWhere'), $item);
-            }, $key);
-
-            return $this;
-        }
-
-        return $this->setConditionData($value)
-            ->setConditionQuery($key, $condition, "OR");
-    }
-
-    /**
-     * @param string $column
-     * @param array  $data
-     * 
-     * @return static
-     */
-    public function whereIn($column, $data)
-    {
-        !is_string($column) && $this->argumentsThrowError(" First Arguments must be string");
-
-        !is_array($data) && $this->argumentsThrowError(" Second Arguments must be array");
-
-        array_map(function ($item) {
-            is_array($item) && $this->argumentsThrowError(" Second Arguments only one-dimensional array");
-        }, $data);
-
-        $query = implode(", ", array_fill(0, count($data), "?"));
-
-        return $this->withConditionData($data)->withConditionQuery("`{$column}` IN ({$query})");
-    }
-
-    /**
-     * @param string|array $column
-     * 
-     * @return static
-     */
-    public function whereNull($column)
-    {
-        if (is_array($column)) {
-            array_map(function ($item) {
-                $this->setConditionQuery($item, "IS", "AND", "NULL");
-            }, $column);
-        } else if (is_string($column)) {
-            $this->setConditionQuery($column, "IS", "AND", "NULL");
-        }
-
-        return $this;
-    }
-
-    /**
-     * @param string|array $column
-     * 
-     * @return static
-     */
-    public function whereOrNull($column)
-    {
-        if (is_array($column)) {
-            array_map(function ($item) {
-                $this->setConditionQuery($item, "IS", "OR", "NULL");
-            }, $column);
-        } else if (is_string($column)) {
-            $this->setConditionQuery($column, "IS", "OR", "NULL");
-        }
-
-        return $this;
-    }
-
-    /**
-     * @param string|array $column
-     * 
-     * @return static
-     */
-    public function whereNotNull($column)
-    {
-        if (is_array($column)) {
-            array_map(function ($item) {
-                $this->setConditionQuery($item, "IS NOT", "AND", "NULL");
-            }, $column);
-        } else if (is_string($column)) {
-            $this->setConditionQuery($column, "IS NOT", "AND", "NULL");
-        }
-
-        return $this;
-    }
-
-    /**
-     * @param string|array $column
-     * 
-     * @return static
-     */
-    public function whereOrNotNull($column)
-    {
-        if (is_array($column)) {
-            array_map(function ($item) {
-                $this->setConditionQuery($item, "IS NOT", "OR", "NULL");
-            }, $column);
-        } else if (is_string($column)) {
-            $this->setConditionQuery($column, "IS NOT", "OR", "NULL");
-        }
-
-        return $this;
+        return $this->getConditionQuery() == "" ? "" : " WHERE {$this->getConditionQuery()}";
     }
 
     /**
@@ -252,6 +230,307 @@ abstract class Grammar implements GrammarInterface
                 debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1]['function'],
                 $message
             )
+        );
+    }
+
+    /**
+     * @return static
+     */
+    public function compilerSelect()
+    {
+        return $this->setQuery($this->buildSelectQuery());
+    }
+
+    /**
+     * @return string
+     */
+    protected function compilerLimit()
+    {
+        return $this->getLimit() !== null ? " LIMIT ?" : "";
+    }
+
+    /**
+     * @return string
+     */
+    protected function compilerOffset()
+    {
+        return $this->getOffset() !== null ? " OFFSET ?" : "";
+    }
+
+    /**
+     * @return string
+     */
+    protected function buildSelectQuery()
+    {
+        $column = $this->getBindQuery() ?: "*";
+
+        $sql = "SELECT {$column} FROM `{$this->getTable()}`%s%s%s%s%s%s";
+
+        return sprintf(
+            $sql,
+            $this->compilerWhere(),
+            $this->getGroupBy(),
+            $this->getOrderBy(),
+            $this->compilerLimit(),
+            $this->compilerOffset(),
+            $this->getLock()
+        );
+    }
+
+    /**
+     * @param string $query
+     * 
+     * @return static
+     */
+    public function setQuery($query)
+    {
+        $this->query = $query;
+
+        return $this;
+    }
+
+    /**
+     * @return string
+     */
+    public function getQuery()
+    {
+        return $this->query;
+    }
+
+    /**
+     * @param integer $prePage
+     * 
+     * @return static
+     */
+    public function setPrePage($prePage = 10)
+    {
+        $this->prePage = $prePage;
+
+        return $this;
+    }
+
+    /**
+     * @return integer
+     */
+    public function getPrePage()
+    {
+        return $this->prePage;
+    }
+
+    /**
+     * @param integer $prePage
+     * 
+     * @return static
+     */
+    public function setCurrentPage($currentPage = 1)
+    {
+        $this->currentPage = $currentPage;
+
+        return $this;
+    }
+
+    /**
+     * @return integer
+     */
+    public function getCurrentPage()
+    {
+        return $this->currentPage;
+    }
+
+    /**
+     * @param array|string $column
+     */
+    public function setSelect($column = ['*'])
+    {
+        func_num_args() > 1 && $column = func_get_args();
+
+        if (is_array($column)) {
+            array_map(function ($item) {
+                !is_string($item) && $this->argumentsThrowError(" first Arguments must be array or string");
+
+                $this->selectBindQuery($item);
+            }, $column);
+        } else if (is_string($column)) {
+            $this->selectBindQuery($column);
+        } else {
+            $this->argumentsThrowError(" first Arguments must be array or string");
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return static
+     */
+    public function getForPage()
+    {
+        $offset = ($this->getCurrentPage() - 1) * $this->getPrePage();
+
+        return $this->setLimit($this->getPrePage())
+            ->setOffset($offset)
+            ->compilerSelect();
+    }
+
+    /**
+     * @param string $column
+     * @param string $sort
+     * 
+     * @return static
+     */
+    public function setOrderBy($column, $sort = "ASC")
+    {
+        $query = "`{$column}` {$sort}";
+
+        $this->orderBy == "" && $this->orderBy = " ORDER BY {$query}";
+
+        $this->orderBy = $this->columnBindQuery($this->orderBy, $query);
+
+        return $this;
+    }
+
+    /**
+     * @return string
+     */
+    public function getOrderBy()
+    {
+        return $this->orderBy;
+    }
+
+    /**
+     * @param string $orderby
+     * 
+     * @return static
+     */
+    public function setGroupBy($groupBy)
+    {
+        $this->groupBy == "" && $this->groupBy = " GROUP BY `{$groupBy}`";
+
+        $this->groupBy = $this->columnBindQuery($this->groupBy, $groupBy);
+
+        return $this;
+    }
+
+    /**
+     * @return string
+     */
+    public function getGroupBy()
+    {
+        return $this->groupBy;
+    }
+
+    /**
+     * @param integer $limit
+     * 
+     * @return static
+     */
+    public function setLimit($limit = null)
+    {
+        $this->limit = $limit;
+
+        return $this;
+    }
+
+    /**
+     * @return integer
+     */
+    public function getLimit()
+    {
+        return $this->limit;
+    }
+
+    /**
+     * @param integer $offset
+     * 
+     * @return static
+     */
+    public function setOffset($offset = null)
+    {
+        $this->offset = $offset;
+
+        return $this;
+    }
+
+    /**
+     * @return integer
+     */
+    public function getOffset()
+    {
+        return $this->offset;
+    }
+
+    /**
+     * @param string $query
+     * 
+     * @return string
+     */
+    protected function insertBindQuery($query)
+    {
+        $bindQuery = $this->getBindQuery();
+
+        $bindQuery .= $bindQuery == "" ? "{$query}" : ", {$query}";
+
+        return $bindQuery;
+    }
+
+    /**
+     * @param string $query
+     * 
+     * @return string
+     */
+    protected function insertBindColumnQuery($query)
+    {
+        $bindQuery = $this->getBindColumnQuery();
+
+        return $this->columnBindQuery($bindQuery, $query);
+    }
+
+    /**
+     * @param array $data
+     * 
+     * @return static
+     */
+    protected function insertHandle($data)
+    {
+        array_map(function ($item) {
+            if (is_array($item)) {
+                $this->insertHandle($item);
+            }
+        }, $data);
+
+        if (isset($data[0])) return $this;
+
+        return $this->setBindColumnQuery(
+            sprintf("(`%s`)", implode("`, `", array_keys($data)))
+        )->setBindQuery(
+            $this->insertBindQuery(
+                sprintf("(%s)", implode(", ", array_fill(0, count($data), "?")))
+            )
+        );
+    }
+
+    /**
+     * @param array $data
+     * 
+     * @return static
+     */
+    public function compilerInsert($data)
+    {
+        return $this->setLimit()
+            ->setOffset()
+            ->setBindQuery()
+            ->insertHandle($data)
+            ->setQuery(
+                "INSERT INTO `{$this->getTable()}` {$this->getBindColumnQuery()} VALUES {$this->getBindQuery()}"
+            );
+    }
+
+    /**
+     * @return static
+     */
+    public function compilerDelete()
+    {
+        return $this->setLimit()->setOffset()->setQuery(
+            "DELETE FROM `{$this->getTable()}` WHERE {$this->getConditionQuery()}"
         );
     }
 

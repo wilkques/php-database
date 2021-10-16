@@ -14,6 +14,10 @@ abstract class PDO implements ConnectionInterface
     protected $password;
     /** @var string */
     protected $dbname;
+    /** @var int|string */
+    protected $port;
+    /** @var string */
+    protected $characterSet = "utf8mb4";
     /** @var static */
     protected $connection;
 
@@ -23,10 +27,21 @@ abstract class PDO implements ConnectionInterface
      * @param string $password
      * @param string $dbname
      */
-    public function __construct($host = null, $username = null, $password = null, $dbname = null)
+    public function __construct($host = null, $username = null, $password = null, $dbname = null, $port = 3306)
     {
-        $this->setHost($host)->setUsername($username)->setPassword($password)->setDbname($dbname)->newConnecntion();
+        $this->setHost($host)
+            ->setUsername($username)
+            ->setPassword($password)
+            ->setDbname($dbname)
+            ->setPort($port)
+            ->newConnect()
+            ->setPdoAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
     }
+
+    /**
+     * @return string
+     */
+    abstract public function getDNS();
 
     /**
      * @param string $host
@@ -109,6 +124,26 @@ abstract class PDO implements ConnectionInterface
     }
 
     /**
+     * @param string|int $port
+     * 
+     * @return static
+     */
+    public function setPort($port)
+    {
+        $this->port = $port;
+
+        return $this;
+    }
+
+    /**
+     * @return string
+     */
+    public function getPort()
+    {
+        return $this->port;
+    }
+
+    /**
      * @param \PDO $connection
      * 
      * @return static
@@ -129,6 +164,36 @@ abstract class PDO implements ConnectionInterface
     }
 
     /**
+     * @return static
+     */
+    public function setPdoAttribute($attribute, $value)
+    {
+        $this->getConnection()->setAttribute($attribute, $value);
+
+        return $this;
+    }
+
+    /**
+     * @param string $characterSet
+     * 
+     * @return static
+     */
+    public function setCharacterSet($characterSet = "utf8mb4")
+    {
+        $this->characterSet = $characterSet;
+
+        return $this;
+    }
+
+    /**
+     * @return string
+     */
+    public function getCharacterSet()
+    {
+        return $this->characterSet;
+    }
+
+    /**
      * @param string $sql
      * 
      * @return PDOStatement
@@ -141,7 +206,50 @@ abstract class PDO implements ConnectionInterface
     /**
      * @return static
      */
-    abstract public function connect();
+    public function connect()
+    {
+        try {
+            return new \PDO(
+                $this->getDNS(),
+                $this->getUsername(),
+                $this->getPassword()
+            );
+        } catch (\PDOException $e) {
+            throw $e;
+        }
+    }
+
+    /**
+     * @return bool
+     */
+    public function beginTransaction()
+    {
+        return $this->getConnection()->beginTransaction();
+    }
+
+    /**
+     * @return bool
+     */
+    public function commit()
+    {
+        return $this->getConnection()->commit();
+    }
+
+    /**
+     * @return bool
+     */
+    public function rollback()
+    {
+        return $this->getConnection()->rollBack();
+    }
+
+    /**
+     * @return bool
+     */
+    public function inTransation()
+    {
+        return $this->getConnection()->inTransaction();
+    }
 
     /**
      * @return static
@@ -156,26 +264,8 @@ abstract class PDO implements ConnectionInterface
      */
     public function newConnecntion()
     {
-        !$this->getConnection() && $this->setConnection($this->connect());
+        !$this->getConnection() && $this->newConnect();
 
         return $this->getConnection();
-    }
-
-    public function __call($method, $arguments)
-    {
-        // return $this->newConnecntion()->{$method}(...$arguments);
-
-        $connection = $this->newConnecntion();
-
-        return call_user_func_array(array($connection, $method), $arguments);
-    }
-
-    public static function __callStatic($method, $arguments)
-    {
-        // return (new static)->{$method}(...$arguments);
-
-        $instance = new static;
-
-        return call_user_func_array(array($instance, $method), $arguments);
     }
 }
