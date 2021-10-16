@@ -161,7 +161,7 @@ class DB
     protected function selectBindQuery($query)
     {
         $query = preg_replace("/(\s+as\s+)/i", "` AS `", $query);
-        
+
         $bindQuery = $this->getBindQuery();
 
         return $this->setBindQuery($this->columnBindQuery($bindQuery, $query));
@@ -329,17 +329,21 @@ class DB
      */
     protected function complier()
     {
-        $statement = $this->getConnection()->prepare($this->getQuery());
+        try {
+            $statement = $this->getConnection()->prepare($this->getQuery());
 
-        if ($data = $this->complierBindDataHandle()) {
-            $this->dataBinding($data, $statement);
+            if ($data = $this->complierBindDataHandle()) {
+                $this->dataBinding($data, $statement);
+            }
+
+            $this->bindQueryLog($data);
+
+            $statement->execute();
+
+            return $statement;
+        } catch (\Exception $e) {
+            throw $e;
         }
-
-        $this->bindQueryLog($data);
-
-        $statement->execute();
-
-        return $statement;
     }
 
     /**
@@ -501,7 +505,7 @@ class DB
     public function setOrderBy($column, $sort = "ASC")
     {
         $query = "`{$column}` {$sort}";
-        
+
         $this->orderBy == "" && $this->orderBy = " ORDER BY {$query}";
 
         $this->orderBy = $this->columnBindQuery($this->orderBy, $query);
