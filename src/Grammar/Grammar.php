@@ -192,6 +192,78 @@ abstract class Grammar implements GrammarInterface
     }
 
     /**
+     * @param string|array $column
+     * 
+     * @return static
+     */
+    public function whereNull($column)
+    {
+        if (is_array($column)) {
+            array_map(function ($item) {
+                $this->setConditionQuery($item, "IS", "AND", "NULL");
+            }, $column);
+        } else if (is_string($column)) {
+            $this->setConditionQuery($column, "IS", "AND", "NULL");
+        }
+
+        return $this;
+    }
+
+    /**
+     * @param string|array $column
+     * 
+     * @return static
+     */
+    public function whereOrNull($column)
+    {
+        if (is_array($column)) {
+            array_map(function ($item) {
+                $this->setConditionQuery($item, "IS", "OR", "NULL");
+            }, $column);
+        } else if (is_string($column)) {
+            $this->setConditionQuery($column, "IS", "OR", "NULL");
+        }
+
+        return $this;
+    }
+
+    /**
+     * @param string|array $column
+     * 
+     * @return static
+     */
+    public function whereNotNull($column)
+    {
+        if (is_array($column)) {
+            array_map(function ($item) {
+                $this->setConditionQuery($item, "IS NOT", "AND", "NULL");
+            }, $column);
+        } else if (is_string($column)) {
+            $this->setConditionQuery($column, "IS NOT", "AND", "NULL");
+        }
+
+        return $this;
+    }
+
+    /**
+     * @param string|array $column
+     * 
+     * @return static
+     */
+    public function whereOrNotNull($column)
+    {
+        if (is_array($column)) {
+            array_map(function ($item) {
+                $this->setConditionQuery($item, "IS NOT", "OR", "NULL");
+            }, $column);
+        } else if (is_string($column)) {
+            $this->setConditionQuery($column, "IS NOT", "OR", "NULL");
+        }
+
+        return $this;
+    }
+
+    /**
      * @return string
      */
     protected function compilerWhere()
