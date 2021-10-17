@@ -97,6 +97,60 @@ $model = $db->table('<table name>');
     ]);
     ```
 
+1. `delete`
+
+    ```php
+
+    $model->where('<columnName1>', "=", '<columnValue1>')
+        ->delete([
+            '<deleteColumnName1>' => '<deleteColumnValue1>'
+        ]);
+
+    // or
+
+    $model->where('<columnName1>', "=", '<columnValue1>')
+        ->first()
+        ->throws();
+
+    $model->delete([
+        '<deleteColumnName1>' => '<deleteColumnValue1>'
+    ]);
+    ```
+
+### 軟刪除
+
+1. `softDelete`
+
+    ```php
+
+    $model->where('<columnName1>', "=", '<columnValue1>')
+        ->softDelete('<deleteColumnName1>', '<date time format>'); // default delete_at, "Y-m-d H:i:s"
+
+    // or
+
+    $model->where('<columnName1>', "=", '<columnValue1>')
+        ->first()
+        ->throws();
+
+    $model->softDelete('<deleteColumnName1>', '<date time format>'); // default delete_at, "Y-m-d H:i:s"
+    ```
+
+1. `reStore` 回復軟刪除
+
+    ```php
+
+    $model->where('<columnName1>', "=", '<columnValue1>')
+        ->reStore('<deleteColumnName1>'); // default delete_at
+
+    // or
+
+    $model->where('<columnName1>', "=", '<columnValue1>')
+        ->first()
+        ->throws();
+
+    $model->reStore('<deleteColumnName1>'); // default delete_at
+    ```
+
 ### Where
 
 1. `where`

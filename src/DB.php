@@ -320,6 +320,39 @@ class DB implements \JsonSerializable, \ArrayAccess
     }
 
     /**
+     * @param string $column
+     * @param string $dateTimeFormat
+     * 
+     * @return static
+     */
+    public function softDelete($column = 'delete_at', $dateTimeFormat = "Y-m-d H:i:s")
+    {
+        !is_string($column) && $this->argumentsThrowError(" first Arguments must be string");
+
+        $this->setBindData([$column])->compilerUpdate([
+            $column => date($dateTimeFormat)
+        ]);
+
+        return $this->exec();
+    }
+
+    /**
+     * @param string $column
+     * 
+     * @return static
+     */
+    public function reStore($column = 'delete_at')
+    {
+        !is_string($column) && $this->argumentsThrowError(" first Arguments must be string");
+
+        $this->setBindData([$column])->compilerUpdate([
+            $column => null
+        ]);
+
+        return $this->exec();
+    }
+
+    /**
      * @param array $data
      * 
      * @return static
