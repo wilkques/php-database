@@ -97,6 +97,34 @@ $model = $db->table('<table name>');
     ]);
     ```
 
+1. `insert`
+
+    ```php
+
+    $model->insert([
+            '<ColumnName1>' => 'ColumnValue1>',
+            '<ColumnName2>' => 'ColumnValue2>',
+            ...
+        ]);
+
+    // or
+
+    $model->insert([
+        [
+            '<ColumnName1>' => 'ColumnValue1>',
+            '<ColumnName2>' => 'ColumnValue2>',
+            ...
+        ],
+        [
+            '<ColumnName3>' => 'ColumnValue3>',
+            '<ColumnName4>' => 'ColumnValue4>',
+            ...
+        ]
+    ]);
+    ```
+
+### Delete
+
 1. `delete`
 
     ```php
@@ -117,8 +145,6 @@ $model = $db->table('<table name>');
     ]);
     ```
 
-### 軟刪除
-
 1. `softDelete`
 
     ```php
@@ -135,7 +161,7 @@ $model = $db->table('<table name>');
     $model->softDelete('<deleteColumnName1>', '<date time format>'); // default delete_at, "Y-m-d H:i:s"
     ```
 
-1. `reStore` 回復軟刪除
+1. `reStore` 回復軟刪除 (`delete`無法回覆)
 
     ```php
 
