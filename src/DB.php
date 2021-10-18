@@ -7,6 +7,8 @@ namespace Wilkques\Database;
  * 
  * 簡易資料庫操作
  * 
+ * @see [wilkques](https://github.com/wilkques/Database)
+ * 
  * create by: wilkques
  * 
  * @method static static connection(ConnectionInterface $connection) set Connection
@@ -325,7 +327,7 @@ class DB implements \JsonSerializable, \ArrayAccess
      * 
      * @return static
      */
-    public function softDelete($column = 'delete_at', $dateTimeFormat = "Y-m-d H:i:s")
+    public function softDelete($column = 'deleted_at', $dateTimeFormat = "Y-m-d H:i:s")
     {
         !is_string($column) && $this->argumentsThrowError(" first Arguments must be string");
 
@@ -341,7 +343,7 @@ class DB implements \JsonSerializable, \ArrayAccess
      * 
      * @return static
      */
-    public function reStore($column = 'delete_at')
+    public function reStore($column = 'deleted_at')
     {
         !is_string($column) && $this->argumentsThrowError(" first Arguments must be string");
 

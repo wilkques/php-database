@@ -60,7 +60,7 @@ abstract class Grammar implements GrammarInterface
      */
     protected function columnBindQuery($query, $column, $options = "")
     {
-        $query .= $query == "" ? "{$column}{$options}" : ", {$column}{$options}";
+        $query .= $query == "" ? "`{$column}`{$options}" : ", `{$column}`{$options}";
 
         return $query;
     }

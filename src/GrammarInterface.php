@@ -8,4 +8,9 @@ interface GrammarInterface
      * @return string
      */
     public function getQuery();
+
+    /**
+     * @return static
+     */
+    public function getForPage();
 }

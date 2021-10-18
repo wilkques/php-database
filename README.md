@@ -150,7 +150,7 @@ $model = $db->table('<table name>');
     ```php
 
     $model->where('<columnName1>', "=", '<columnValue1>')
-        ->softDelete('<deleteColumnName1>', '<date time format>'); // default delete_at, "Y-m-d H:i:s"
+        ->softDelete('<deleteColumnName1>', '<date time format>'); // default deleted_at, "Y-m-d H:i:s"
 
     // or
 
@@ -158,7 +158,7 @@ $model = $db->table('<table name>');
         ->first()
         ->throws();
 
-    $model->softDelete('<deleteColumnName1>', '<date time format>'); // default delete_at, "Y-m-d H:i:s"
+    $model->softDelete('<deleteColumnName1>', '<date time format>'); // default deleted_at, "Y-m-d H:i:s"
     ```
 
 1. `reStore` 回復軟刪除 (`delete`無法回覆)
@@ -166,7 +166,7 @@ $model = $db->table('<table name>');
     ```php
 
     $model->where('<columnName1>', "=", '<columnValue1>')
-        ->reStore('<deleteColumnName1>'); // default delete_at
+        ->reStore('<deleteColumnName1>'); // default deleted_at
 
     // or
 
@@ -174,7 +174,7 @@ $model = $db->table('<table name>');
         ->first()
         ->throws();
 
-    $model->reStore('<deleteColumnName1>'); // default delete_at
+    $model->reStore('<deleteColumnName1>'); // default deleted_at
     ```
 
 ### Where
@@ -364,6 +364,13 @@ $model = $db->table('<table name>');
     ```php
 
     $model->getForPage(); // get page data
+    ```
+
+1. `count`
+
+    ```php
+
+    $model->count(); // total count
     ```
 
 ### 交易模式
