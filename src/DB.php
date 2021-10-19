@@ -132,19 +132,19 @@ class DB
     {
         $database = $this->getDatabase()->grammar($this->newGrammar());
 
-        $this->setDatabase(call_user_func_array(array($database, $method), $arguments));
+        $returnDatabase = call_user_func_array(array($database, $method), $arguments);
 
-        $database = $this->getDatabase();
+        if (is_object($returnDatabase)) {
+            $this->setDatabase($returnDatabase);
 
-        if (is_object($database)) {
-            if ($database->getQuery()) {
-                $this->bindQueryLog($database);
+            if ($returnDatabase->getQuery()) {
+                $this->bindQueryLog($returnDatabase);
             }
 
             return $this;
         }
 
-        return $database;
+        return $returnDatabase;
     }
 
     /**
