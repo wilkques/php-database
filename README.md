@@ -15,13 +15,13 @@
 ## Methods
 
 ```php
-$drive = new \Wilkques\Database\PDO\MySql('<database host>', '<database username>', '<database password>', 'database name>');
 
-$grammar = new \Wilkques\Database\Grammar\MySql;
+\Wilkques\Container\Container::register(
+	\Wilkques\Database\PDO\MySql::class,
+	new \Wilkques\Database\PDO\MySql('<host>', '<username>', '<password>', '<database name>')
+);
 
-$db = \Wilkques\Database\DB::connection($drive)->grammar($grammar);
-
-$model = $db->table('<table name>');
+$model = \Wilkques\Database\DB::table('member');
 ```
 
 1. `select`
@@ -317,14 +317,7 @@ $model = $db->table('<table name>');
 
     ```php
 
-    $db->getQueryLog();
-    ```
-
-1. `latestQueryLog` get latest query string and bind data
-
-    ```php
-
-    $db->latestQueryLog();
+    \Wilkques\Database\DB::getQueryLog();
     ```
 
 ### 鎖
@@ -333,14 +326,14 @@ $model = $db->table('<table name>');
 
     ```php
     
-    $db->lockForUpdate();
+    $model->lockForUpdate();
     ```
 
 1. `sharedLock`
 
     ```php
     
-    $db->sharedLock();
+    $model->sharedLock();
     ```
 
 ### 分頁
@@ -366,34 +359,27 @@ $model = $db->table('<table name>');
     $model->getForPage(); // get page data
     ```
 
-1. `count`
-
-    ```php
-
-    $model->count(); // total count
-    ```
-
 ### 交易模式
 
 1. `beginTransaction`
 
     ```php
     
-    $db->beginTransaction();
+    \Wilkques\Database\DB::beginTransaction();
     ```
 
 1. `commit`
 
     ```php
     
-    $db->commit();
+    \Wilkques\Database\DB::commit();
     ```
 
 1. `rollback`
 
     ```php
     
-    $db->rollback();
+    \Wilkques\Database\DB::rollback();
     ```
 
 ### connect
@@ -402,33 +388,33 @@ $model = $db->table('<table name>');
 
     ```php
 
-    $db->host('<DB host>');
+    $model->host('<DB host>');
     ```
 
 1. `username`
 
     ```php
 
-    $db->username('<DB username>');
+    $model->username('<DB username>');
     ```
 
 1. `password`
 
     ```php
 
-    $db->password('<DB password>');
+    $model->password('<DB password>');
     ```
 
 1. `dbname`
 
     ```php
 
-    $db->dbname('<DB name>');
+    $model->dbname('<DB name>');
     ```
 
 1. `connect`
 
     ```php
 
-    $db->newConnect();
+    $model->newConnect();
     ```
