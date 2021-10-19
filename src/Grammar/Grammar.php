@@ -308,16 +308,34 @@ abstract class Grammar implements GrammarInterface
     /**
      * @return static
      */
-    public function compilerSelect()
+    public function compilerSelect($withFirst = false)
     {
-        return $this->setQuery($this->buildSelectQuery());
+        $column = $this->getBindQuery() ?: "*";
+
+        $sql = "SELECT {$column} FROM `{$this->getTable()}`%s%s%s%s%s%s";
+
+        $query = sprintf(
+            $sql,
+            $this->compilerWhere(),
+            $this->getGroupBy(),
+            $this->getOrderBy(),
+            $this->compilerLimit($withFirst),
+            $this->compilerOffset(),
+            $this->getLock()
+        );
+
+        return $this->setQuery($query);
     }
 
     /**
+     * @param bool $withFirst
+     * 
      * @return string
      */
-    protected function compilerLimit()
+    protected function compilerLimit($withFirst = false)
     {
+        if ($withFirst) return " LIMIT 1";
+
         return $this->getLimit() !== null ? " LIMIT ?" : "";
     }
 
@@ -327,26 +345,6 @@ abstract class Grammar implements GrammarInterface
     protected function compilerOffset()
     {
         return $this->getOffset() !== null ? " OFFSET ?" : "";
-    }
-
-    /**
-     * @return string
-     */
-    protected function buildSelectQuery()
-    {
-        $column = $this->getBindQuery() ?: "*";
-
-        $sql = "SELECT {$column} FROM `{$this->getTable()}`%s%s%s%s%s%s";
-
-        return sprintf(
-            $sql,
-            $this->compilerWhere(),
-            $this->getGroupBy(),
-            $this->getOrderBy(),
-            $this->compilerLimit(),
-            $this->compilerOffset(),
-            $this->getLock()
-        );
     }
 
     /**

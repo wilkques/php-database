@@ -42,8 +42,15 @@ use Wilkques\Container\Container;
  * @method static static sharedLock() set shared lock
  * @method static static currentPage(int $currentPage) set now page
  * @method static static prePage(int $prePage) set prepage
- * @method static static toArray()
- * @method static static toJson()
+ * @method static array toArray()
+ * @method static string toJson()
+ * @method static static first()
+ * @method static static get()
+ * @method static static update(array $data)
+ * @method static static insert(array $data)
+ * @method static static delete()
+ * @method static static softDelete()
+ * @method static static reStore()
  */
 class DB
 {
@@ -74,6 +81,9 @@ class DB
         return $this->grammar;
     }
 
+    /**
+     * @return \Wilkques\Database\ConnectionInterface
+     */
     public function getInstanceConnection()
     {
         return static::$container->get(\Wilkques\Database\PDO\MySql::class);
