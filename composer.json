@@ -1,6 +1,6 @@
 {
     "name": "wilkques/database",
-    "type": "composer-plugin",
+    "type": "library",
     "license": "MIT",
     "require": {
         "php": ">=5.4",
