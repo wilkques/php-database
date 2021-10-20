@@ -280,7 +280,7 @@ class Database implements \JsonSerializable, \ArrayAccess
      * 
      * @return static
      */
-    public function increment($column, $value)
+    public function increment($column, $value = 1)
     {
         !is_numeric($value) && $this->argumentsThrowError(" second Arguments must be numeric");
 
@@ -295,7 +295,7 @@ class Database implements \JsonSerializable, \ArrayAccess
      * 
      * @return static
      */
-    public function decrement($column, $value)
+    public function decrement($column, $value = 1)
     {
         !is_numeric($value) && $this->argumentsThrowError(" second Arguments must be numeric");
 
@@ -480,9 +480,9 @@ class Database implements \JsonSerializable, \ArrayAccess
     }
 
     /**
-     * @param string|callable|exception $error
+     * @param string|callable|\Exception $error
      * 
-     * @throws BadRequestException|Exception
+     * @throws \Exception|\Wilkques\Database\Exceptions\DataNotExistsException
      * 
      * @return static
      */
@@ -493,7 +493,7 @@ class Database implements \JsonSerializable, \ArrayAccess
                 throw $error($this);
 
             if (is_string($error))
-                throw new \Exception($error);
+                throw new \Wilkques\Database\Exceptions\DataNotExistsException($error);
 
             if ($error instanceof \Exception)
                 throw $error;
