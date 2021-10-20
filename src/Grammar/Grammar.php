@@ -146,12 +146,28 @@ abstract class Grammar implements GrammarInterface
         array_map(function ($item, $index) {
             if (is_array($item)) $this->compilerUpdate($item);
 
-            $this->updateBindQuery($index, "=");
+            $this->updateBindQuery($index, $this->indexReCondition($index, $item));
         }, $data, array_keys($data));
 
         return $this->setQuery(
             "UPDATE `{$this->getTable()}` SET {$this->getBindQuery()} WHERE {$this->getConditionQuery()}"
         );
+    }
+
+    /**
+     * @param string $index
+     * @param string $item
+     * @param string $condition
+     * 
+     * @return string
+     */
+    protected function indexReCondition($index, $item, $condition = "=")
+    {
+        if (preg_match("/($index)(?(?=\s?(\+|\-)))/i", $item, $matches)) {
+            $condition .= " `{$matches[1]}` {$matches[2]}";
+        }
+
+        return $condition;
     }
 
     /**

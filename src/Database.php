@@ -14,7 +14,7 @@ class Database implements \JsonSerializable, \ArrayAccess
     protected $connection;
     /** @var GrammarInterface */
     protected $grammar;
-    
+
     /**
      * @param ConnectionInterface $connection
      * @param GrammarInterface $grammar
@@ -160,17 +160,33 @@ class Database implements \JsonSerializable, \ArrayAccess
     }
 
     /**
+     * @param array $bindData
+     * 
+     * @return static
+     */
+    public function withBindData($bindData = [])
+    {
+        $this->bindData = $bindData;
+
+        return $this;
+    }
+
+    /**
      * @return static
      */
     public function setBindData()
     {
         $bindData = func_num_args() > 1 ? func_get_args() : func_get_args()[0];
 
-        array_map(function ($item) {
-            if (is_array($item)) return $this->setBindData($item);
+        if (is_array($bindData)) {
+            array_map(function ($item) {
+                if (is_array($item)) return $this->setBindData($item);
 
-            $this->bindData[] = $item;
-        }, $bindData);
+                $this->bindData[] = $item;
+            }, $bindData);
+        } else {
+            $this->bindData[] = $bindData;
+        }
 
         return $this;
     }
@@ -236,9 +252,9 @@ class Database implements \JsonSerializable, \ArrayAccess
     public function getForPage()
     {
         $this->getGrammar()->getForPage();
-        
+
         $items = $this->execReturn($this->compiler());
-        
+
         $total = $this->count();
 
         return $this->setData(compact('total', 'items'));
@@ -255,7 +271,37 @@ class Database implements \JsonSerializable, \ArrayAccess
 
         $this->setBindData(array_values($data))->compilerUpdate($data);
 
-        return $this->exec();
+        return $this->exec()->withBindData();
+    }
+
+    /**
+     * @param string $column
+     * @param int|string $value
+     * 
+     * @return static
+     */
+    public function increment($column, $value)
+    {
+        !is_numeric($value) && $this->argumentsThrowError(" second Arguments must be numeric");
+
+        $this->setBindData($value)->compilerUpdate(array("{$column}" => "{$column} +"));
+
+        return $this->exec()->withBindData();
+    }
+
+    /**
+     * @param string $column
+     * @param int|string $value
+     * 
+     * @return static
+     */
+    public function decrement($column, $value)
+    {
+        !is_numeric($value) && $this->argumentsThrowError(" second Arguments must be numeric");
+
+        $this->setBindData($value)->compilerUpdate(array("{$column}" => "{$column} -"));
+
+        return $this->exec()->withBindData();
     }
 
     /**
@@ -316,7 +362,7 @@ class Database implements \JsonSerializable, \ArrayAccess
 
         $this->withConditionData()->setBindData(array_values($data))->compilerInsert($data);
 
-        return $this->exec();
+        return $this->exec()->withBindData();
     }
 
     /**
