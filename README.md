@@ -12,7 +12,7 @@
 1. mysql >= 5.6
 1. PDO extension
 
-## Methods
+## How to use
 
 ```php
 
@@ -22,7 +22,28 @@
 );
 
 $model = \Wilkques\Database\DB::table('member');
+
+// or
+
+$db = \Wilkques\Database\Database::connection(
+    new \Wilkques\Database\PDO\MySql('<host>', '<username>', '<password>', '<database name>')
+)->grammar(
+    new \Wilkques\Database\Grammar\MySql
+)
 ```
+
+## Methods
+
+1. `table`
+
+    ```php
+
+    $model = \Wilkques\Database\DB::table('member');
+
+    // or
+
+    $model = $db->table('<table name>');
+    ```
 
 1. `select`
 
@@ -98,12 +119,14 @@ $model = \Wilkques\Database\DB::table('member');
     ```
 
 1. `increment`
+
     ```php
 
     $model->increment('<columnNmae>', '<numeric>');
     ```
 
 1. `decrement`
+
     ```php
 
     $model->decrement('<columnNmae>', '<numeric>');
