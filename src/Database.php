@@ -269,9 +269,9 @@ class Database implements \JsonSerializable, \ArrayAccess
     {
         !is_array($data) && $this->argumentsThrowError(" first Arguments must be array");
 
-        $this->setBindData(array_values($data))->compilerUpdate($data);
+        $this->withBindData()->setBindData(array_values($data))->compilerUpdate($data);
 
-        return $this->exec()->withBindData();
+        return $this->exec();
     }
 
     /**
@@ -284,9 +284,9 @@ class Database implements \JsonSerializable, \ArrayAccess
     {
         !is_numeric($value) && $this->argumentsThrowError(" second Arguments must be numeric");
 
-        $this->setBindData($value)->compilerUpdate(array("{$column}" => "{$column} +"));
+        $this->withBindData()->setBindData($value)->compilerUpdate(array("{$column}" => "{$column} +"));
 
-        return $this->exec()->withBindData();
+        return $this->exec();
     }
 
     /**
@@ -299,9 +299,9 @@ class Database implements \JsonSerializable, \ArrayAccess
     {
         !is_numeric($value) && $this->argumentsThrowError(" second Arguments must be numeric");
 
-        $this->setBindData($value)->compilerUpdate(array("{$column}" => "{$column} -"));
+        $this->withBindData()->setBindData($value)->compilerUpdate(array("{$column}" => "{$column} -"));
 
-        return $this->exec()->withBindData();
+        return $this->exec();
     }
 
     /**
@@ -326,7 +326,7 @@ class Database implements \JsonSerializable, \ArrayAccess
 
         $value = date($dateTimeFormat);
 
-        $this->setBindData([$value])->compilerUpdate([
+        $this->withBindData()->setBindData($value)->compilerUpdate([
             $column => $value
         ]);
 
@@ -344,7 +344,7 @@ class Database implements \JsonSerializable, \ArrayAccess
 
         $value = null;
 
-        $this->setBindData([$value])->compilerUpdate([
+        $this->withBindData()->setBindData($value)->compilerUpdate([
             $column => $value
         ]);
 
