@@ -100,13 +100,13 @@ $model = \Wilkques\Database\DB::table('member');
 1. `increment`
     ```php
 
-    $model->increment('<columnNmae>', 'numeric');
+    $model->increment('<columnNmae>', '<numeric>');
     ```
 
 1. `decrement`
     ```php
 
-    $model->decrement('<columnNmae>', 'numeric');
+    $model->decrement('<columnNmae>', '<numeric>');
     ```
 
 1. `insert`
