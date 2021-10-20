@@ -23,7 +23,7 @@ use Wilkques\Container\Container;
  * @method static static query(string $query) set sql query
  * @method static static bindData(array $data) set bind data
  * @method static static orderBy(string $column, string $sort = "ASC") set order by
- * @method static static groupBy(string $column, string $sort) set group by
+ * @method static static groupBy(string $column) set group by
  * @method static static limit(int $limit) set limit
  * @method static static offset(int $offset) set offset
  * @method static static select(array|string $column) set column with select
@@ -34,9 +34,9 @@ use Wilkques\Container\Container;
  * @method static static whereOrNull(string|array $column)
  * @method static static whereNotNull(string|array $column)
  * @method static static whereOrNotNull(string|array $column)
- * @method static static beginTransaction()
- * @method static static commit()
- * @method static static rollBack()
+ * @method static bool beginTransaction()
+ * @method static bool commit()
+ * @method static bool rollBack()
  * @method static static grammar(GrammarInterface $grammar) set sql server grammar
  * @method static static lockForUpdate() set for update lock
  * @method static static sharedLock() set shared lock
