@@ -277,14 +277,21 @@ class Database implements \JsonSerializable, \ArrayAccess
     /**
      * @param string $column
      * @param int|string $value
+     * @param array $data
      * 
      * @return static
      */
-    public function increment($column, $value = 1)
+    public function increment($column, $value = 1, $data = array())
     {
         !is_numeric($value) && $this->argumentsThrowError(" second Arguments must be numeric");
 
-        $this->withBindData()->setBindData($value)->compilerUpdate(array("{$column}" => "{$column} +"));
+        $bindData = array_values($data);
+
+        $bindData[] = $value;
+
+        $this->withBindData()->setBindData($bindData)->compilerUpdate(
+            array_merge($data, array("{$column}" => "{$column} +"))
+        );
 
         return $this->exec();
     }
@@ -292,14 +299,21 @@ class Database implements \JsonSerializable, \ArrayAccess
     /**
      * @param string $column
      * @param int|string $value
+     * @param array $data
      * 
      * @return static
      */
-    public function decrement($column, $value = 1)
+    public function decrement($column, $value = 1, $data = array())
     {
         !is_numeric($value) && $this->argumentsThrowError(" second Arguments must be numeric");
 
-        $this->withBindData()->setBindData($value)->compilerUpdate(array("{$column}" => "{$column} -"));
+        $bindData = array_values($data);
+
+        $bindData[] = $value;
+
+        $this->withBindData()->setBindData($bindData)->compilerUpdate(
+            array_merge($data, array("{$column}" => "{$column} -"))
+        );
 
         return $this->exec();
     }
