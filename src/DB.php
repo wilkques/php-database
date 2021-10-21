@@ -47,8 +47,8 @@ use Wilkques\Container\Container;
  * @method static static first()
  * @method static static get()
  * @method static static update(array $data)
- * @method static static increment(string $column,int|string $value = 1)
- * @method static static decrement(string $column,int|string $value = 1)
+ * @method static static increment(string $column,int|string $value = 1, array $data = [])
+ * @method static static decrement(string $column,int|string $value = 1, array $data = [])
  * @method static static insert(array $data)
  * @method static static delete()
  * @method static static softDelete()
@@ -88,7 +88,7 @@ class DB
      */
     public function getInstanceConnection()
     {
-        return static::$container->get(\Wilkques\Database\PDO\MySql::class);
+        return static::$container->resolve('\\Wilkques\\Database\\PDO\\MySql');
     }
 
     /**

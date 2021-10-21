@@ -164,7 +164,8 @@ abstract class Grammar implements GrammarInterface
     protected function indexReCondition($index, $item, $condition = "=")
     {
         if (preg_match("/($index)(?(?=\s?(\+|\-)))/i", $item, $matches)) {
-            $condition .= " `{$matches[1]}` {$matches[2]}";
+            // match + or -
+            $matches[2] && $condition .= " `{$matches[1]}` {$matches[2]}";
         }
 
         return $condition;

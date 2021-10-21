@@ -122,14 +122,30 @@ $db = \Wilkques\Database\Database::connection(
 
     ```php
 
-    $model->increment('<columnNmae>', '<numeric>');
+    $model->increment('<columnNmae>');
+
+    // or
+
+    $model->increment('<columnNmae>', '<numeric>', [
+        '<update column 1>' => 'update value 1',
+        '<update column 2>' => 'update value 2',
+        ...
+    ]);
     ```
 
 1. `decrement`
 
     ```php
 
-    $model->decrement('<columnNmae>', '<numeric>');
+    $model->decrement('<columnNmae>');
+
+    // or
+
+    $model->decrement('<columnNmae>', '<numeric>', [
+        '<update column 1>' => 'update value 1',
+        '<update column 2>' => 'update value 2',
+        ...
+    ]);
     ```
 
 1. `insert`
