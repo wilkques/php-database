@@ -1,5 +1,8 @@
 # Database
 
+[![Latest Stable Version](https://poser.pugx.org/wilkques/database/v/stable)](https://packagist.org/packages/wilkques/database)
+[![License](https://poser.pugx.org/wilkques/database/license)](https://packagist.org/packages/wilkques/database)
+
 ## Notice
 
 1. 目前只有 `MySQL`

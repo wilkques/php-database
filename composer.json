@@ -4,7 +4,7 @@
     "license": "MIT",
     "require": {
         "php": ">=5.4",
-        "wilkques/container": "0.0.0"
+        "wilkques/container": "^0.0.1"
     },
     "autoload": {
         "psr-4": {
