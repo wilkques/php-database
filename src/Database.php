@@ -243,7 +243,7 @@ class Database implements \JsonSerializable, \ArrayAccess
     {
         $this->setBindQuery("COUNT(*) as count")->compilerSelect();
 
-        return array_pop($this->exec()->toArray());
+        return (int) $this->exec()->count;
     }
 
     /**
