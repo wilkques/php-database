@@ -54,7 +54,7 @@ use Wilkques\Container\Container;
  * @method static static softDelete()
  * @method static static reStore()
  */
-class DB
+class DB implements \JsonSerializable, \ArrayAccess
 {
     /** @var Container */
     protected static $container;
@@ -132,6 +132,74 @@ class DB
     public static function getQueryLog()
     {
         return self::$queryLog;
+    }
+
+    /**
+     * @return array
+     */
+    public function jsonSerialize()
+    {
+        return $this->getDatabase()->toArray();
+    }
+
+    /**
+     * @param string $offset
+     * 
+     * @return bool
+     */
+    public function offsetExists($offset)
+    {
+        return $this->getDatabase()->offsetExists($offset);
+    }
+
+    /**
+     * @param string $offset
+     * @param mixed $value
+     */
+    public function offsetSet($offset, $value)
+    {
+        $this->getDatabase()->offsetSet($offset, $value);
+    }
+
+    /**
+     * @param string $offset
+     * 
+     * @return mixed
+     */
+    public function offsetGet($offset)
+    {
+        return $this->getDatabase()->offsetGet($offset);
+    }
+
+    /**
+     * @param string $offset
+     */
+    public function offsetUnset($offset)
+    {
+        $this->getDatabase()->offsetUnset($offset);
+    }
+
+    /**
+     * Get a data by key
+     *
+     * @param string The key data to retrieve
+     * @access public
+     */
+    public function __get($key)
+    {
+        return $this->getDatabase()->__get($key);
+    }
+
+    /**
+     * Assigns a value to the specified data
+     *
+     * @param string The data key to assign the value to
+     * @param mixed  The value to set
+     * @access public
+     */
+    public function __set($key, $value)
+    {
+        $this->getDatabase()->__set($key, $value);
     }
 
     /**
