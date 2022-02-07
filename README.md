@@ -24,8 +24,6 @@
 	new \Wilkques\Database\PDO\MySql('<host>', '<username>', '<password>', '<database name>')
 );
 
-$model = \Wilkques\Database\DB::table('member');
-
 // or
 
 $db = \Wilkques\Database\Database::connection(
@@ -41,7 +39,7 @@ $db = \Wilkques\Database\Database::connection(
 
     ```php
 
-    $model = \Wilkques\Database\DB::table('member');
+    $model = \Wilkques\Database\DB::table('<table name>');
 
     // or
 
