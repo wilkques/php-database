@@ -18,14 +18,6 @@
 ## How to use
 
 ```php
-
-\Wilkques\Container\Container::register(
-	\Wilkques\Database\PDO\MySql::class,
-	new \Wilkques\Database\PDO\MySql('<host>', '<username>', '<password>', '<database name>')
-);
-
-// or
-
 $db = \Wilkques\Database\Database::connection(
     new \Wilkques\Database\PDO\MySql('<host>', '<username>', '<password>', '<database name>')
 )->grammar(
@@ -38,10 +30,6 @@ $db = \Wilkques\Database\Database::connection(
 1. `table`
 
     ```php
-
-    $model = \Wilkques\Database\DB::table('<table name>');
-
-    // or
 
     $model = $db->table('<table name>');
     ```

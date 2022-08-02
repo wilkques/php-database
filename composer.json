@@ -3,8 +3,7 @@
     "type": "library",
     "license": "MIT",
     "require": {
-        "php": ">=5.4",
-        "wilkques/container": "^0.0.2"
+        "php": ">=5.4"
     },
     "autoload": {
         "psr-4": {
