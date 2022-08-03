@@ -210,7 +210,21 @@ class Database implements \JsonSerializable, \ArrayAccess
         if (!$data) return $this;
 
         array_map(function ($item, $index) use (&$statement) {
-            $statement->bindParam(++$index, $item, \PDO::PARAM_STR | \PDO::PARAM_INT);
+            switch (true) {
+                case is_bool($item):
+                    $varType = \PDO::PARAM_BOOL;
+                    break;
+                case is_int($item):
+                    $varType = \PDO::PARAM_INT;
+                    break;
+                case is_null($item):
+                    $varType = \PDO::PARAM_NULL;
+                    break;
+                default:
+                    $varType = \PDO::PARAM_STR;
+            }
+
+            $statement->bindParam(++$index, $item, $varType);
         }, $data, array_keys($data));
 
         return $this;
@@ -659,7 +673,11 @@ class Database implements \JsonSerializable, \ArrayAccess
 
         $connection = $this->getConnection();
 
-        if (method_exists($this->getConnection(), $method)) {
+        if (!$connection && in_array($method, ["connection", "setConnection"])) {
+            return $this->setConnection(...$arguments);
+        }
+
+        if (method_exists($connection, $method)) {
             $database = call_user_func_array(array($connection, $method), $arguments);
 
             if (is_object($database)) return $this;
@@ -668,6 +686,10 @@ class Database implements \JsonSerializable, \ArrayAccess
         }
 
         $grammar = $this->getGrammar();
+
+        if (!$grammar && in_array($method, ["setGrammar", "grammar"])) {
+            return $this->setGrammar(...$arguments);
+        }
 
         if (method_exists($grammar, $method)) {
             $grammar = call_user_func_array(array($grammar, $method), $arguments);

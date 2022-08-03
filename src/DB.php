@@ -2,8 +2,6 @@
 
 namespace Wilkques\Database;
 
-use Wilkques\Container\Container;
-
 /**
  * php >= 5.4
  * 
@@ -56,47 +54,17 @@ use Wilkques\Container\Container;
  */
 class DB implements \JsonSerializable, \ArrayAccess
 {
-    /** @var Container */
-    protected static $container;
     /** @var array */
     protected static $queryLog = [];
     /** @var \Wilkques\Database\ConnectionInterface */
     protected $database;
-    /** @var \Wilkques\Database\GrammarInterface */
-    protected $grammar;
 
     /**
-     * @param Container $container
+     * @param \Wilkques\Database\Database $database
      */
-    public function __construct(Container $container = null)
+    public function __construct(\Wilkques\Database\Database $database = null)
     {
-        static::$container = $container ?: new Container;
-    }
-
-    /**
-     * @return \Wilkques\Database\Grammar\MySql
-     */
-    public function newGrammar()
-    {
-        $this->grammar === null && $this->grammar = new \Wilkques\Database\Grammar\MySql;
-
-        return $this->grammar;
-    }
-
-    /**
-     * @return \Wilkques\Database\ConnectionInterface
-     */
-    public function getInstanceConnection()
-    {
-        return static::$container->resolve('\\Wilkques\\Database\\PDO\\MySql');
-    }
-
-    /**
-     * @return \Wilkques\Database\Database
-     */
-    public function getDatabase()
-    {
-        return $this->database ?: new \Wilkques\Database\Database($this->getInstanceConnection());
+        $this->setDatabase($database);
     }
 
     /**
@@ -104,7 +72,7 @@ class DB implements \JsonSerializable, \ArrayAccess
      * 
      * @return static
      */
-    public function setDatabase($database)
+    public function setDatabase(\Wilkques\Database\Database $database = null)
     {
         $this->database = $database;
 
@@ -112,11 +80,19 @@ class DB implements \JsonSerializable, \ArrayAccess
     }
 
     /**
+     * @return \Wilkques\Database\Database
+     */
+    public function getDatabase()
+    {
+        return $this->database;
+    }
+
+    /**
      * @param \Wilkques\Database\Database $database
      * 
      * @return static
      */
-    protected function bindQueryLog($database)
+    protected function bindQueryLog(\Wilkques\Database\Database $database)
     {
         self::$queryLog[] = array(
             'queryString'   => $database->getQuery(),
@@ -210,7 +186,11 @@ class DB implements \JsonSerializable, \ArrayAccess
      */
     public function __call($method, $arguments)
     {
-        $database = $this->getDatabase()->grammar($this->newGrammar());
+        $database = $this->getDatabase();
+
+        if (!$database && in_array($method, ["database", "setDatabase"])) {
+            return $this->setDatabase(...$arguments);
+        }
 
         $returnDatabase = call_user_func_array(array($database, $method), $arguments);
 
