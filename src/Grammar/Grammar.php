@@ -10,26 +10,18 @@ abstract class Grammar implements GrammarInterface
     protected $query;
     /** @var string */
     protected $table;
-    /** @var string */
-    protected $bindColumnQuery = "";
-    /** @var string */
-    protected $bindQuery = "";
     /** @var integer */
     protected $prePage = 10;
     /** @var integer */
     protected $currentPage = 1;
-    /** @var string */
-    protected $orderBy = "";
-    /** @var string */
-    protected $groupBy = "";
     /** @var integer */
     protected $limit = null;
     /** @var integer */
     protected $offset = null;
     /** @var string */
-    protected $conditionQuery = "";
-    /** @var string */
     protected $lock = "";
+    /** @var array */
+    protected $bindQueries = array();
 
     /**
      * @param string $table
@@ -49,6 +41,45 @@ abstract class Grammar implements GrammarInterface
     public function getTable()
     {
         return $this->table;
+    }
+    
+    /**
+     * @param array $bindQueries
+     * 
+     * @return static
+     */
+    public function withBindQueries(array $bindQueries)
+    {
+        $this->bindQueries = $bindQueries;
+
+        return $this;
+    }
+
+    /**
+     * @param string $key
+     * @param string $query
+     * 
+     * @return static
+     */
+    public function setBindQueries(string $key, string $query)
+    {
+        $this->bindQueries[$key] = $query;
+
+        return $this;
+    }
+
+    /**
+     * @param string|null $key
+     * 
+     * @return string|array
+     */
+    public function getBindQueries(string $key = null)
+    {
+        if (!$key) {
+            return $this->bindQueries;
+        }
+
+        return $this->bindQueries[$key] ?? null ;
     }
 
     /**
@@ -72,7 +103,7 @@ abstract class Grammar implements GrammarInterface
      */
     protected function selectBindQuery($query)
     {
-        $query = preg_replace("/(\s+as\s+)/i", "` AS `", $query);
+        $query = preg_replace(["/(\s+as\s+)/i", "/(,\s?)/i"], ["` AS `", "`, `"], $query);
 
         $bindQuery = $this->getBindQuery();
 
@@ -86,9 +117,7 @@ abstract class Grammar implements GrammarInterface
      */
     public function setBindQuery($bindQuery = "")
     {
-        $this->bindQuery = $bindQuery;
-
-        return $this;
+        return $this->setBindQueries("bindQuery", $bindQuery);
     }
 
     /**
@@ -96,7 +125,7 @@ abstract class Grammar implements GrammarInterface
      */
     public function getBindQuery()
     {
-        return $this->bindQuery;
+        return $this->getBindQueries("bindQuery");
     }
 
     /**
@@ -106,9 +135,7 @@ abstract class Grammar implements GrammarInterface
      */
     public function setBindColumnQuery($bindColumnQuery = "")
     {
-        $this->bindColumnQuery = $bindColumnQuery;
-
-        return $this;
+        return $this->setBindQueries("bindColumnQuery", $bindColumnQuery);
     }
 
     /**
@@ -116,7 +143,7 @@ abstract class Grammar implements GrammarInterface
      */
     public function getBindColumnQuery()
     {
-        return $this->bindColumnQuery;
+        return $this->getBindQueries("bindColumnQuery");
     }
 
     /**
@@ -178,9 +205,7 @@ abstract class Grammar implements GrammarInterface
      */
     public function withConditionQuery($conditionQuery)
     {
-        $this->conditionQuery = $conditionQuery;
-
-        return $this;
+        return $this->setBindQueries("conditionQuery", $conditionQuery);
     }
 
     /**
@@ -188,7 +213,7 @@ abstract class Grammar implements GrammarInterface
      */
     public function getConditionQuery()
     {
-        return $this->conditionQuery;
+        return $this->getBindQueries("conditionQuery");
     }
 
     /**
@@ -201,11 +226,13 @@ abstract class Grammar implements GrammarInterface
      */
     public function setConditionQuery($key, $condition, $andOr = "AND", $value = "?")
     {
-        if ($this->conditionQuery != "") $this->conditionQuery .= " {$andOr} ";
+        $conditionQuery = $this->getConditionQuery();
 
-        $this->conditionQuery .= "`{$key}` {$condition} {$value}";
+        if ($conditionQuery != "") $conditionQuery .= " {$andOr} ";
 
-        return $this;
+        $conditionQuery .= "`{$key}` {$condition} {$value}";
+
+        return $this->setBindQueries("conditionQuery", $conditionQuery);
     }
 
     /**
@@ -285,7 +312,7 @@ abstract class Grammar implements GrammarInterface
      */
     protected function compilerWhere()
     {
-        return $this->getConditionQuery() == "" ? "" : " WHERE {$this->getConditionQuery()}";
+        return $this->getConditionQuery() ? " WHERE {$this->getConditionQuery()}" : "";
     }
 
     /**
@@ -466,13 +493,15 @@ abstract class Grammar implements GrammarInterface
      */
     public function setOrderBy($column, $sort = "ASC")
     {
+        $orderBy = $this->getOrderBy();
+
         $query = "`{$column}` {$sort}";
 
-        $this->orderBy == "" && $this->orderBy = " ORDER BY {$query}";
+        $orderBy && $orderBy = " ORDER BY {$query}";
 
-        $this->orderBy = $this->columnBindQuery($this->orderBy, $query);
+        $orderBy = $this->columnBindQuery($orderBy, $query);
 
-        return $this;
+        return $this->setBindQueries("orderBy", $orderBy);
     }
 
     /**
@@ -480,7 +509,7 @@ abstract class Grammar implements GrammarInterface
      */
     public function getOrderBy()
     {
-        return $this->orderBy;
+        return $this->getBindQueries("orderBy");
     }
 
     /**
@@ -490,11 +519,13 @@ abstract class Grammar implements GrammarInterface
      */
     public function setGroupBy($groupBy)
     {
-        $this->groupBy == "" && $this->groupBy = " GROUP BY `{$groupBy}`";
+        $groupBy = $this->getGroupBy();
 
-        $this->groupBy = $this->columnBindQuery($this->groupBy, $groupBy);
+        $groupBy && $groupBy = " GROUP BY `{$groupBy}`";
 
-        return $this;
+        $groupBy = $this->columnBindQuery($groupBy, $groupBy);
+
+        return $this->setBindQueries("groupBy", $groupBy);
     }
 
     /**
@@ -502,7 +533,7 @@ abstract class Grammar implements GrammarInterface
      */
     public function getGroupBy()
     {
-        return $this->groupBy;
+        return $this->getBindQueries("groupBy");
     }
 
     /**

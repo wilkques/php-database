@@ -7,9 +7,9 @@ class Database implements \JsonSerializable, \ArrayAccess
     /** @var array */
     protected $data;
     /** @var array */
-    protected $bindData = [];
+    protected $bindData = array();
     /** @var array */
-    protected $conditionData = [];
+    protected $conditionData = array();
     /** @var ConnectionInterface */
     protected $connection;
     /** @var GrammarInterface */
@@ -98,44 +98,54 @@ class Database implements \JsonSerializable, \ArrayAccess
 
     /**
      * @param array|string $key
-     * @param string $condition
-     * @param mixed $value
+     * @param string|mixed $condition
+     * @param mixed|null $value
      * 
      * @return static
      */
-    public function where($key, $condition = null, $value = null)
+    public function where($key, $condition, $value = null)
     {
-        if (is_array($key)) {
-            array_map(function ($item) {
-                call_user_func_array(array($this, 'where'), $item);
-            }, $key);
-
-            return $this;
-        }
-
-        return $this->setConditionData($value)
-            ->setConditionQuery($key, $condition);
+        return $this->whereCondition($key, $condition, $value);
     }
 
     /**
      * @param array|string $key
-     * @param string $condition
-     * @param mixed $value
+     * @param string|mixed $condition
+     * @param mixed|null $value
      * 
      * @return static
      */
-    public function orWhere($key, $condition = null, $value = null)
+    public function orWhere($key, $condition, $value = null)
+    {
+        return $this->whereCondition($key, $condition, $value, "OR", "orWhere");
+    }
+
+    /**
+     * @param array|string $key
+     * @param string|mixed $condition
+     * @param mixed|null $value
+     * @param string $andOr
+     * @param string $method
+     * 
+     * @return static
+     */
+    protected function whereCondition($key, $condition, $value = null, string $andOr = "AND", string $method = "where")
     {
         if (is_array($key)) {
-            array_map(function ($item) {
-                call_user_func_array(array($this, 'orWhere'), $item);
+            array_map(function ($item) use ($method) {
+                call_user_func_array(array($this, $method), $item);
             }, $key);
 
             return $this;
         }
 
+        if (!$value) {
+            $value = $condition;
+            $condition = "=";
+        }
+
         return $this->setConditionData($value)
-            ->setConditionQuery($key, $condition, "OR");
+            ->setConditionQuery($key, $condition, $andOr);
     }
 
     /**
@@ -164,7 +174,7 @@ class Database implements \JsonSerializable, \ArrayAccess
      * 
      * @return static
      */
-    public function withBindData($bindData = [])
+    public function withBindData($bindData = array())
     {
         $this->bindData = $bindData;
 
@@ -446,7 +456,7 @@ class Database implements \JsonSerializable, \ArrayAccess
      * 
      * @return static
      */
-    public function compilerBindDataHandle(&$data = [])
+    public function compilerBindDataHandle($data = array())
     {
         $data = $this->getBindData();
 
@@ -674,7 +684,7 @@ class Database implements \JsonSerializable, \ArrayAccess
         $connection = $this->getConnection();
 
         if (!$connection && in_array($method, ["connection", "setConnection"])) {
-            return $this->setConnection(...$arguments);
+            return call_user_func_array(array($this, "setConnection"), $arguments);
         }
 
         if (method_exists($connection, $method)) {
@@ -688,7 +698,7 @@ class Database implements \JsonSerializable, \ArrayAccess
         $grammar = $this->getGrammar();
 
         if (!$grammar && in_array($method, ["setGrammar", "grammar"])) {
-            return $this->setGrammar(...$arguments);
+            return call_user_func_array(array($this, "setGrammar"), $arguments);
         }
 
         if (method_exists($grammar, $method)) {
