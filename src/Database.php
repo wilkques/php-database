@@ -98,24 +98,24 @@ class Database implements \JsonSerializable, \ArrayAccess
 
     /**
      * @param array|string $key
-     * @param string|mixed $condition
+     * @param string|mixed|null $condition
      * @param mixed|null $value
      * 
      * @return static
      */
-    public function where($key, $condition, $value = null)
+    public function where($key, $condition = null, $value = null)
     {
         return $this->whereCondition($key, $condition, $value);
     }
 
     /**
      * @param array|string $key
-     * @param string|mixed $condition
+     * @param string|mixed|null $condition
      * @param mixed|null $value
      * 
      * @return static
      */
-    public function orWhere($key, $condition, $value = null)
+    public function orWhere($key, $condition = null, $value = null)
     {
         return $this->whereCondition($key, $condition, $value, "OR", "orWhere");
     }
