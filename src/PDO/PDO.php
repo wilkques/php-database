@@ -196,11 +196,21 @@ abstract class PDO implements ConnectionInterface
     /**
      * @param string $sql
      * 
-     * @return PDOStatement
+     * @return Result
+     */
+    public function query($sql)
+    {
+        return new Result($this->getConnection()->query($sql));
+    }
+
+    /**
+     * @param string $sql
+     * 
+     * @return Statement
      */
     public function prepare($sql)
     {
-        return $this->getConnection()->prepare($sql);
+        return new Statement($this->getConnection()->prepare($sql));
     }
 
     /**

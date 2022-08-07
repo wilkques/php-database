@@ -1,6 +1,6 @@
 <?php
 
-namespace Wilkques\Database\Grammar;
+namespace Wilkques\Database\Queries\Grammar;
 
 class MySql extends Grammar
 {

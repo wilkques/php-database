@@ -62,7 +62,7 @@ class DB implements \JsonSerializable, \ArrayAccess
     /**
      * @param \Wilkques\Database\Database $database
      */
-    public function __construct(\Wilkques\Database\Database $database = null)
+    public function __construct(\Wilkques\Database\Database $database)
     {
         $this->setDatabase($database);
     }
