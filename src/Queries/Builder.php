@@ -8,12 +8,14 @@ use Wilkques\Database\Queries\Process\ProcessInterface;
 
 class Builder
 {
-    /** @var ConnectionInterface */
-    protected $connection;
-    /** @var GrammarInterface */
-    protected $grammar;
-    /** @var ProcessInterface */
-    protected $process;
+    /** @var array */
+    protected static $resolvers = [];
+    // /** @var ConnectionInterface */
+    // protected $connection;
+    // /** @var GrammarInterface */
+    // protected $grammar;
+    // /** @var ProcessInterface */
+    // protected $process;
     /** @var array */
     protected $bindData = array();
     /** @var array */
@@ -36,13 +38,33 @@ class Builder
     }
 
     /**
+     * @param string $class
+     * 
+     * @return string
+     */
+    public static function getResolverByKey($class)
+    {
+        foreach (static::$resolvers as $key => $abstract) {
+            if (in_array($class, class_implements($abstract))) {
+                break;
+            }
+
+            if (get_class($abstract) === $class) {
+                break;
+            }
+        }
+
+        return $abstract;
+    }
+
+    /**
      * @param ConnectionInterface $connection
      * 
      * @return static
      */
     public function setConnection(ConnectionInterface $connection)
     {
-        $this->connection = $connection;
+        static::resolverFor(get_class($connection), $connection);
 
         return $this;
     }
@@ -52,7 +74,7 @@ class Builder
      */
     public function getConnection()
     {
-        return $this->connection;
+        return static::getResolverByKey(\Wilkques\Database\Connections\ConnectionInterface::class);
     }
 
     /**
@@ -62,7 +84,7 @@ class Builder
      */
     public function setGrammar(GrammarInterface $grammar = null)
     {
-        $this->grammar = $grammar;
+        static::resolverFor(get_class($grammar), $grammar);
 
         return $this;
     }
@@ -72,7 +94,7 @@ class Builder
      */
     public function getGrammar()
     {
-        return $this->grammar;
+        return static::getResolverByKey(\Wilkques\Database\Queries\Grammar\GrammarInterface::class);
     }
 
     /**
@@ -82,7 +104,7 @@ class Builder
      */
     public function setProcess(ProcessInterface $process = null)
     {
-        $this->process = $process;
+        static::resolverFor(get_class($process), $process);
 
         return $this;
     }
@@ -92,7 +114,7 @@ class Builder
      */
     public function getProcess()
     {
-        return $this->process;
+        return static::getResolverByKey(\Wilkques\Database\Queries\Process\ProcessInterface::class);
     }
 
     /**
@@ -202,12 +224,17 @@ class Builder
 
     /**
      * @param string $where
+     * @param mixed|null $value
      * 
      * @return static
      */
-    public function setWhereRaw(string $where)
+    public function setWhereRaw(string $where, $value = null)
     {
-        return $this->whereQuery($this->raw($where));
+        $this->getGrammar()->where($this->raw($where));
+
+        $value && $this->setBindData("where", $value);
+
+        return $this;
     }
 
     /**
@@ -380,8 +407,11 @@ class Builder
             $condition = "=";
         }
 
-        return $this->setBindData("where.{$index}", $value)
-            ->whereQuery($key, $condition, $andOr);
+        $this->getGrammar()->where($key, $condition, $andOr);
+
+        $value && $this->setBindData("where.{$index}", $value);
+
+        return $this;
     }
 
     /**
@@ -524,8 +554,6 @@ class Builder
         ]);
     }
 
-    // TODO: 修正以下方法
-
     /**
      * @param array $data
      * 
@@ -545,16 +573,13 @@ class Builder
             array_push($newData, ...array_values($data));
         }
 
-        var_dump($newData);
-        die;
-
-        return $this->setBindData("insert", array_reduce(array_values($data), array($this, "insertReduce")))
+        return $this->setBindData("insert", $newData)
             ->setInsert($data)
             ->compilerInsert()
-            ->prepare($this->getQuery());
-        // ->bindParams($this->getForUpdateBindData())
-        // ->execute()
-        // ->rowCount();
+            ->prepare($this->getQuery())
+            ->bindParams($this->getOnlyBindData(["insert"]))
+            ->execute()
+            ->rowCount();
     }
 
     /**
@@ -599,6 +624,29 @@ class Builder
     }
 
     /**
+     * Register a connection resolver.
+     *
+     * @param  string  $abstract
+     * @param  mixed  $class
+     * @return void
+     */
+    public static function resolverFor($abstract, $class)
+    {
+        static::$resolvers[$abstract] = $class;
+    }
+
+    /**
+     * Get the connection resolver for the given driver.
+     *
+     * @param  string  $abstract
+     * @return mixed
+     */
+    public static function getResolver($abstract)
+    {
+        return static::$resolvers[$abstract] ?? null;
+    }
+
+    /**
      * @param string $method
      * 
      * @return string
@@ -608,7 +656,7 @@ class Builder
         $methods = array(
             'table', 'username', 'password', 'dbname', "host", "query", "bindData", "select",
             "orderBy", "groupBy", "limit", "offset", "connection", "grammar", "currentPage",
-            "prePage", "process", "selectRaw", "raw", "whereRaw", "whereQuery"
+            "prePage", "process", "selectRaw", "raw", "whereRaw"
         );
 
         if (in_array($method, $methods)) {
@@ -628,36 +676,24 @@ class Builder
     {
         $method = $this->method($method);
 
-        $connection = $this->getConnection();
-
-        if ($connection && method_exists($connection, $method)) {
-            $connection = call_user_func_array(array($connection, $method), $arguments);
-
-            // if (is_object($database)) return $this;
-
-            return $connection;
+        foreach (static::$resolvers as $abstract) {
+            if (method_exists($abstract, $method)) {
+                break;
+            }
         }
 
-        $grammar = $this->getGrammar();
-
-        if ($grammar && method_exists($grammar, $method)) {
-            $grammar = call_user_func_array(array($grammar, $method), $arguments);
-
-            if (is_object($grammar)) return $this;
-
-            return $grammar;
+        if ($abstract instanceof \Wilkques\Database\Queries\Process\ProcessInterface) {
+            array_unshift($arguments, $this);
         }
 
-        $process = $this->getProcess();
+        $abstract = $abstract->{$method}(...$arguments);
 
-        if ($process && method_exists($process, $method)) {
-            $process = call_user_func_array(array($process, $method), $arguments);
-
-            if (is_object($process)) return $this;
-
-            return $process;
+        if ($abstract instanceof \Wilkques\Database\Queries\Grammar\GrammarInterface) {
+            $abstract = $this;
         }
 
-        return call_user_func_array(array($this, $method), $arguments);
+        is_object($abstract) && static::resolverFor(get_class($abstract), $abstract);
+
+        return $abstract ?? $this;
     }
 }

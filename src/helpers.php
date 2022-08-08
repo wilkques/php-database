@@ -34,7 +34,7 @@ if (!function_exists("array_field")) {
     }
 }
 
-if (! function_exists('value')) {
+if (!function_exists('value')) {
     /**
      * Return the default value of the given value.
      *
@@ -83,7 +83,7 @@ if (!function_exists("array_set")) {
             // If the key doesn't exist at this depth, we will just create an empty array
             // to hold the next value, allowing us to create the arrays to hold final
             // values at the correct depth. Then we'll keep digging into the array.
-            if (! isset($array[$key]) || ! is_array($array[$key])) {
+            if (!isset($array[$key]) || !is_array($array[$key])) {
                 $array[$key] = [];
             }
 
@@ -107,7 +107,7 @@ if (!function_exists("array_get")) {
      */
     function array_get($array, $key, $default = null)
     {
-        if (! is_accessible($array)) {
+        if (!is_accessible($array)) {
             return value($default);
         }
 
@@ -119,7 +119,7 @@ if (!function_exists("array_get")) {
             return $array[$key];
         }
 
-        if (! str_contains($key, '.')) {
+        if (!str_contains($key, '.')) {
             return $array[$key] ?? value($default);
         }
 
@@ -149,7 +149,7 @@ if (!function_exists("is_accessible")) {
 }
 
 if (!function_exists("array_exists_key")) {
-     /**
+    /**
      * Determine if the given key exists in the provided array.
      *
      * @param  \ArrayAccess|array  $array
@@ -164,5 +164,24 @@ if (!function_exists("array_exists_key")) {
 
         return array_key_exists($key, $array);
     }
+}
 
+if (!function_exists("str_delimiter_replace")) {
+    function str_delimiter_replace($value, $delimiter = '_', $case = MB_CASE_LOWER)
+    {
+        if (!ctype_lower($value)) {
+            $value = preg_replace('/\s+/u', '', ucwords($value));
+
+            $value = str_convert_case(preg_replace('/(.)(?=[A-Z])/u', '$1' . $delimiter, $value), $case);
+        }
+
+        return $value;
+    }
+}
+
+if (!function_exists("str_convert_case")) {
+    function str_convert_case($value, $case = MB_CASE_LOWER)
+    {
+        return mb_convert_case($value, $case, 'UTF-8');
+    }
 }

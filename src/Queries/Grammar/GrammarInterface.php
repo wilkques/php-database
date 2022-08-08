@@ -22,4 +22,14 @@ interface GrammarInterface
      * @return static
      */
     public function setLimit($limit = "?");
+
+    /**
+     * @param string $column
+     * @param string $condition
+     * @param string $operate
+     * @param string $value
+     * 
+     * @return static
+     */
+    public function where($column, $condition = null, $operate = null, $value = "?");
 }

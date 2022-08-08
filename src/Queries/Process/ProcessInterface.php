@@ -10,10 +10,9 @@ interface ProcessInterface
      * Process an  "insert get ID" query.
      *
      * @param  \Wilkques\Database\Queries\Builder  $query
-     * @param  string  $sql
      * @param  array  $values
      * @param  string|null  $sequence
      * @return int
      */
-    public function processInsertGetId(Builder $query, $sql, $values, $sequence = null);
+    public function processInsertGetId(Builder $query, $values, $sequence = null);
 }
