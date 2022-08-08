@@ -526,21 +526,6 @@ class Builder
 
     // TODO: 修正以下方法
 
-    protected function insertReduce($carry, $item)
-    {
-        foreach ($item as $key => $value) {
-            if (is_numeric($key)) {
-                $index = $carry === null ? 1 : ((int) array_key_last($carry) + 1);
-
-                $carry[$index] = $value;
-            } else {
-                $carry[$key] = $value;
-            }
-        }
-
-        return $carry;
-    }
-
     /**
      * @param array $data
      * 
@@ -550,7 +535,18 @@ class Builder
     {
         !is_array($data) && $this->argumentsThrowError(" first Arguments must be array");
 
-        var_dump(array_reduce(array_values($data), array($this, "insertReduce")));die;
+        $newData = [];
+
+        if (array_exists_key($data, 0)) {
+            foreach ($data as $item) {
+                array_push($newData, ...array_values($item));
+            }
+        } else {
+            array_push($newData, ...array_values($data));
+        }
+
+        var_dump($newData);
+        die;
 
         return $this->setBindData("insert", array_reduce(array_values($data), array($this, "insertReduce")))
             ->setInsert($data)
