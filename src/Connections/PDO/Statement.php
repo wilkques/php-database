@@ -198,12 +198,12 @@ class Statement
      * @return static
      */
     protected function binds(array $params = null, string $bindMethod = null)
-    {  
+    {
         $params = $params ?: ($this->getParams() ?: null);
 
         if (!$params) return $this;
 
-        $params = array_reduce($params, [$this, "reduce"]);
+        $params = array_reduce($params, array($this, "reduce"));
 
         if (!in_array($bindMethod, ["bindParam", "bindValue"]))
             throw new \UnexpectedValueException("bindMethod must be bindParam or bindValue");
@@ -223,19 +223,17 @@ class Statement
      */
     protected function reduce($carry, $item)
     {
-        if (is_array($item)){
-            foreach ($item as $key => $value) {
-                if (is_object($value) && $value instanceof \Wilkques\Database\Queries\Expression && $value->getBindValue() != null) {
-                    $value = $value->getBindValue();
-                }
+        foreach ($item as $key => $value) {
+            if (is_object($value) && $value instanceof \Wilkques\Database\Queries\Expression && $value->getBindValue() != null) {
+                $value = $value->getBindValue();
+            }
 
-                if (is_numeric($key)) {
-                    $index = $carry === null ? 1 : ((int) array_key_last($carry) + 1);
+            if (is_numeric($key)) {
+                $index = $carry === null ? 1 : ((int) array_key_last($carry) + 1);
 
-                    $carry[$index] = $value;
-                } else {
-                    $carry[$key] = $value;
-                }
+                $carry[$index] = $value;
+            } else {
+                $carry[$key] = $value;
             }
         }
 

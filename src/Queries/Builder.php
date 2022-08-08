@@ -104,7 +104,9 @@ class Builder
     {
         $this->getGrammar()->setLimit();
 
-        return $this->setBindData("limit", $limit);
+        $index = $this->nextArrayIndex($this->getLimit());
+
+        return $this->setBindData("limit.{$index}", $limit);
     }
 
     /**
@@ -124,7 +126,9 @@ class Builder
     {
         $this->getGrammar()->setOffset();
 
-        return $this->setBindData("offset", $offset);
+        $index = $this->nextArrayIndex($this->getOffset());
+
+        return $this->setBindData("offset.{$index}", $offset);
     }
 
     /**
@@ -242,13 +246,21 @@ class Builder
     }
 
     /**
+     * @param array $keys
+     * 
+     * @return array
+     */
+    public function getOnlyBindDataField(array $keys)
+    {
+        return \array_field($this->getOnlyBindData($keys), $keys);
+    }
+
+    /**
      * @return array
      */
     public function getForSelectBindData()
     {
-        $keys = ["where", "limit", "offset"];
-
-        return array_field($this->getOnlyBindData($keys), $keys);
+        return $this->getOnlyBindDataField(["where", "limit", "offset"]);
     }
 
     /**
@@ -275,44 +287,47 @@ class Builder
     }
 
     /**
-     * @param string $param
-     * @param mixed $key
+     * @param string $key
      * @param mixed $value
      * 
      * @return static
      */
-    public function setBindData(string $param, $key, $value = null)
+    public function setBindData(string $key, $value = null)
     {
-        if (is_array($key)) {
-            $this->bindData[$param] = $key;
+        $bindData = $this->getBindData();
 
-            return $this;
-        }
+        array_set($bindData, $key, $value);
 
-        if (!$value) {
-            $this->bindData[$param][] = $key;
-
-            return $this;
-        }
-
-        !is_array($key) && $this->bindData[$param][$key] = $value;
+        $this->bindData = $bindData;
 
         return $this;
     }
 
     /**
-     * @param string|null $param
+     * @param string|null $key
      * @param mixed|null $default
      * 
      * @return string|array
      */
-    public function getBindData(string $param = null, $default = null)
+    public function getBindData(string $key = null, $default = null)
     {
-        if (!$param) {
-            return $this->bindData;
-        }
+        $bindData = $this->bindData;
 
-        return $this->bindData[$param] ?? $default;
+        return array_get($bindData, $key, $default);
+    }
+
+    /**
+     * @param array $data
+     * 
+     * @return int
+     */
+    public function nextArrayIndex($data)
+    {
+        $index = 0;
+
+        $data && $index = array_key_last($data) + 1;
+
+        return $index;
     }
 
     /**
@@ -358,12 +373,14 @@ class Builder
             return $this;
         }
 
+        $index = $this->nextArrayIndex($this->getBindData("where"));
+
         if (!$value) {
             $value = $condition;
             $condition = "=";
         }
 
-        return $this->setBindData("where", $value)
+        return $this->setBindData("where.{$index}", $value)
             ->whereQuery($key, $condition, $andOr);
     }
 
@@ -401,10 +418,8 @@ class Builder
      */
     public function getForUpdateBindData()
     {
-        $keys = ["update", "where"];
-
-        return array_field($this->getOnlyBindData($keys), $keys);
-    } 
+        return $this->getOnlyBindDataField(["update", "where"]);
+    }
 
     /**
      * @param array $data
@@ -456,16 +471,24 @@ class Builder
         ]);
     }
 
-    // TODO: 修正以下方法
+    /**
+     * @return array
+     */
+    public function getForWhereBindData()
+    {
+        return $this->getOnlyBindDataField(["where"]);
+    }
 
     /**
      * @return static
      */
     public function delete()
     {
-        $this->compilerDelete();
-
-        return $this->exec();
+        return $this->compilerDelete()
+            ->prepare($this->getQuery())
+            ->bindParams($this->getForWhereBindData())
+            ->execute()
+            ->rowCount();
     }
 
     /**
@@ -480,11 +503,9 @@ class Builder
 
         $value = date($dateTimeFormat);
 
-        $this->withBindData()->setBindData($value)->compilerUpdate([
+        return $this->update([
             $column => $value
         ]);
-
-        return $this->exec();
     }
 
     /**
@@ -498,11 +519,26 @@ class Builder
 
         $value = null;
 
-        $this->withBindData()->setBindData($value)->compilerUpdate([
+        return $this->update([
             $column => $value
         ]);
+    }
 
-        return $this->exec();
+    // TODO: 修正以下方法
+
+    protected function insertReduce($carry, $item)
+    {
+        foreach ($item as $key => $value) {
+            if (is_numeric($key)) {
+                $index = $carry === null ? 1 : ((int) array_key_last($carry) + 1);
+
+                $carry[$index] = $value;
+            } else {
+                $carry[$key] = $value;
+            }
+        }
+
+        return $carry;
     }
 
     /**
@@ -514,9 +550,15 @@ class Builder
     {
         !is_array($data) && $this->argumentsThrowError(" first Arguments must be array");
 
-        $this->withConditionData()->setBindData(array_values($data))->compilerInsert($data);
+        var_dump(array_reduce(array_values($data), array($this, "insertReduce")));die;
 
-        return $this->exec()->withBindData();
+        return $this->setBindData("insert", array_reduce(array_values($data), array($this, "insertReduce")))
+            ->setInsert($data)
+            ->compilerInsert()
+            ->prepare($this->getQuery());
+        // ->bindParams($this->getForUpdateBindData())
+        // ->execute()
+        // ->rowCount();
     }
 
     /**

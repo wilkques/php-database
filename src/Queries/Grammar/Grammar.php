@@ -46,44 +46,33 @@ abstract class Grammar implements GrammarInterface
     }
 
     /**
-     * @param string $param
-     * @param mixed $key
+     * @param string $key
      * @param mixed $value
      * 
      * @return static
      */
-    public function setBindQueries(string $param, $key, $value = null)
+    public function setBindQueries(string $key, $value = null)
     {
-        if (is_array($key)) {
-            $this->bindQueries[$param] = $key;
+        $bindQueries = $this->getBindQueries();
 
-            return $this;
-        }
+        array_set($bindQueries, $key, $value);
 
-        if (!$value) {
-            $this->bindQueries[$param][] = $key;
-
-            return $this;
-        }
-
-        !is_array($key) && $this->bindQueries[$param][$key] = $value;
+        $this->bindQueries = $bindQueries;
 
         return $this;
     }
 
     /**
-     * @param string|null $param
+     * @param string|null $key
      * @param mixed|null $default
      * 
      * @return string|array
      */
-    public function getBindQueries(string $param = null, $default = null)
+    public function getBindQueries(string $key = null, $default = null)
     {
-        if (!$param) {
-            return $this->bindQueries;
-        }
+        $bindQueries = $this->bindQueries;
 
-        return $this->bindQueries[$param] ?? $default;
+        return array_get($bindQueries, $key, $default);
     }
 
     /**
@@ -111,7 +100,23 @@ abstract class Grammar implements GrammarInterface
             $query = preg_replace("/(\w+)|,\s?+$/i",  "`$1`", $query);
         }
 
-        return $this->setBindQueries("select", (string) $query);
+        $index = $this->nextArrayIndex($this->getBindQueries("select"));
+
+        return $this->setBindQueries("select.{$index}", (string) $query);
+    }
+
+    /**
+     * @param array $data
+     * 
+     * @return int
+     */
+    public function nextArrayIndex($data)
+    {
+        $index = 0;
+
+        $data && $index = array_key_last($data) + 1;
+
+        return $index;
     }
 
     /**
@@ -125,14 +130,19 @@ abstract class Grammar implements GrammarInterface
      */
     public function setConditionQuery(string $bindParam, $column, $condition = null, $operate = null, $value = "?")
     {
+        $bindQueries = $this->getBindQueries($bindParam);
+
+        $index = $this->nextArrayIndex($bindQueries);
+
+        $operate = $bindQueries ? "{$operate} " : "";
+
+        $sql = "{$operate}`{$column}` {$condition} {$value}";
+
         if (is_object($column) && $this->isSameClassName($column, \Wilkques\Database\Queries\Expression::class)) {
-            return $this->setBindQueries($bindParam, ($this->getBindQueries($bindParam) ? "{$operate} " : "") . (string) $column);
+            $sql = $operate . (string) $column;
         }
 
-        return $this->setBindQueries(
-            $bindParam,
-            ($this->getBindQueries($bindParam) ? "{$operate} " : "") . "`{$column}` {$condition} {$value}"
-        );
+        return $this->setBindQueries("{$bindParam}.{$index}", $sql);
     }
 
     /**
@@ -370,9 +380,19 @@ abstract class Grammar implements GrammarInterface
      * 
      * @return array
      */
-    public function getOnlyBindQueries(array $keys = null)
+    public function getOnlyBindQueries(array $keys)
     {
         return \array_only($this->getBindQueries(), $keys);
+    }
+
+    /**
+     * @param array $keys
+     * 
+     * @return array
+     */
+    public function getOnlyBindFieldQueries(array $keys)
+    {
+        return \array_field($this->getOnlyBindQueries($keys), $keys);
     }
 
     /**
@@ -382,9 +402,7 @@ abstract class Grammar implements GrammarInterface
     {
         $keys = ["where", "groupBy", "orderBy", "limit", "offset", "lock"];
 
-        $bindQueries = $this->getOnlyBindQueries($keys);
-
-        return array_field($bindQueries, $keys);
+        return $this->getOnlyBindFieldQueries($keys);
     }
 
     /**
@@ -394,7 +412,7 @@ abstract class Grammar implements GrammarInterface
     {
         $column = $this->getBindQueries("select", "*");
 
-        $column = $column === "*" ? $column : join(", ", $column);
+        $column = is_string($column) ? $column : join(", ", $column);
 
         $sql = "SELECT {$column} FROM `{$this->getTable()}`";
 
@@ -407,13 +425,14 @@ abstract class Grammar implements GrammarInterface
 
     /**
      * @param array $array
+     * @param string|array $separator
      * 
      * @return string
      */
-    protected function arrayToSql(array $array)
+    protected function arrayToSql(array $array, $separator = " ")
     {
-        return join(" ", array_map(function ($item, $index) {
-            return strtoupper($index) . " " . join(", ", $item);
+        return join(" ", array_map(function ($item, $index) use ($separator) {
+            return strtoupper($index) . " " . (is_array($item) ? join($separator, $item) : $item);
         }, $array, array_keys($array)));
     }
 
@@ -620,19 +639,75 @@ abstract class Grammar implements GrammarInterface
     }
 
     /**
+     * @param array $carry
+     * @param array $item
+     * 
+     * @return array
+     */
+    protected function insertQueriesReduce($carry, $item)
+    {
+        $item = array_keys($item);
+
+        $insertColumns = $this->getBindQueries("insert.columns");
+
+        if (!$insertColumns) {
+            $this->setBindQueries("insert.columns", $item);
+
+            $item = array_only($item, array_keys($item));
+        }
+
+        $index = $carry === null ? 0 : ((int) array_key_last($carry) + 1);
+
+        foreach ($item as $key => $value) {
+            $carry[$index][] = "?";
+        }
+
+        return $carry;
+    }
+
+    /**
      * @param array $data
      * 
      * @return static
      */
-    public function compilerInsert($data)
+    public function setInsert(array $data)
     {
-        return $this->setLimit()
-            ->setOffset()
-            ->setBindQuery()
-            ->insertHandle($data)
-            ->setQuery(
-                "INSERT INTO `{$this->getTable()}` {$this->getBindColumnQuery()} VALUES {$this->getBindQuery()}"
-            );
+        if (array_key_exists(0, $data)) {
+            $data = array_reduce($data, array($this, "insertQueriesReduce"));
+
+            return $this->setBindQueries("insert.values", $data);
+        }
+
+        return $this->setBindQueries("insert.columns", array_keys($data))
+            ->setBindQueries("insert.values.0", array_fill(0, count($data), "?"));
+    }
+
+    /**
+     * @return static
+     */
+    public function compilerInsert()
+    {
+        $inserts = $this->getBindQueries("insert");
+
+        $columns = join("`, `", $inserts["columns"]);
+
+        $values = $this->arrayToInsertValuesSql($inserts["values"]);
+
+        $sql = "INSERT INTO `{$this->getTable()}` (`{$columns}`) VALUES ({$values})";
+        
+        return $this->setQuery($sql);
+    }
+
+    /**
+     * @param array $array
+     * 
+     * @return string
+     */
+    protected function arrayToInsertValuesSql(array $array)
+    {
+        return join("), (", array_map(function ($item) {
+            return join(", ", $item);
+        }, $array));
     }
 
     /**
@@ -640,9 +715,13 @@ abstract class Grammar implements GrammarInterface
      */
     public function compilerDelete()
     {
-        return $this->setLimit()->setOffset()->setQuery(
-            "DELETE FROM `{$this->getTable()}` WHERE {$this->getConditionQuery()}"
-        );
+        $sql = "DELETE FROM `{$this->getTable()}`";
+
+        $where = $this->getOnlyBindQueries(["where"]);
+
+        $where && $sql .= " " . $this->arrayToSql($where);
+
+        return $this->setQuery($sql);
     }
 
     /**
