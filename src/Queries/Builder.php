@@ -2,7 +2,7 @@
 
 namespace Wilkques\Database\Queries;
 
-use Wilkques\Database\ConnectionInterface;
+use Wilkques\Database\Connections\ConnectionInterface;
 use Wilkques\Database\Queries\Grammar\GrammarInterface;
 use Wilkques\Database\Queries\Process\ProcessInterface;
 
@@ -421,10 +421,8 @@ class Builder
             ->prepare($this->getQuery())
             ->bindParams($this->getForUpdateBindData())
             ->execute()
-            ->fetchFirst();
+            ->rowCount();
     }
-
-    // TODO: 修正以下方法
 
     /**
      * @param string $column
@@ -438,7 +436,7 @@ class Builder
         !is_numeric($value) && $this->argumentsThrowError(" second Arguments must be numeric");
 
         return $this->update($data + [
-            $column => $this->raw("`{$column}` + ?", $value)
+            $column => $this->raw("`{$column}` = `{$column}` + ?", $value)
         ]);
     }
 
@@ -453,16 +451,12 @@ class Builder
     {
         !is_numeric($value) && $this->argumentsThrowError(" second Arguments must be numeric");
 
-        $bindData = array_values($data);
-
-        $bindData[] = $value;
-
-        $this->withBindData()->setBindData($bindData)->compilerUpdate(
-            array_merge($data, array("{$column}" => "{$column} -"))
-        );
-
-        return $this->exec();
+        return $this->update($data + [
+            $column => $this->raw("`{$column}` = `{$column}` - ?", $value)
+        ]);
     }
+
+    // TODO: 修正以下方法
 
     /**
      * @return static

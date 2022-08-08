@@ -1,6 +1,6 @@
 <?php
 
-namespace Wilkques\Database;
+namespace Wilkques\Database\Connections;
 
 interface ConnectionInterface
 {

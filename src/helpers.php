@@ -26,9 +26,9 @@ if (!function_exists("array_field")) {
      */
     function array_field($array, $keys)
     {
-        count($keys) !== count($array) && $keys = array_intersect($keys, array_keys($array));
-
-        array_multisort($array, SORT_DESC, $keys);
+        uksort($array, function ($a, $b) use ($keys) {
+            return array_search($a, $keys) <=> array_search($b, $keys);
+        });
 
         return $array;
     }

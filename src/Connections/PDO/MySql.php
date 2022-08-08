@@ -1,6 +1,6 @@
 <?php
 
-namespace Wilkques\Database\PDO;
+namespace Wilkques\Database\Connections\PDO;
 
 class MySql extends PDO
 {

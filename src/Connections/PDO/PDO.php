@@ -1,8 +1,8 @@
 <?php
 
-namespace Wilkques\Database\PDO;
+namespace Wilkques\Database\Connections\PDO;
 
-use Wilkques\Database\ConnectionInterface;
+use Wilkques\Database\Connections\ConnectionInterface;
 
 abstract class PDO implements ConnectionInterface
 {

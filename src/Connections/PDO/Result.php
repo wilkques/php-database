@@ -1,6 +1,6 @@
 <?php
 
-namespace Wilkques\Database\PDO;
+namespace Wilkques\Database\Connections\PDO;
 
 class Result
 {
@@ -70,7 +70,7 @@ class Result
     /**
      * {@inheritDoc}
      */
-    public function fetchAllNumeric(): array
+    public function fetchAllNumeric()
     {
         return $this->fetchAll(\PDO::FETCH_NUM);
     }
@@ -78,7 +78,7 @@ class Result
     /**
      * {@inheritDoc}
      */
-    public function fetchAllAssociative(): array
+    public function fetchAllAssociative()
     {
         return $this->fetchAll(\PDO::FETCH_ASSOC);
     }
@@ -86,7 +86,7 @@ class Result
     /**
      * {@inheritDoc}
      */
-    public function fetchFirstColumn(): array
+    public function fetchFirstColumn()
     {
         return $this->fetchAll(\PDO::FETCH_COLUMN);
     }
@@ -127,8 +127,16 @@ class Result
      *
      * @throws Exception
      */
-    public function fetchAll(int $mode): array
+    public function fetchAll(int $mode)
     {
         return $this->getStatement()->fetchAll($mode);
+    }
+
+    /**
+     * @return int
+     */
+    public function getLastInsertId()
+    {
+        return $this->getStatement()->lastInsertId();
     }
 }

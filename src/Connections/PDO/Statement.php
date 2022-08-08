@@ -1,6 +1,6 @@
 <?php
 
-namespace Wilkques\Database\PDO;
+namespace Wilkques\Database\Connections\PDO;
 
 class Statement
 {
@@ -8,6 +8,8 @@ class Statement
     protected $statement;
     /** @var array */
     protected $params = [];
+    /** @var bool|false */
+    protected $debug = false;
 
     /**
      * @param \PDOStatement $statement
@@ -35,6 +37,26 @@ class Statement
     public function getStatement()
     {
         return $this->statement;
+    }
+
+    /**
+     * @param bool|true $debug
+     * 
+     * @return static
+     */
+    public function setDebug(bool $debug = true)
+    {
+        $this->debug = $debug;
+
+        return $this;
+    }
+
+    /**
+     * @return bool|false
+     */
+    public function getDebug()
+    {
+        return $this->debug;
     }
 
     /**
@@ -231,8 +253,23 @@ class Statement
 
         $statement->execute($params);
 
-        $statement->debugDumpParams();
+        $this->getDebug() && $statement->debugDumpParams();
 
         return new Result($statement);
+    }
+
+    /**
+     * @param string $method
+     * @param array $arguments
+     * 
+     * @return mixed
+     */
+    public function __call($method, $arguments)
+    {
+        if (in_array($method, ["debug"])) {
+            $method = "set" . ucfirst($method);
+
+            return $this->{$method}(...$arguments);
+        }
     }
 }
