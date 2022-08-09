@@ -247,9 +247,9 @@ class Builder
         $statement->bindParams($bindData);
 
         if ($this->isLogging()) {
-            $bindData = $statement->getParams();
+            $bindings = $statement->getParams();
 
-            $this->setQueryLog(compact('query', 'bindData'));
+            $this->setQueryLog(compact('query', 'bindings'));
         }
 
         return $statement->execute();
@@ -463,9 +463,9 @@ class Builder
     {
         $this->setLimit($this->getPrePage())->setOffset(((int) $this->getCurrentPage() - 1) * $this->getPrePage());
 
-        $items = $this->get();
-
         $total = $this->totalPage();
+        
+        $items = $this->get();
 
         return compact('total', 'items');
     }
@@ -655,6 +655,9 @@ class Builder
             ),
             "process"   => array(
                 'InsertGetId'
+            ),
+            "get"       => array(
+                "parseQueryLog", "lastParseQuery"
             )
         );
 

@@ -199,7 +199,7 @@ $db = \Wilkques\Database\Database::builder($builder)
     $db->softDelete('<deleteColumnName1>', '<date time format>'); // default deleted_at, "Y-m-d H:i:s"
     ```
 
-1. `reStore` 回復軟刪除 (`delete`無法回覆)
+1. `reStore` recovery (`delete` cannot recovery data)
 
     ```php
 
@@ -281,6 +281,38 @@ $db = \Wilkques\Database\Database::builder($builder)
     $db->whereOrNotNull(['<columnName1>']);
     ```
 
+### Raw
+
+1. `raw`
+    ```php
+
+    $db->select($db->raw("<sql string in select column>"));
+    
+    // example
+
+    $db->select($db->raw("COUNT(*)"));
+    ```
+
+1. `selectRaw`
+    ```php
+
+    $db->selectRaw("<sql string in select column>");
+
+    // example
+
+    $db->selectRaw("`first_name`, `last_name`");
+    ```
+
+1. `whereRaw`
+    ```php
+
+    $db->whereRaw("<sql string in select column>");
+
+    // example
+
+    $db->whereRaw("`first_name` = 'Bill' AND `last_name` = 'Whrite'");
+    ```
+
 ### SQL Execute
 
 1. `query` set SQL string
@@ -319,19 +351,37 @@ $db = \Wilkques\Database\Database::builder($builder)
 
 1. `rowCount` get result
 
-1. `free` method PDO `closeCursor` [PHP PDOStatement::closeCursor](https://www.php.net/manual/en/pdostatement.closecursor.php)
+1. `free` PDO method `closeCursor` [PHP PDOStatement::closeCursor](https://www.php.net/manual/en/pdostatement.closecursor.php)
 
 1. `fetch` [PDOStatement::fetch](https://www.php.net/manual/en/pdostatement.fetch.php)
 
 1. `fetchAll` [PDOStatement::fetchAll](https://www.php.net/manual/en/pdostatement.fetchall.php)
 
-### 取得 Query Log
+### Query Log
+
+1. `enableQueryLog` enable query logs
+    ```php
+
+    $db->enableQueryLog();
+    ```
 
 1. `getQueryLog` get all query string and bind data
 
     ```php
 
     $db->getQueryLog();
+    ```
+
+1. `getParseQueryLog` or `parseQueryLog` get paser query logs
+    ```php
+
+    $db->getParseQueryLog();
+    ```
+
+1. `getLastParseQuery` or `lastParseQuery` get paser query
+    ```php
+
+    $db->getLastParseQuery();
     ```
 
 ### 鎖
@@ -350,7 +400,7 @@ $db = \Wilkques\Database\Database::builder($builder)
     $db->sharedLock();
     ```
 
-### 分頁
+### Page
 
 1. `currentPage`
 
@@ -373,7 +423,7 @@ $db = \Wilkques\Database\Database::builder($builder)
     $db->getForPage(); // get page data
     ```
 
-### 交易模式
+### Transaction
 
 1. `beginTransaction`
 
@@ -396,7 +446,7 @@ $db = \Wilkques\Database\Database::builder($builder)
     $db->rollback();
     ```
 
-### connect
+### Connect
 
 1. `host`
 

@@ -260,4 +260,26 @@ abstract class Connections
     {
         return $this->loggingQueries === true;
     }
+
+    /**
+     * @return array
+     */
+    public function getParseQueryLog()
+    {
+        return array_map(function ($queryLog) {
+            $stringSQL = str_replace('?', '"%s"', $queryLog['query']);
+
+            return sprintf($stringSQL, ...$queryLog['bindings']);
+        }, $this->getQueryLog());
+    }
+
+    /**
+     * @return string
+     */
+    public function getLastParseQuery()
+    {
+        $queries = $this->getParseQueryLog();
+
+        return end($queries);
+    }
 }
