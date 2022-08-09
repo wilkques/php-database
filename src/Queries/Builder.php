@@ -242,7 +242,9 @@ class Builder
     {
         $query = $this->getQuery();
 
-        $statement = $this->prepare($query)->bindParams($bindData);
+        $statement = $this->prepare($query);
+
+        $statement->bindParams($bindData);
 
         if ($this->isLogging()) {
             $bindData = $statement->getParams();
@@ -271,7 +273,7 @@ class Builder
         return $this->limit(1)
             ->compilerSelect()
             ->exec($this->getForSelectBindData())
-            ->fetchFirst();
+            ->fetchAssociative();
     }
 
     /**
@@ -295,22 +297,13 @@ class Builder
     }
 
     /**
+     * @param array $keys
+     * 
      * @return array
      */
-    public function getForSelectBindData()
+    public function getForSelectBindData(array $keys = array("where", "limit", "offset"))
     {
-        return $this->getOnlyBindDataField(["where", "limit", "offset"]);
-    }
-
-    /**
-     * @return int
-     */
-    public function count()
-    {
-        return (int) $this->selectRaw("COUNT(*) as count")
-            ->compilerSelect()
-            ->exec($this->getForSelectBindData())
-            ->fetchOne();
+        return $this->getOnlyBindDataField($keys);
     }
 
     /**
@@ -454,6 +447,16 @@ class Builder
     }
 
     /**
+     * @return int
+     */
+    public function totalPage()
+    {
+        return (int) $this->compilerSelectForPage()
+            ->exec($this->getForSelectBindData(array("where")))
+            ->fetchFirstColumn();
+    }
+
+    /**
      * @return static
      */
     public function getForPage()
@@ -462,9 +465,19 @@ class Builder
 
         $items = $this->get();
 
-        $total = $this->count();
+        $total = $this->totalPage();
 
         return compact('total', 'items');
+    }
+
+    /**
+     * @return int
+     */
+    public function count()
+    {
+        return (int) $this->compilerSelect()
+            ->exec($this->getForSelectBindData())
+            ->fetchFirstColumn();
     }
 
     /**
@@ -472,7 +485,7 @@ class Builder
      */
     public function getForUpdateBindData()
     {
-        return $this->getOnlyBindDataField(["update", "where"]);
+        return $this->getOnlyBindDataField(array("update", "where"));
     }
 
     /**
@@ -528,7 +541,7 @@ class Builder
      */
     public function getForWhereBindData()
     {
-        return $this->getOnlyBindDataField(["where"]);
+        return $this->getOnlyBindDataField(array("where"));
     }
 
     /**
@@ -586,7 +599,7 @@ class Builder
         return $this->setBindData("insert", $data)
             ->setInsert($data)
             ->compilerInsert()
-            ->exec($this->getOnlyBindData(["insert"]))
+            ->exec($this->getOnlyBindData(array("insert")))
             ->rowCount();
     }
 
@@ -602,33 +615,6 @@ class Builder
                 $message
             )
         );
-    }
-
-    /**
-     * @param string|callable|\Exception $error
-     * 
-     * @throws \Exception|\Wilkques\Database\Exceptions\DataNotExistsException
-     * 
-     * @return static
-     */
-    public function throws($error = "Data not exiexts")
-    {
-        if (!$this->toArray()) {
-            if (is_callable($error))
-                throw $error($this);
-
-            if (is_string($error))
-                throw new \Wilkques\Database\Exceptions\DataNotExistsException($error);
-
-            if ($error instanceof \Exception)
-                throw $error;
-
-            $this->argumentsThrowError(
-                " first Arguments must be string or callable or exception"
-            );
-        }
-
-        return $this;
     }
 
     /**
@@ -703,7 +689,7 @@ class Builder
             array_unshift($arguments, $this);
         }
 
-        $abstract = $abstract->{$method}(...$arguments);
+        $abstract = call_user_func_array(array($abstract, $method), $arguments);
 
         is_object($abstract) && static::resolverFor(get_class($abstract), $abstract);
 

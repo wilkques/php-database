@@ -261,7 +261,7 @@ abstract class Grammar implements GrammarInterface
 
         $sql = "UPDATE `{$this->getTable()}` SET {$update}";
 
-        $where = $this->getOnlyBindQueries(["where"]);
+        $where = $this->getOnlyBindQueries(array("where"));
 
         $where && $sql .= " " . $this->arrayToSql($where);
 
@@ -307,7 +307,7 @@ abstract class Grammar implements GrammarInterface
      */
     public function getForSelectQueries()
     {
-        $keys = ["where", "groupBy", "orderBy", "limit", "offset", "lock"];
+        $keys = array("where", "groupBy", "orderBy", "limit", "offset", "lock");
 
         return $this->getOnlyBindFieldQueries($keys);
     }
@@ -331,6 +331,34 @@ abstract class Grammar implements GrammarInterface
     }
 
     /**
+     * @return array
+     */
+    public function getForPageSelectQueries()
+    {
+        $keys = array("where", "groupBy", "orderBy");
+
+        return $this->getOnlyBindFieldQueries($keys);
+    }
+
+    /**
+     * @return static
+     */
+    public function compilerSelectForPage()
+    {
+        $column = $this->getBindQueries("select", "*");
+
+        $column = is_string($column) ? $column : join(", ", $column);
+
+        $sql = "SELECT COUNT(*) FROM (SELECT {$column} FROM `{$this->getTable()}`) AS TotalPage";
+
+        $selectAry = $this->getForPageSelectQueries();
+
+        $selectAry && $sql .= " " . $this->arrayToSql($selectAry);
+
+        return $this->setQuery($sql);
+    }
+
+    /**
      * @param array $array
      * @param string|array $separator
      * 
@@ -339,10 +367,10 @@ abstract class Grammar implements GrammarInterface
     protected function arrayToSql(array $array, $separator = " ")
     {
         return join(" ", array_map(function ($item, $index) use ($separator) {
-            $index = in_array($index, ["groupBy", "orderBy"]) ? str_delimiter_replace($index, " ", MB_CASE_UPPER) : $index;
+            $index = in_array($index, array("groupBy", "orderBy")) ? str_delimiter_replace($index, " ", MB_CASE_UPPER) : $index;
 
             // 排除 lock
-            return (!in_array($index, ["lock"]) ? str_convert_case($index, MB_CASE_UPPER) . " " : "") . (is_array($item) ? join($separator, $item) : $item);
+            return (!in_array($index, array("lock")) ? str_convert_case($index, MB_CASE_UPPER) . " " : "") . (is_array($item) ? join($separator, $item) : $item);
         }, $array, array_keys($array)));
     }
 
@@ -522,7 +550,7 @@ abstract class Grammar implements GrammarInterface
     {
         $sql = "DELETE FROM `{$this->getTable()}`";
 
-        $where = $this->getOnlyBindQueries(["where"]);
+        $where = $this->getOnlyBindQueries(array("where"));
 
         $where && $sql .= " " . $this->arrayToSql($where);
 
@@ -577,6 +605,6 @@ abstract class Grammar implements GrammarInterface
     {
         $method = $this->method($method);
 
-        return $this->{$method}(...$arguments);
+        return call_user_func_array(array($this, $method), $arguments);
     }
 }

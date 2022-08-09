@@ -54,17 +54,9 @@ class Result
     /**
      * {@inheritDoc}
      */
-    public function fetchOne()
+    public function fetchFirstColumn()
     {
         return $this->fetch(\PDO::FETCH_COLUMN);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function fetchFirst()
-    {
-        return $this->fetch(\PDO::FETCH_ASSOC);
     }
 
     /**
@@ -86,7 +78,7 @@ class Result
     /**
      * {@inheritDoc}
      */
-    public function fetchFirstColumn()
+    public function fetchAllFirstColumn()
     {
         return $this->fetchAll(\PDO::FETCH_COLUMN);
     }
@@ -96,7 +88,11 @@ class Result
      */
     public function rowCount(): int
     {
-        return $this->getStatement()->rowCount();
+        $result = $this->getStatement()->rowCount();
+
+        $this->free();
+
+        return $result;
     }
 
     /**
@@ -104,9 +100,16 @@ class Result
      */
     public function columnCount(): int
     {
-        return $this->getStatement()->columnCount();
+        $result = $this->getStatement()->columnCount();
+
+        $this->free();
+
+        return $result;
     }
 
+    /**
+     * @return void
+     */
     public function free(): void
     {
         $this->getStatement()->closeCursor();
@@ -119,7 +122,11 @@ class Result
      */
     public function fetch(int $mode = \PDO::FETCH_ASSOC)
     {
-        return $this->getStatement()->fetch($mode);
+        $result = $this->getStatement()->fetch($mode);
+
+        $this->free();
+
+        return $result;
     }
 
     /**
@@ -129,6 +136,10 @@ class Result
      */
     public function fetchAll(int $mode = \PDO::FETCH_ASSOC)
     {
-        return $this->getStatement()->fetchAll($mode);
+        $result = $this->getStatement()->fetchAll($mode);
+
+        $this->free();
+
+        return $result;
     }
 }

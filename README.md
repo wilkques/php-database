@@ -7,7 +7,7 @@
 
 1. 目前只有 `MySQL`
 1. 此為簡易 Database 操作
-1. 暫無 `join` 功能，但可以利用 method `query` 自己寫 SQL Query
+1. 暫無 `join` 功能，但可以利用 method `query` or `prepare` 自己寫 SQL Query
 
 ## ENV
 
@@ -18,11 +18,15 @@
 ## How to use
 
 ```php
-$db = \Wilkques\Database\Database::connection(
-    new \Wilkques\Database\PDO\MySql('<host>', '<username>', '<password>', '<database name>')
-)->grammar(
-    new \Wilkques\Database\Grammar\MySql
-)
+$connection = new \Wilkques\Database\Connections\PDO\MySql('<host>', '<username>', '<password>', '<database name>');
+
+$builder = new \Wilkques\Database\Queries\Builder(
+    new \Wilkques\Database\Connections\PDO\MySql,
+    new \Wilkques\Database\Queries\Grammar\MySql,
+    new \Wilkques\Database\Queries\Process\Process,
+);
+
+$db = \Wilkques\Database\Database::builder($builder)
 ```
 
 ## Methods
@@ -31,78 +35,76 @@ $db = \Wilkques\Database\Database::connection(
 
     ```php
 
-    $model = $db->table('<table name>');
+    $db->table('<table name>');
     ```
 
 1. `select`
 
     ```php
 
-    $model->select(['<columnName1>', '<columnName2>', '<columnName3>']);
+    $db->select(['<columnName1>', '<columnName2>', '<columnName3>']);
 
     // or
 
-    $model->select("`<columnName1>`, `<columnName2>`, `<columnName3>`");
+    $db->select("`<columnName1>`, `<columnName2>`, `<columnName3>`");
     ```
 
 1. `limit`
 
     ```php
 
-    $model->limit(1); // set query LIMIT
+    $db->limit(1); // set query LIMIT
     ```
 
 1. `offset`
 
     ```php
 
-    $model->offset(1); // set query OFFSET
+    $db->offset(1); // set query OFFSET
     ```
 
 1. `groupBy`
 
     ```php
 
-    $model->groupBy('<columnName1>');
+    $db->groupBy('<columnName1>');
     ```
 
 1. `orderBy`
 
     ```php
 
-    $model->orderBy('<columnName1>', "DESC"); // default ASC
+    $db->orderBy('<columnName1>', "DESC"); // default ASC
     ```
 
 1. `get`
 
     ```php
 
-    $model->get(); // get all data
+    $db->get(); // get all data
     ```
 
 1. `first`
 
     ```php
 
-    $model->first(); // get data
+    $db->first(); // get data
     ```
 
 1. `update`
 
     ```php
 
-    $model->where('<columnName1>', "=", '<columnValue1>')
+    $db->where('<columnName1>', "=", '<columnValue1>')
         ->update([
             '<updateColumnName1>' => '<updateColumnValue1>'
         ]);
 
     // or
 
-    $model->where('<columnName1>', "=", '<columnValue1>')
-        ->first()
-        ->throws();
+    $db->where('<columnName1>', "=", '<columnValue1>')->first();
 
-    $model->update([
+    $db->update([
         '<updateColumnName1>' => '<updateColumnValue1>'
     ]);
     ```
@@ -111,11 +113,11 @@ $db = \Wilkques\Database\Database::connection(
 
     ```php
 
-    $model->increment('<columnNmae>');
+    $db->increment('<columnNmae>');
 
     // or
 
-    $model->increment('<columnNmae>', '<numeric>', [
+    $db->increment('<columnNmae>', '<numeric>', [
         '<update column 1>' => 'update value 1',
         '<update column 2>' => 'update value 2',
         ...
@@ -126,11 +128,11 @@ $db = \Wilkques\Database\Database::connection(
 
     ```php
 
-    $model->decrement('<columnNmae>');
+    $db->decrement('<columnNmae>');
 
     // or
 
-    $model->decrement('<columnNmae>', '<numeric>', [
+    $db->decrement('<columnNmae>', '<numeric>', [
         '<update column 1>' => 'update value 1',
         '<update column 2>' => 'update value 2',
         ...
@@ -141,7 +143,7 @@ $db = \Wilkques\Database\Database::connection(
 
     ```php
 
-    $model->insert([
+    $db->insert([
             '<ColumnName1>' => 'ColumnValue1>',
             '<ColumnName2>' => 'ColumnValue2>',
             ...
@@ -149,7 +151,7 @@ $db = \Wilkques\Database\Database::connection(
 
     // or
 
-    $model->insert([
+    $db->insert([
         [
             '<ColumnName1>' => 'ColumnValue1>',
             '<ColumnName2>' => 'ColumnValue2>',
@@ -169,18 +171,16 @@ $db = \Wilkques\Database\Database::connection(
 
     ```php
 
-    $model->where('<columnName1>', "=", '<columnValue1>')
+    $db->where('<columnName1>', "=", '<columnValue1>')
         ->delete([
             '<deleteColumnName1>' => '<deleteColumnValue1>'
         ]);
 
     // or
 
-    $model->where('<columnName1>', "=", '<columnValue1>')
-        ->first()
-        ->throws();
+    $db->where('<columnName1>', "=", '<columnValue1>')->first();
 
-    $model->delete([
+    $db->delete([
         '<deleteColumnName1>' => '<deleteColumnValue1>'
     ]);
     ```
@@ -189,32 +189,28 @@ $db = \Wilkques\Database\Database::connection(
 
     ```php
 
-    $model->where('<columnName1>', "=", '<columnValue1>')
+    $db->where('<columnName1>', "=", '<columnValue1>')
         ->softDelete('<deleteColumnName1>', '<date time format>'); // default deleted_at, "Y-m-d H:i:s"
 
     // or
 
-    $model->where('<columnName1>', "=", '<columnValue1>')
-        ->first()
-        ->throws();
+    $db->where('<columnName1>', "=", '<columnValue1>')->first();
 
-    $model->softDelete('<deleteColumnName1>', '<date time format>'); // default deleted_at, "Y-m-d H:i:s"
+    $db->softDelete('<deleteColumnName1>', '<date time format>'); // default deleted_at, "Y-m-d H:i:s"
     ```
 
 1. `reStore` 回復軟刪除 (`delete`無法回覆)
 
     ```php
 
-    $model->where('<columnName1>', "=", '<columnValue1>')
+    $db->where('<columnName1>', "=", '<columnValue1>')
         ->reStore('<deleteColumnName1>'); // default deleted_at
 
     // or
 
-    $model->where('<columnName1>', "=", '<columnValue1>')
-        ->first()
-        ->throws();
+    $db->where('<columnName1>', "=", '<columnValue1>')->first();
 
-    $model->reStore('<deleteColumnName1>'); // default deleted_at
+    $db->reStore('<deleteColumnName1>'); // default deleted_at
     ```
 
 ### Where
@@ -223,20 +219,20 @@ $db = \Wilkques\Database\Database::connection(
 
     ```php
 
-    $model->where([
+    $db->where([
         ['<columnName1>', "=", '<columnValue1>'],
     ]);
 
     // or
 
-    $model->where('<columnName1>', "=", '<columnValue1>');
+    $db->where('<columnName1>', "=", '<columnValue1>');
     ```
 
 1. `whereIn`
 
     ```php
 
-    $model->whereIn('<columnName1>', [
+    $db->whereIn('<columnName1>', [
         ['<columnValue1>', '<columnValue2>'],
     ]);
     ```
@@ -245,111 +241,89 @@ $db = \Wilkques\Database\Database::connection(
 
     ```php
 
-    $model->whereNull('<columnName1>');
+    $db->whereNull('<columnName1>');
 
     // or
 
-    $model->whereNull(['<columnName1>']);
+    $db->whereNull(['<columnName1>']);
     ```
 
 1. `whereOrNull`
 
     ```php
 
-    $model->whereOrNull('<columnName1>');
+    $db->whereOrNull('<columnName1>');
 
     // or
 
-    $model->whereNull(['<columnName1>']);
+    $db->whereNull(['<columnName1>']);
     ```
 
 1. `whereNotNull`
 
     ```php
 
-    $model->whereNotNull('<columnName1>');
+    $db->whereNotNull('<columnName1>');
 
     // or
 
-    $model->whereNotNull(['<columnName1>']);
+    $db->whereNotNull(['<columnName1>']);
     ```
 
 1. `whereOrNotNull`
 
     ```php
 
-    $model->whereOrNotNull('<columnName1>');
+    $db->whereOrNotNull('<columnName1>');
 
     // or
 
-    $model->whereOrNotNull(['<columnName1>']);
+    $db->whereOrNotNull(['<columnName1>']);
     ```
 
-### 輸出錯誤
-
-1. `throws` 搜尋結果為空
-
-    ```php
-
-    $model->throws();
-
-    // or
-
-    $model->throws("<message>");
-
-    // or
-
-    $model->throws(function (\Wilkques\Database\DB $db) {
-        // code ...
-
-        return new \Exception("<message>");
-    });
-
-    // or
-
-    $model->throws(new \Exception("<message>"));
-    ```
-
-### 可自寫 SQL Query
+### SQL Execute
 
 1. `query` set SQL string
 
     ```php
 
-    $model->query("<SQL String>")->exec();
+    $db->query("<SQL String>")->fetch();
 
     // for example
 
-    $model->query("SELECT * FROM `<your table name>`")->exec();
+    $db->query("SELECT * FROM `<your table name>`")->fetch();
     ```
 
-1. `exec` execute SQL string
+1. `prepare` execute SQL string
 
     ```php
 
-    $model->exec();
+    $db->prepare("<SQL String>")->execute(['<value1>', '<value2>' ...])->fetch();
     ```
 
-1. `bindData` bind query data
+1. `execute` execute SQL string
 
-    ```php
+### SQL Execute result
 
-    $model->bindData([
-        '<value1>', '<value2>' ...
-    ])->exec();
+1. `fetchNumeric` get result key to numeric
 
-    // or
+1. `fetchAssociative` get result key value
 
-    $model->bindData(
-        '<value1>', '<value2>' ...
-    )->exec();
+1. `fetchFirstColumn` get result first column
 
-    // for example
+1. `fetchAllNumeric` get all result key to numeric
 
-    $model->query("SELECT * FROM `<your table name>` WHERE `<columnName1>` = ? AND `columnName2` = ?")
-        ->bindData(['<columnValue1>', '<columnValue2>'])
-        ->exec();
-    ```
+1. `fetchAllAssociative` get all result key value
+
+1. `fetchAllFirstColumn` get all result first column
+
+1. `rowCount` get result
+
+1. `free` method PDO `closeCursor` [PHP PDOStatement::closeCursor](https://www.php.net/manual/en/pdostatement.closecursor.php)
+
+1. `fetch` [PDOStatement::fetch](https://www.php.net/manual/en/pdostatement.fetch.php)
+
+1. `fetchAll` [PDOStatement::fetchAll](https://www.php.net/manual/en/pdostatement.fetchall.php)
 
 ### 取得 Query Log
 
@@ -357,7 +331,7 @@ $db = \Wilkques\Database\Database::connection(
 
     ```php
 
-    \Wilkques\Database\DB::getQueryLog();
+    $db->getQueryLog();
     ```
 
 ### 鎖
@@ -366,14 +340,14 @@ $db = \Wilkques\Database\Database::connection(
 
     ```php
     
-    $model->lockForUpdate();
+    $db->lockForUpdate();
     ```
 
 1. `sharedLock`
 
     ```php
     
-    $model->sharedLock();
+    $db->sharedLock();
     ```
 
 ### 分頁
@@ -382,21 +356,21 @@ $db = \Wilkques\Database\Database::connection(
 
     ```php
 
-    $model->currentPage(); // now page
+    $db->currentPage(1); // now page
     ```
 
 1. `prePage`
 
     ```php
 
-    $model->prePage(); // pre page
+    $db->prePage(15); // pre page
     ```
 
 1. `getForPage`
 
     ```php
 
-    $model->getForPage(); // get page data
+    $db->getForPage(); // get page data
     ```
 
 ### 交易模式
@@ -405,21 +379,21 @@ $db = \Wilkques\Database\Database::connection(
 
     ```php
     
-    \Wilkques\Database\DB::beginTransaction();
+    $db->beginTransaction();
     ```
 
 1. `commit`
 
     ```php
     
-    \Wilkques\Database\DB::commit();
+    $db->commit();
     ```
 
 1. `rollback`
 
     ```php
     
-    \Wilkques\Database\DB::rollback();
+    $db->rollback();
     ```
 
 ### connect
@@ -428,33 +402,33 @@ $db = \Wilkques\Database\Database::connection(
 
     ```php
 
-    $model->host('<DB host>');
+    $db->host('<DB host>');
     ```
 
 1. `username`
 
     ```php
 
-    $model->username('<DB username>');
+    $db->username('<DB username>');
     ```
 
 1. `password`
 
     ```php
 
-    $model->password('<DB password>');
+    $db->password('<DB password>');
     ```
 
 1. `dbname`
 
     ```php
 
-    $model->dbname('<DB name>');
+    $db->dbname('<DB name>');
     ```
 
 1. `connect`
 
     ```php
 
-    $model->newConnect();
+    $db->newConnect();
     ```

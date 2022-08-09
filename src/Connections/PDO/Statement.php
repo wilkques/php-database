@@ -214,14 +214,16 @@ class Statement
      * 
      * @return static
      */
-    protected function binding(string $bindMethod, array $params = array(), \Closure $callback = null)
+    public function binding(string $bindMethod, array $params = array(), \Closure $callback = null)
     {
-        $datas = $callback($params ?: $this->getParams());
+        $params = $params ?: $this->getParams();
+
+        $datas = $callback ? $callback($params) : $params;
 
         array_map(function ($item, $index) use ($bindMethod) {
             is_numeric($index) && ++$index;
 
-            $this->{$bindMethod}($index, $item);
+            call_user_func_array(array($this, $bindMethod), array($index, $item));
         }, $datas, array_keys($datas));
 
         return $this;
@@ -251,10 +253,10 @@ class Statement
      */
     public function __call($method, $arguments)
     {
-        if (in_array($method, ["debug"])) {
+        if (in_array($method, array("debug", "params"))) {
             $method = "set" . ucfirst($method);
 
-            return $this->{$method}(...$arguments);
+            return call_user_func_array(array($this, $method), $arguments);
         }
     }
 }
