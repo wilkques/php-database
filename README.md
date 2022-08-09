@@ -17,8 +17,8 @@
 
 ## How to use
 
-1. Via PHP require
-    [Download Database](https://github.com/wilkques/Database)
+1. Via PHP require  
+    [Download Database](https://github.com/wilkques/Database)  
     [Download EzLoader and See how to use](https://github.com/wilkques/EzLoader)
     ```php
 

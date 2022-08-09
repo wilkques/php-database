@@ -14,6 +14,7 @@
         }
     },
     "suggest": {
-        "wilkques/container": "PHP with Container"
+        "wilkques/container": "PHP with Container",
+        "ext-pdo": "Required to use the PDO"
     }
 }
