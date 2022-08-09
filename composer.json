@@ -12,5 +12,8 @@
         "psr-4": {
             "Wilkques\\Database\\": "src"
         }
+    },
+    "suggest": {
+        "wilkques/container": "PHP with Container"
     }
 }

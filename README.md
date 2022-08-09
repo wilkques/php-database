@@ -17,17 +17,43 @@
 
 ## How to use
 
-```php
-$connection = new \Wilkques\Database\Connections\PDO\MySql('<host>', '<username>', '<password>', '<database name>');
+1. Via PHP require
+    [Download Database](https://github.com/wilkques/Database)
+    [Download EzLoader and See how to use](https://github.com/wilkques/EzLoader)
+    ```php
 
-$builder = new \Wilkques\Database\Queries\Builder(
-    new \Wilkques\Database\Connections\PDO\MySql,
-    new \Wilkques\Database\Queries\Grammar\MySql,
-    new \Wilkques\Database\Queries\Process\Process,
-);
+    require "path/to/your/folder/src/helpers.php";
 
-$db = \Wilkques\Database\Database::builder($builder)
-```
+    loadPHP();
+
+    $connection = new \Wilkques\Database\Connections\PDO\MySql('<host>', '<username>', '<password>', '<database name>');
+
+    $builder = new \Wilkques\Database\Queries\Builder(
+        $connection,
+        new \Wilkques\Database\Queries\Grammar\MySql,
+        new \Wilkques\Database\Queries\Process\Process,
+    );
+
+    $db = \Wilkques\Database\Database::builder($builder);
+    ```
+
+1. Via Composer
+    `composer require wilkques/database`
+
+    ```php
+
+    require "vendor/autoload.php";
+
+    $connection = new \Wilkques\Database\Connections\PDO\MySql('<host>', '<username>', '<password>', '<database name>');
+
+    $builder = new \Wilkques\Database\Queries\Builder(
+        $connection,
+        new \Wilkques\Database\Queries\Grammar\MySql,
+        new \Wilkques\Database\Queries\Process\Process,
+    );
+
+    $db = \Wilkques\Database\Database::builder($builder);
+    ```
 
 ## Methods
 
