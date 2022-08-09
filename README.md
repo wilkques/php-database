@@ -21,7 +21,7 @@
 $connection = new \Wilkques\Database\Connections\PDO\MySql('<host>', '<username>', '<password>', '<database name>');
 
 $builder = new \Wilkques\Database\Queries\Builder(
-    new \Wilkques\Database\Connections\PDO\MySql,
+    $connection,
     new \Wilkques\Database\Queries\Grammar\MySql,
     new \Wilkques\Database\Queries\Process\Process,
 );
