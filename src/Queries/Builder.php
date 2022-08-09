@@ -400,7 +400,9 @@ class Builder
             return $this;
         }
 
-        $index = $this->nextArrayIndex($this->getBindData("where"));
+        $whereBindData = $this->getBindData("where") ?: [];
+
+        $index = $this->nextArrayIndex($whereBindData);
 
         if (!$value) {
             $value = $condition;
@@ -408,6 +410,14 @@ class Builder
         }
 
         $this->getGrammar()->where($key, $condition, $andOr);
+
+        if ($key instanceof \Wilkques\Database\Queries\Expression) {
+            $data = $key->getBindValue();
+
+            array_push($whereBindData, ...$data);
+
+            return $this->setBindData("where", $whereBindData);
+        }
 
         $value && $this->setBindData("where.{$index}", $value);
 
@@ -426,7 +436,11 @@ class Builder
 
         $query = implode(", ", array_fill(0, count($data), "?"));
 
-        return $this->setBindData("where", $data)->whereRaw("`{$column}` IN ({$query})");
+        $whereBindData = $this->getBindData("where") ?: [];
+
+        array_push($whereBindData, ...$data);
+
+        return $this->setBindData("where", $whereBindData)->whereRaw("`{$column}` IN ({$query})");
     }
 
     /**
@@ -684,6 +698,6 @@ class Builder
 
         is_object($abstract) && static::resolverFor(get_class($abstract), $abstract);
 
-        return $abstract ?? $this;
+        return $abstract;
     }
 }

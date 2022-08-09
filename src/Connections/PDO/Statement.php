@@ -216,16 +216,10 @@ class Statement
      */
     protected function binding(string $bindMethod, array $params = array(), \Closure $callback = null)
     {
-        $params = $params ?: $this->getParams();
-
-        if (!$params) return $this;
-
-        $datas = $callback($params) ?: $params;
+        $datas = $callback($params ?: $this->getParams());
 
         array_map(function ($item, $index) use ($bindMethod) {
             is_numeric($index) && ++$index;
-
-            is_object($item) && $item instanceof \Wilkques\Database\Queries\Expression && $item->getBindValue() != null && $item = $item->getBindValue();
 
             $this->{$bindMethod}($index, $item);
         }, $datas, array_keys($datas));
@@ -234,7 +228,7 @@ class Statement
     }
 
     /**
-     * @param array $params
+     * @param array|null $params
      * 
      * @return Result
      */
@@ -242,9 +236,9 @@ class Statement
     {
         $statement = $this->getStatement();
 
-        $statement->execute($params);
-
         $this->getDebug() && $statement->debugDumpParams();
+
+        $statement->execute($params);
 
         return new Result($statement);
     }
