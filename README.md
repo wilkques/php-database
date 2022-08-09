@@ -5,9 +5,9 @@
 
 ## Notice
 
-1. 目前只有 `MySQL`
-1. 此為簡易 Database 操作
-1. 暫無 `join` 功能，但可以利用 method `query` or `prepare` 自己寫 SQL Query
+1. `MySQL` Only
+1. Database operate
+1. No feature `join`, but method `query` or `prepare` can write SQL Query and Execute
 
 ## ENV
 
