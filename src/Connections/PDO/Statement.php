@@ -225,6 +225,8 @@ class Statement
         array_map(function ($item, $index) use ($bindMethod) {
             is_numeric($index) && ++$index;
 
+            is_object($item) && $item instanceof \Wilkques\Database\Queries\Expression && $item->getBindValue() != null && $item = $item->getBindValue();
+
             $this->{$bindMethod}($index, $item);
         }, $datas, array_keys($datas));
 
