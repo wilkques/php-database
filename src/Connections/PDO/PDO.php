@@ -6,26 +6,19 @@ use Wilkques\Database\Connections\ConnectionInterface;
 use Wilkques\Database\Connections\Connections;
 
 abstract class PDO extends Connections implements ConnectionInterface
-{  
+{
     /**
-     * @param string $host
-     * @param string $username
-     * @param string $password
-     * @param string $dbname
-     */
-    public function __construct($host = null, $username = null, $password = null, $dbname = null, $port = 3306)
-    {
-        parent::__construct($host, $username, $password, $dbname, $port);
-            
-        $this->newConnect()->setPdoAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
-    }
-
-    /**
+     * @param int $attribute
+     * @param mixed $value
+     * 
      * @return static
      */
-    public function setPdoAttribute($attribute, $value)
+    public function setAttribute($attribute, $value)
     {
-        $this->getConnection()->setAttribute($attribute, $value);
+        /** @var \PDO */
+        $pdo = $this->newConnecntion();
+
+        $pdo->setAttribute($attribute, $value);
 
         return $this;
     }
@@ -37,7 +30,7 @@ abstract class PDO extends Connections implements ConnectionInterface
      */
     public function query($sql)
     {
-        return new Result($this->getConnection()->query($sql));
+        return new Result($this->newConnecntion()->query($sql));
     }
 
     /**
@@ -47,17 +40,19 @@ abstract class PDO extends Connections implements ConnectionInterface
      */
     public function prepare($sql)
     {
-        return new Statement($this->getConnection()->prepare($sql));
+        return new Statement($this->newConnecntion()->prepare($sql));
     }
 
     /**
+     * @param string|null $dns
+     * 
      * @return static
      */
-    public function connect()
+    public function connect(string $dns = null)
     {
         try {
             return new \PDO(
-                $this->getDNS(),
+                $dns ?: $this->getDNS(),
                 $this->getUsername(),
                 $this->getPassword()
             );
@@ -71,7 +66,7 @@ abstract class PDO extends Connections implements ConnectionInterface
      */
     public function beginTransaction()
     {
-        return $this->getConnection()->beginTransaction();
+        return $this->newConnecntion()->beginTransaction();
     }
 
     /**
@@ -79,7 +74,7 @@ abstract class PDO extends Connections implements ConnectionInterface
      */
     public function commit()
     {
-        return $this->getConnection()->commit();
+        return $this->newConnecntion()->commit();
     }
 
     /**
@@ -87,7 +82,7 @@ abstract class PDO extends Connections implements ConnectionInterface
      */
     public function rollback()
     {
-        return $this->getConnection()->rollBack();
+        return $this->newConnecntion()->rollBack();
     }
 
     /**
@@ -95,7 +90,7 @@ abstract class PDO extends Connections implements ConnectionInterface
      */
     public function inTransation()
     {
-        return $this->getConnection()->inTransaction();
+        return $this->newConnecntion()->inTransaction();
     }
 
     /**
@@ -103,15 +98,18 @@ abstract class PDO extends Connections implements ConnectionInterface
      */
     public function getLastInsertId()
     {
-        return $this->getConnection()->lastInsertId();
+        return $this->newConnecntion()->lastInsertId();
     }
 
     /**
+     * @param string|null $dns
+     * 
      * @return static
      */
-    public function newConnect()
+    public function newConnect(string $dns = null)
     {
-        return $this->setConnection($this->connect());
+        return $this->setConnection($this->connect($dns))
+            ->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
     }
 
     /**

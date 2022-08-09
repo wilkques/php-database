@@ -20,14 +20,17 @@ abstract class Connections
      * @param string $username
      * @param string $password
      * @param string $dbname
+     * @param string|int $port
+     * @param string $characterSet
      */
-    public function __construct($host = null, $username = null, $password = null, $dbname = null, $port = 3306)
+    public function __construct($host = null, $username = null, $password = null, $dbname = null, $port = 3306, $characterSet = "utf8mb4")
     {
         $this->setHost($host)
             ->setUsername($username)
             ->setPassword($password)
             ->setDbname($dbname)
-            ->setPort($port);
+            ->setPort($port)
+            ->setCharacterSet($characterSet);
     }
 
     /**

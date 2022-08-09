@@ -11,7 +11,7 @@ use Wilkques\Database\Queries\Builder;
  * 
  * @see [wilkques](https://github.com/wilkques/Database)
  * 
- * create by: wilkques
+ * @author wilkques
  * 
  * @method static static connection(ConnectionInterface $connection) set Connection
  * @method static static table(string $table) set table name
@@ -19,7 +19,7 @@ use Wilkques\Database\Queries\Builder;
  * @method static static password(string $password) set db password
  * @method static static dbname(string $dbname) set db name
  * @method static static host(string $host) set db host
- * @method static static newConnect() new db connect
+ * @method static static newConnect(string $dns = null) new db connect
  * @method static static query(string $query) set sql query
  * @method static static bindData(array $data) set bind data
  * @method static static orderBy(string $column, string $sort = "ASC") set order by
@@ -42,18 +42,25 @@ use Wilkques\Database\Queries\Builder;
  * @method static static sharedLock() set shared lock
  * @method static static currentPage(int $currentPage) set now page
  * @method static static prePage(int $prePage) set prepage
- * @method static array first()
- * @method static array get()
+ * @method static array first() first result
+ * @method static array get() all result
  * @method static int update(array $data)
- * @method static int increment(string $column,int|string $value = 1, array $data = [])
- * @method static int decrement(string $column,int|string $value = 1, array $data = [])
+ * @method static int increment(string $column, int|string $value = 1, array $data = [])
+ * @method static int decrement(string $column, int|string $value = 1, array $data = [])
  * @method static int insert(array $data)
  * @method static int delete()
- * @method static int softDelete()
- * @method static int reStore()
+ * @method static int softDelete(string $column = 'deleted_at', string $dateTimeFormat = "Y-m-d H:i:s")
+ * @method static int reStore($column = 'deleted_at')
  * @method static \Wilkques\Database\Queries\Expression raw(mixed $value, mixed $bindValue = null)
  * @method static static selectRaw(string $column = "*")
  * @method static static whereRaw(string $where, $value = null)
+ * @method static static fromSub(\Closure|\Illuminate\Database\Query\Builder|string $query, string $as)
+ * @method static static enableQueryLog()
+ * @method static array getQueryLog()
+ * @method static array getParseQueryLog() parser query log
+ * @method static array parseQueryLog() parser query log
+ * @method static string getLastParseQuery() parser query
+ * @method static string lastParseQuery() parser query
  */
 class Database 
 {

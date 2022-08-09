@@ -453,7 +453,7 @@ class Builder
     {
         return (int) $this->fromSub(function (self $query) {
             $query->compilerSelect(array("from", "where", "groupBy", "orderBy"));
-        }, "total_page")
+        }, "total_count")
             ->selectRaw("COUNT(*) as count")
             ->compilerSelect(array("from"))
             ->exec($this->getForSelectBindData(array("from", "where")))
@@ -554,7 +554,7 @@ class Builder
      * 
      * @return static
      */
-    public function softDelete($column = 'deleted_at', $dateTimeFormat = "Y-m-d H:i:s")
+    public function softDelete(string $column = 'deleted_at', string $dateTimeFormat = "Y-m-d H:i:s")
     {
         !is_string($column) && $this->argumentsThrowError(" first Arguments must be string");
 
@@ -570,7 +570,7 @@ class Builder
      * 
      * @return static
      */
-    public function reStore($column = 'deleted_at')
+    public function reStore(string $column = 'deleted_at')
     {
         !is_string($column) && $this->argumentsThrowError(" first Arguments must be string");
 

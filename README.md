@@ -22,7 +22,8 @@
     [Download EzLoader and See how to use](https://github.com/wilkques/EzLoader)
     ```php
 
-    require "path/to/your/folder/src/helpers.php";
+    require_once "path/to/your/folder/wilkques/Ezloader/src/helpers.php";
+    require_once "path/to/your/folder/wilkques/Database/src/helpers.php";
 
     loadPHP();
 
@@ -502,9 +503,13 @@
     $db->dbname('<DB name>');
     ```
 
-1. `connect`
+1. `newConnect`
 
     ```php
 
     $db->newConnect();
+
+    // or
+
+    $db->newConnect("<sql server dns string>");
     ```
