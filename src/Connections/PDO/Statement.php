@@ -7,7 +7,7 @@ class Statement
     /** @var \PDOStatement */
     protected $statement;
     /** @var array */
-    protected $params = [];
+    protected $params = array();
     /** @var bool|false */
     protected $debug = false;
 
@@ -176,7 +176,7 @@ class Statement
      * 
      * @return static
      */
-    public function bindParams(array $params = [])
+    public function bindParams(array $params = array())
     {
         return $this->binding("bindParam", $params, function ($params) {
             $newParams = array();
@@ -194,7 +194,7 @@ class Statement
      * 
      * @return static
      */
-    public function bindValues(array $params = [])
+    public function bindValues(array $params = array())
     {
         return $this->binding("bindValue", $params, function ($params) {
             $newParams = array();

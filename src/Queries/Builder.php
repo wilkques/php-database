@@ -10,12 +10,6 @@ class Builder
 {
     /** @var array */
     protected static $resolvers = array();
-    // /** @var ConnectionInterface */
-    // protected $connection;
-    // /** @var GrammarInterface */
-    // protected $grammar;
-    // /** @var ProcessInterface */
-    // protected $process;
     /** @var array */
     protected $bindData = array();
     /** @var array */
@@ -400,7 +394,7 @@ class Builder
             return $this;
         }
 
-        $whereBindData = $this->getBindData("where") ?: [];
+        $whereBindData = $this->getBindData("where") ?: array();
 
         $index = $this->nextArrayIndex($whereBindData);
 
@@ -436,7 +430,7 @@ class Builder
 
         $query = implode(", ", array_fill(0, count($data), "?"));
 
-        $whereBindData = $this->getBindData("where") ?: [];
+        $whereBindData = $this->getBindData("where") ?: array();
 
         array_push($whereBindData, ...$data);
 
@@ -658,13 +652,22 @@ class Builder
     protected function method($method)
     {
         $methods = array(
-            'table', 'username', 'password', 'dbname', "host", "query", "bindData", "select",
-            "orderBy", "groupBy", "limit", "offset", "connection", "grammar", "currentPage",
-            "prePage", "process", "selectRaw", "raw", "whereRaw"
+            "set"       => array(
+                'table', 'username', 'password', 'dbname', 'host', 'query', 'bindData', 'select',
+                'orderBy', 'groupBy', 'limit', 'offset', 'connection', 'grammar', 'currentPage',
+                'prePage', "process", 'selectRaw', 'raw', 'whereRaw'
+            ),
+            "process"   => array(
+                'InsertGetId'
+            )
         );
 
-        if (in_array($method, $methods)) {
-            $method = "set" . ucfirst($method);
+        foreach ($methods as $index => $item) {
+            if (in_array($method, $item)) {
+                $method = $index . ucfirst($method);
+
+                break;
+            }
         }
 
         return $method;

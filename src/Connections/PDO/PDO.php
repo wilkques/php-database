@@ -262,6 +262,14 @@ abstract class PDO implements ConnectionInterface
     }
 
     /**
+     * @return int
+     */
+    public function getLastInsertId()
+    {
+        return $this->getConnection()->lastInsertId();
+    }
+
+    /**
      * @return static
      */
     public function newConnect()

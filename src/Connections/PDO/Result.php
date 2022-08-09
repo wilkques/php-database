@@ -115,7 +115,7 @@ class Result
     /**
      * @return mixed|false
      *
-     * @throws Exception
+     * @throws \Exception
      */
     public function fetch(int $mode)
     {
@@ -125,18 +125,10 @@ class Result
     /**
      * @return list<mixed>
      *
-     * @throws Exception
+     * @throws \Exception
      */
     public function fetchAll(int $mode)
     {
         return $this->getStatement()->fetchAll($mode);
-    }
-
-    /**
-     * @return int
-     */
-    public function getLastInsertId()
-    {
-        return $this->getStatement()->lastInsertId();
     }
 }
