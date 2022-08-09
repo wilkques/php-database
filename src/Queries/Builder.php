@@ -28,6 +28,8 @@ class Builder
         GrammarInterface $grammar = null,
         ProcessInterface $process = null
     ) {
+        static::resolverFor(static::class, $this);
+
         $this->setConnection($connection)->setGrammar($grammar)->setProcess($process);
     }
 
@@ -232,14 +234,32 @@ class Builder
     }
 
     /**
+     * @param array $bindData
+     * 
+     * @return Result
+     */
+    public function exec(array $bindData = [])
+    {
+        $query = $this->getQuery();
+
+        $statement = $this->prepare($query)->bindParams($bindData);
+
+        if ($this->isLogging()) {
+            $bindData = $statement->getParams();
+
+            $this->setQueryLog(compact('query', 'bindData'));
+        }
+
+        return $statement->execute();
+    }
+
+    /**
      * @return static
      */
     public function get()
     {
         return $this->compilerSelect()
-            ->prepare($this->getQuery())
-            ->bindParams($this->getForSelectBindData())
-            ->execute()
+            ->exec($this->getForSelectBindData())
             ->fetchAllAssociative();
     }
 
@@ -250,9 +270,7 @@ class Builder
     {
         return $this->limit(1)
             ->compilerSelect()
-            ->prepare($this->getQuery())
-            ->bindParams($this->getForSelectBindData())
-            ->execute()
+            ->exec($this->getForSelectBindData())
             ->fetchFirst();
     }
 
@@ -291,9 +309,7 @@ class Builder
     {
         return (int) $this->selectRaw("COUNT(*) as count")
             ->compilerSelect()
-            ->prepare($this->getQuery())
-            ->bindParams($this->getForSelectBindData())
-            ->execute()
+            ->exec($this->getForSelectBindData())
             ->fetchOne();
     }
 
@@ -471,9 +487,7 @@ class Builder
         return $this->setBindData("update", array_values($data))
             ->setUpdate($data)
             ->compilerUpdate()
-            ->prepare($this->getQuery())
-            ->bindParams($this->getForUpdateBindData())
-            ->execute()
+            ->exec($this->getForUpdateBindData())
             ->rowCount();
     }
 
@@ -523,9 +537,7 @@ class Builder
     public function delete()
     {
         return $this->compilerDelete()
-            ->prepare($this->getQuery())
-            ->bindParams($this->getForWhereBindData())
-            ->execute()
+            ->exec($this->getForWhereBindData())
             ->rowCount();
     }
 
@@ -574,9 +586,7 @@ class Builder
         return $this->setBindData("insert", $data)
             ->setInsert($data)
             ->compilerInsert()
-            ->prepare($this->getQuery())
-            ->bindParams($this->getOnlyBindData(["insert"]))
-            ->execute()
+            ->exec($this->getOnlyBindData(["insert"]))
             ->rowCount();
     }
 
@@ -653,7 +663,7 @@ class Builder
     {
         $methods = array(
             "set"       => array(
-                'table', 'username', 'password', 'dbname', 'host', 'query', 'bindData', 'select',
+                'table', 'username', 'password', 'dbname', 'host', 'bindData', 'select',
                 'orderBy', 'groupBy', 'limit', 'offset', 'connection', 'grammar', 'currentPage',
                 'prePage', "process", 'selectRaw', 'raw', 'whereRaw'
             ),
@@ -695,11 +705,11 @@ class Builder
 
         $abstract = $abstract->{$method}(...$arguments);
 
+        is_object($abstract) && static::resolverFor(get_class($abstract), $abstract);
+
         if ($abstract instanceof \Wilkques\Database\Queries\Grammar\GrammarInterface) {
             $abstract = $this;
         }
-
-        is_object($abstract) && static::resolverFor(get_class($abstract), $abstract);
 
         return $abstract;
     }

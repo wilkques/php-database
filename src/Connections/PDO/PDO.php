@@ -3,24 +3,10 @@
 namespace Wilkques\Database\Connections\PDO;
 
 use Wilkques\Database\Connections\ConnectionInterface;
+use Wilkques\Database\Connections\Connections;
 
-abstract class PDO implements ConnectionInterface
-{
-    /** @var string */
-    protected $host;
-    /** @var string */
-    protected $username;
-    /** @var string */
-    protected $password;
-    /** @var string */
-    protected $dbname;
-    /** @var int|string */
-    protected $port;
-    /** @var string */
-    protected $characterSet = "utf8mb4";
-    /** @var static */
-    protected $connection;
-
+abstract class PDO extends Connections implements ConnectionInterface
+{  
     /**
      * @param string $host
      * @param string $username
@@ -29,138 +15,9 @@ abstract class PDO implements ConnectionInterface
      */
     public function __construct($host = null, $username = null, $password = null, $dbname = null, $port = 3306)
     {
-        $this->setHost($host)
-            ->setUsername($username)
-            ->setPassword($password)
-            ->setDbname($dbname)
-            ->setPort($port)
-            ->newConnect()
-            ->setPdoAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
-    }
-
-    /**
-     * @return string
-     */
-    abstract public function getDNS();
-
-    /**
-     * @param string $host
-     * 
-     * @return static
-     */
-    public function setHost($host)
-    {
-        $this->host = $host;
-
-        return $this;
-    }
-
-    /**
-     * @return string
-     */
-    public function getHost()
-    {
-        return $this->host;
-    }
-
-    /**
-     * @param string $username
-     * 
-     * @return static
-     */
-    public function setUsername($username)
-    {
-        $this->username = $username;
-
-        return $this;
-    }
-
-    /**
-     * @return string
-     */
-    public function getUsername()
-    {
-        return $this->username;
-    }
-
-    /**
-     * @param string $password
-     * 
-     * @return static
-     */
-    public function setPassword($password)
-    {
-        $this->password = $password;
-
-        return $this;
-    }
-
-    /**
-     * @return string
-     */
-    public function getPassword()
-    {
-        return $this->password;
-    }
-
-    /**
-     * @param string $dbname
-     * 
-     * @return static
-     */
-    public function setDbname($dbname)
-    {
-        $this->dbname = $dbname;
-
-        return $this;
-    }
-
-    /**
-     * @return string
-     */
-    public function getDbname()
-    {
-        return $this->dbname;
-    }
-
-    /**
-     * @param string|int $port
-     * 
-     * @return static
-     */
-    public function setPort($port)
-    {
-        $this->port = $port;
-
-        return $this;
-    }
-
-    /**
-     * @return string
-     */
-    public function getPort()
-    {
-        return $this->port;
-    }
-
-    /**
-     * @param \PDO $connection
-     * 
-     * @return static
-     */
-    public function setConnection($connection = null)
-    {
-        $this->connection = $connection;
-
-        return $this;
-    }
-
-    /**
-     * @return \PDO
-     */
-    public function getConnection()
-    {
-        return $this->connection;
+        parent::__construct($host, $username, $password, $dbname, $port);
+            
+        $this->newConnect()->setPdoAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
     }
 
     /**
@@ -171,26 +28,6 @@ abstract class PDO implements ConnectionInterface
         $this->getConnection()->setAttribute($attribute, $value);
 
         return $this;
-    }
-
-    /**
-     * @param string $characterSet
-     * 
-     * @return static
-     */
-    public function setCharacterSet($characterSet = "utf8mb4")
-    {
-        $this->characterSet = $characterSet;
-
-        return $this;
-    }
-
-    /**
-     * @return string
-     */
-    public function getCharacterSet()
-    {
-        return $this->characterSet;
     }
 
     /**
@@ -286,4 +123,9 @@ abstract class PDO implements ConnectionInterface
 
         return $this->getConnection();
     }
+
+    /**
+     * @return string
+     */
+    abstract public function getDNS();
 }
