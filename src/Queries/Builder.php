@@ -449,10 +449,14 @@ class Builder
     /**
      * @return int
      */
-    public function totalPage()
+    public function count()
     {
-        return (int) $this->compilerSelectForPage()
-            ->exec($this->getForSelectBindData(array("where")))
+        return (int) $this->fromSub(function (self $query) {
+            $query->compilerSelect(array("from", "where", "groupBy", "orderBy"));
+        }, "total_page")
+            ->selectRaw("COUNT(*) as count")
+            ->compilerSelect(array("from"))
+            ->exec($this->getForSelectBindData(array("from", "where")))
             ->fetchFirstColumn();
     }
 
@@ -463,21 +467,11 @@ class Builder
     {
         $this->setLimit($this->getPrePage())->setOffset(((int) $this->getCurrentPage() - 1) * $this->getPrePage());
 
-        $total = $this->totalPage();
-        
         $items = $this->get();
 
-        return compact('total', 'items');
-    }
+        $total = $this->count();
 
-    /**
-     * @return int
-     */
-    public function count()
-    {
-        return (int) $this->compilerSelect()
-            ->exec($this->getForSelectBindData())
-            ->fetchFirstColumn();
+        return compact('total', 'items');
     }
 
     /**
@@ -604,6 +598,122 @@ class Builder
     }
 
     /**
+     * @param string $from
+     * @param mixed|null $value
+     * 
+     * @return static
+     */
+    public function setFromRaw($from, $value = null)
+    {
+        $this->getGrammar()->setFrom((string) $this->raw($from));
+
+        $value && $this->setBindData("from", $value);
+
+        return $this;
+    }
+
+    /**
+     * Makes "from" fetch from a subquery.
+     *
+     * @param  \Closure|\Illuminate\Database\Query\Builder|string  $query
+     * @param  string  $as
+     * @return static
+     *
+     * @throws \InvalidArgumentException
+     */
+    public function fromSub($query, $as)
+    {
+        list($query, $bindData) = $this->createSub($query);
+
+        return $this->setFromRaw('(' . $query . ') as ' . $as, $bindData);
+    }
+
+    /**
+     * Creates a subquery and parse it.
+     *
+     * @param  \Closure|\Illuminate\Database\Query\Builder|string  $query
+     * @return array
+     */
+    protected function createSub($query)
+    {
+        // If the given query is a Closure, we will execute it while passing in a new
+        // query instance to the Closure. This will give the developer a chance to
+        // format and work with the query before we cast it to a raw SQL string.
+        if ($query instanceof \Closure) {
+            $callback = $query;
+
+            $callback($query = $this->forSubQuery());
+        }
+
+        return $this->parseSub($query);
+    }
+
+    /**
+     * Create a new query instance for a sub-query.
+     *
+     * @return \Illuminate\Database\Query\Builder
+     */
+    protected function forSubQuery()
+    {
+        return $this->newQuery();
+    }
+
+    /**
+     * Parse the subquery into SQL and bindings.
+     *
+     * @param  mixed  $query
+     * @return array
+     *
+     * @throws \InvalidArgumentException
+     */
+    protected function parseSub($query)
+    {
+        if ($query instanceof self) {
+            $query = $this->prependDatabaseNameIfCrossDatabaseQuery($query);
+
+            return array($query->getQuery(), $query->getBindData());
+        } elseif (is_string($query)) {
+            return array($query, array());
+        } else {
+            throw new \InvalidArgumentException(
+                'A subquery must be a query builder instance, a Closure, or a string.'
+            );
+        }
+    }
+
+    /**
+     * Prepend the database name if the given query is on another database.
+     *
+     * @param  mixed  $query
+     * @return mixed
+     */
+    protected function prependDatabaseNameIfCrossDatabaseQuery($query)
+    {
+        if (
+            $query->getConnection()->getDbname() !==
+            $this->getConnection()->getDbname()
+        ) {
+            $databaseName = $query->getConnection()->getDbname();
+
+            if (strpos($query->getFrom(), $databaseName) !== 0 && strpos($query->getFrom(), '.') === false) {
+                $query->from($databaseName . '.' . $query->getFrom());
+            }
+        }
+
+        return $query;
+    }
+
+    /**
+     * Get a new instance of the query builder.
+     *
+     * @return \Wilkques\Database\Queries\Builder
+     */
+    public function newQuery()
+    {
+        return new static($this->getConnection(), $this->getGrammar(), $this->getProcess());
+    }
+
+    /**
      * @throws \UnexpectedValueException
      */
     protected function argumentsThrowError($message = "")
@@ -651,7 +761,7 @@ class Builder
             "set"       => array(
                 'table', 'username', 'password', 'dbname', 'host', 'bindData', 'select',
                 'orderBy', 'groupBy', 'limit', 'offset', 'connection', 'grammar', 'currentPage',
-                'prePage', "process", 'selectRaw', 'raw', 'whereRaw'
+                'prePage', "process", 'selectRaw', 'raw', 'whereRaw', "from", "fromRaw"
             ),
             "process"   => array(
                 'InsertGetId'

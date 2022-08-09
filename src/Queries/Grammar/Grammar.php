@@ -7,8 +7,6 @@ abstract class Grammar implements GrammarInterface
     /** @var string */
     protected $query;
     /** @var string */
-    protected $table;
-    /** @var string */
     protected $lock = "";
     /** @var array */
     protected $bindQueries = array();
@@ -34,15 +32,31 @@ abstract class Grammar implements GrammarInterface
     }
 
     /**
+     * @param string $from
+     * 
+     * @return static
+     */
+    public function setFrom(string $from)
+    {
+        return $this->setBindQueries("from", $from);
+    }
+
+    /**
+     * @return string
+     */
+    public function getFrom()
+    {
+        return $this->getBindQueries("from");
+    }
+
+    /**
      * @param string $table
      * 
      * @return static
      */
     public function setTable($table)
     {
-        $this->table = $table;
-
-        return $this;
+        return $this->setFrom($table);
     }
 
     /**
@@ -50,7 +64,7 @@ abstract class Grammar implements GrammarInterface
      */
     public function getTable()
     {
-        return $this->table;
+        return $this->getFrom();
     }
 
     /**
@@ -305,53 +319,23 @@ abstract class Grammar implements GrammarInterface
     /**
      * @return array
      */
-    public function getForSelectQueries()
+    public function getForSelectQueries($keepKeys = array("from", "where", "groupBy", "orderBy", "limit", "offset", "lock"))
     {
-        $keys = array("where", "groupBy", "orderBy", "limit", "offset", "lock");
-
-        return $this->getOnlyBindFieldQueries($keys);
+        return $this->getOnlyBindFieldQueries($keepKeys);
     }
 
     /**
      * @return static
      */
-    public function compilerSelect()
+    public function compilerSelect($keepKeys = array("from", "where", "groupBy", "orderBy", "limit", "offset", "lock"))
     {
         $column = $this->getBindQueries("select", "*");
 
         $column = is_string($column) ? $column : join(", ", $column);
 
-        $sql = "SELECT {$column} FROM `{$this->getTable()}`";
+        $sql = "SELECT {$column}";
 
-        $selectAry = $this->getForSelectQueries();
-
-        $selectAry && $sql .= " " . $this->arrayToSql($selectAry);
-
-        return $this->setQuery($sql);
-    }
-
-    /**
-     * @return array
-     */
-    public function getForPageSelectQueries()
-    {
-        $keys = array("where", "groupBy", "orderBy");
-
-        return $this->getOnlyBindFieldQueries($keys);
-    }
-
-    /**
-     * @return static
-     */
-    public function compilerSelectForPage()
-    {
-        $column = $this->getBindQueries("select", "*");
-
-        $column = is_string($column) ? $column : join(", ", $column);
-
-        $sql = "SELECT COUNT(*) FROM (SELECT {$column} FROM `{$this->getTable()}`) AS TotalPage";
-
-        $selectAry = $this->getForPageSelectQueries();
+        $selectAry = $this->getForSelectQueries($keepKeys);
 
         $selectAry && $sql .= " " . $this->arrayToSql($selectAry);
 

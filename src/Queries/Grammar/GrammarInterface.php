@@ -10,6 +10,13 @@ interface GrammarInterface
     public function getQuery();
 
     /**
+     * @param string $from
+     * 
+     * @return static
+     */
+    public function setFrom(string $from);
+
+    /**
      * @param int|string $offset
      * 
      * @return static
