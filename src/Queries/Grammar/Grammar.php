@@ -464,33 +464,6 @@ abstract class Grammar implements GrammarInterface
     }
 
     /**
-     * @param array $carry
-     * @param array $item
-     * 
-     * @return array
-     */
-    protected function insertQueriesReduce($carry, $item)
-    {
-        $item = array_keys($item);
-
-        $insertColumns = $this->getBindQueries("insert.columns");
-
-        if (!$insertColumns) {
-            $this->setBindQueries("insert.columns", $item);
-
-            $item = array_only($item, array_keys($item));
-        }
-
-        $index = $carry === null ? 0 : ((int) array_key_last($carry) + 1);
-
-        foreach ($item as $key => $value) {
-            $carry[$index][] = "?";
-        }
-
-        return $carry;
-    }
-
-    /**
      * @param array $data
      * 
      * @return static
@@ -498,7 +471,13 @@ abstract class Grammar implements GrammarInterface
     public function setInsert(array $data)
     {
         if (array_key_exists(0, $data)) {
-            $data = array_reduce($data, array($this, "insertQueriesReduce"));
+            $newData = array();
+
+            foreach ($data as $item) {
+                !$this->getBindQueries("insert.columns") && $this->setBindQueries("insert.columns", array_keys($data[0]));
+
+                array_push($newData, ...array_values($item));
+            }
 
             return $this->setBindQueries("insert.values", $data);
         }

@@ -9,7 +9,7 @@ use Wilkques\Database\Queries\Process\ProcessInterface;
 class Builder
 {
     /** @var array */
-    protected static $resolvers = [];
+    protected static $resolvers = array();
     // /** @var ConnectionInterface */
     // protected $connection;
     // /** @var GrammarInterface */
@@ -563,17 +563,7 @@ class Builder
     {
         !is_array($data) && $this->argumentsThrowError(" first Arguments must be array");
 
-        $newData = [];
-
-        if (array_exists_key($data, 0)) {
-            foreach ($data as $item) {
-                array_push($newData, ...array_values($item));
-            }
-        } else {
-            array_push($newData, ...array_values($data));
-        }
-
-        return $this->setBindData("insert", $newData)
+        return $this->setBindData("insert", $data)
             ->setInsert($data)
             ->compilerInsert()
             ->prepare($this->getQuery())

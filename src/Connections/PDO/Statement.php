@@ -172,72 +172,63 @@ class Statement
     }
 
     /**
-     * @param array|null $params
+     * @param array|[] $params
      * 
      * @return static
      */
-    public function bindParams(array $params = null)
+    public function bindParams(array $params = [])
     {
-        return $this->binds($params, "bindParam");
+        return $this->binding("bindParam", $params, function ($params) {
+            $newParams = array();
+
+            foreach ($params as $item) {
+                array_push($newParams, ...array_values($item));
+            }
+
+            return $newParams;
+        });
     }
 
     /**
-     * @param array|null $params
+     * @param array|[] $params
      * 
      * @return static
      */
-    public function bindValues(array $params = null)
+    public function bindValues(array $params = [])
     {
-        return $this->binds($params, "bindValue");
+        return $this->binding("bindValue", $params, function ($params) {
+            $newParams = array();
+
+            foreach ($params as $item) {
+                $newParams = array_merge($newParams, $item);
+            }
+
+            return $newParams;
+        });
     }
 
     /**
-     * @param array|null $params
      * @param string $bindMethod
+     * @param array $params
+     * @param \Closure|null $callback
      * 
      * @return static
      */
-    protected function binds(array $params = null, string $bindMethod = null)
+    protected function binding(string $bindMethod, array $params = array(), \Closure $callback = null)
     {
-        $params = $params ?: ($this->getParams() ?: null);
+        $params = $params ?: $this->getParams();
 
         if (!$params) return $this;
 
-        $params = array_reduce($params, array($this, "reduce"));
-
-        if (!in_array($bindMethod, ["bindParam", "bindValue"]))
-            throw new \UnexpectedValueException("bindMethod must be bindParam or bindValue");
+        $datas = $callback($params) ?: $params;
 
         array_map(function ($item, $index) use ($bindMethod) {
+            is_numeric($index) && ++$index;
+
             $this->{$bindMethod}($index, $item);
-        }, $params, array_keys($params));
+        }, $datas, array_keys($datas));
 
         return $this;
-    }
-
-    /**
-     * @param array|null $carry
-     * @param array $item
-     * 
-     * @return array
-     */
-    protected function reduce($carry, $item)
-    {
-        foreach ($item as $key => $value) {
-            if (is_object($value) && $value instanceof \Wilkques\Database\Queries\Expression && $value->getBindValue() != null) {
-                $value = $value->getBindValue();
-            }
-
-            if (is_numeric($key)) {
-                $index = $carry === null ? 1 : ((int) array_key_last($carry) + 1);
-
-                $carry[$index] = $value;
-            } else {
-                $carry[$key] = $value;
-            }
-        }
-
-        return $carry;
     }
 
     /**
