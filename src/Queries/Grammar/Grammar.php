@@ -341,7 +341,8 @@ abstract class Grammar implements GrammarInterface
         return join(" ", array_map(function ($item, $index) use ($separator) {
             $index = in_array($index, ["groupBy", "orderBy"]) ? str_delimiter_replace($index, " ", MB_CASE_UPPER) : $index;
 
-            return str_convert_case($index, MB_CASE_UPPER) . " " . (is_array($item) ? join($separator, $item) : $item);
+            // 排除 lock
+            return (!in_array($index, ["lock"]) ? str_convert_case($index, MB_CASE_UPPER) . " " : "") . (is_array($item) ? join($separator, $item) : $item);
         }, $array, array_keys($array)));
     }
 
@@ -526,6 +527,16 @@ abstract class Grammar implements GrammarInterface
         $where && $sql .= " " . $this->arrayToSql($where);
 
         return $this->setQuery($sql);
+    }
+
+    /**
+     * @param string $query
+     * 
+     * @return static
+     */
+    public function setLock($query = "")
+    {
+        return $this->setBindQueries("lock.0", (string) $query);
     }
 
     /**

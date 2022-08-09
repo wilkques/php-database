@@ -9,7 +9,7 @@ class MySql extends Grammar
      */
     public function lockForUpdate()
     {
-        return $this->setLock(" FOR UPDATE");
+        return $this->setLock("FOR UPDATE");
     }
 
     /**
@@ -17,6 +17,6 @@ class MySql extends Grammar
      */
     public function sharedLock()
     {
-        return $this->setLock(" LOCK IN SHARE MODE");
+        return $this->setLock("LOCK IN SHARE MODE");
     }
 }
