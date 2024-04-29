@@ -2,21 +2,23 @@
 
 namespace Wilkques\Database\Queries\Grammar;
 
+use Wilkques\Database\Queries\Expression;
+
 class MySql extends Grammar
 {
     /**
-     * @return static
+     * @return string
      */
     public function lockForUpdate()
     {
-        return $this->setLock("FOR UPDATE");
+        return "FOR UPDATE";
     }
 
     /**
-     * @return static
+     * @return string
      */
     public function sharedLock()
     {
-        return $this->setLock("LOCK IN SHARE MODE");
+        return "LOCK IN SHARE MODE";
     }
 }

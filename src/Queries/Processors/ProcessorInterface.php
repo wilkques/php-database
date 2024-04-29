@@ -1,10 +1,10 @@
 <?php
 
-namespace Wilkques\Database\Queries\Process;
+namespace Wilkques\Database\Queries\Processors;
 
 use Wilkques\Database\Queries\Builder;
 
-interface ProcessInterface
+interface ProcessorInterface
 {
     /**
      * Process an  "insert get ID" query.

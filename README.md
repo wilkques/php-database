@@ -7,11 +7,10 @@
 
 1. `MySQL` Only
 1. Database operate
-1. No feature `join`, but method `query` or `prepare` can write SQL Query and Execute
 
 ## ENV
 
-1. php >= 5.4
+1. php >= 5.6
 1. mysql >= 5.6
 1. PDO extension
 
@@ -32,7 +31,7 @@
     $builder = new \Wilkques\Database\Queries\Builder(
         $connection,
         new \Wilkques\Database\Queries\Grammar\MySql,
-        new \Wilkques\Database\Queries\Process\Process,
+        new \Wilkques\Database\Queries\Processors\Processor,
     );
 
     $db = \Wilkques\Database\Database::builder($builder);
@@ -47,40 +46,710 @@
 
     $connection = new \Wilkques\Database\Connections\PDO\MySql('<host>', '<username>', '<password>', '<database name>');
 
-    $builder = new \Wilkques\Database\Queries\Builder(
+    $db = new \Wilkques\Database\Queries\Builder(
         $connection,
         new \Wilkques\Database\Queries\Grammar\MySql,
-        new \Wilkques\Database\Queries\Process\Process,
+        new \Wilkques\Database\Queries\Processors\Processor,
     );
-
-    $db = \Wilkques\Database\Database::builder($builder);
     ```
 
 ## Methods
 
-1. `table`
+### table or from
+
+1. `table` or `from` or `fromSub`
+    `table` same `from`
 
     ```php
 
     $db->table('<table name>');
+
+    // or
+
+    $db->table('<table name>', '<as name>');
+
+    // or
+
+    $db->table(
+        function ($query) {
+            $query->table('<table name>');
+            // do something
+        }, 
+        '<as name>'
+    );
+
+    // output: select ... from (select ... from <table name>) AS `<as name>`
+
+    // same
+
+    $dbTable = (
+        new \Wilkques\Database\Queries\Builder(
+            $connection,
+            new \Wilkques\Database\Queries\Grammar\MySql,
+            new \Wilkques\Database\Queries\Processors\Processor,
+        )
+    )->table('<table name1>');
+
+    $db->fromSub(
+        $dbTable, 
+        '<as name>'
+    );
+
+    // output: select ... from (select ... from <table name>) AS `<as name>`
+
+    // same
+
+    $db->fromSub(
+        function ($query) {
+            $query->table('<table name>');
+            // do something
+        }, 
+        '<as name>'
+    );
+
+    // output: select ... from (select ... from <table name>) AS `<as name>`
+
+    // or
+
+    $db->table([
+        function ($query) {
+            $query->table('<table name1>');
+        },
+        function ($query) {
+            $query->table('<table name2>');
+        },
+    ]);
+
+    // output: select ... from (select ... from <table name1>), (select ... from <table name2>)
+
+    // or
+
+    $db->table([
+        '<as name1>' => function ($query) {
+            $query->table('<table name1>');
+        },
+        '<as name2>' => function ($query) {
+            $query->table('<table name2>');
+        },
+    ]);
+
+    // output: select ... from (select ... from <table name1>) AS `<as name1>`, (select ... from <table name2>) AS `<as name2>`
     ```
 
-1. `select`
+### select
+
+1. `select` or `selectSub`
 
     ```php
 
-    $db->select(['<columnName1>', '<columnName2>', '<columnName3>']);
+    $db->select(
+        '<columnName1>', 
+        '<columnName2>', 
+        '<columnName3>',
+        function ($query) {
+            $query->table('<table name>');
+            // do something
+        }
+    );
+
+    // output: select <columnName1>, <columnName2>, <columnName3>, (select ...)
+
+    // or
+
+    $db->select([
+        '<as name1>' => '<columnName1>',
+        '<as name2>' => '<columnName1>',
+    ]);
+
+    // output: select <columnName1> AS `<as name1>`, <columnName2> AS `<as name2>`
+
+    // or
+
+    $db->select([
+        '<columnName1>', 
+        '<columnName2>', 
+        '<columnName3>',
+        function ($query) {
+            $query->table('<table name>');
+            // do something
+        },
+        '<as name>' => function ($query) {
+            $query->table('<table name>');
+            // do something
+        },
+    ]);
+
+    // output: select <columnName1>, <columnName2>, <columnName3>, (select ...), (select ...) AS `<as name>`
 
     // or
 
     $db->select("`<columnName1>`, `<columnName2>`, `<columnName3>`");
+
+    // or
+
+    $db->selectSub(
+        function ($query) {
+            $query->table('<table name>');
+            // do something
+        },
+        '<as name>'
+    );
+
+    // output: select (select ...) AS `<as name>`
     ```
+
+1. `selectSub`
+
+    ```php
+
+    $db->selectSub(
+        function ($query) {
+            $query->table('<table name>');
+            // do something
+        }
+    );
+
+    // output: select (select ...)
+
+    // or
+
+    $db->selectSub(
+        function ($query) {
+            $query->table('<table name>');
+            // do something
+        },
+        '<as name>'
+    );
+
+    // output: select (select ...) AS `<as name>`
+    ```
+
+### join
+
+1. `join`
+
+    ```php
+
+    $db->from('<table name1>')->join(
+        '<table name2>',
+        '<table name1>.<column1>', 
+        '<table name2>.<column1>'
+    );
+
+    // output: select ... join <table name> ON <table name1>.<column1> = <table name2>.<column1>
+
+    // or
+
+    $db->from('<table name1>')->join(
+        '<table name2>',
+        function ($join) {
+            $join->on('<table name1>.<column1>', '<table name2>.<column1>')
+            ->orOn('<table name1>.<column2>', '<table name2>.<column2>');
+
+            // do something
+        }
+    );
+
+    // output: select ... join <table name> ON <table name1>.<column1> = <table name2>.<column1> OR <table name1>.<column2> = <table name2>.<column2>
+    ```
+
+1. `joinWhere`
+
+    ```php
+
+    $db->from('<table name1>')->joinWhere(
+        '<table name2>',
+        '<table name1>.<column1>', 
+        '<table name2>.<column1>'
+    );
+
+    // output: select ... join <table name> WHERE <table name1>.<column1> = <table name2>.<column1>
+
+    // or
+
+    $db->from('<table name1>')->joinWhere(
+        '<table name2>',
+        function ($join) {
+            $join->on('<table name1>.<column1>', '<table name2>.<column1>')
+            ->orOn('<table name1>.<column2>', '<table name2>.<column2>');
+
+            // do something
+        }
+    );
+
+    // output: select ... join <table name> WHERE <table name1>.<column1> = <table name2>.<column1> OR <table name1>.<column2> = <table name2>.<column2>
+    ```
+
+1. `joinSub`
+
+    ```php
+
+    $db->from('<table name1>')->joinSub(
+        function ($builder) {
+            $builder->table('<table name2>');
+
+            // do something
+        },
+        '<as name2>',
+        function (\Wilkques\Database\Queries\JoinClause $join) {
+            $join->on('<table name1>.<column1>', '<as name2>.<column1>')
+            ->orOn('<table name1>.<column2>', '<as name2>.<column2>');
+        }
+    );
+
+    // output: select ... join (select ...) as `<as name2>` ON <table name1>.<column1> = <as name2>.<column1> OR <table name1>.<column2> = <as name2>.<column2>
+
+    // or
+
+    $dbTable = (
+        new \Wilkques\Database\Queries\Builder(
+            $connection,
+            new \Wilkques\Database\Queries\Grammar\MySql,
+            new \Wilkques\Database\Queries\Processors\Processor,
+        )
+    )->table('<table name1>');
+
+    $db->from('<table name1>')->joinSub(
+        $dbTable,
+        '<as name2>',
+        function (\Wilkques\Database\Queries\JoinClause $join) {
+            $join->on('<table name1>.<column1>', '<as name2>.<column1>')
+            ->orOn('<table name1>.<column2>', '<as name2>.<column2>');
+        }
+    );
+
+    // output: select ... join (select ...) as `<as name2>` ON <table name1>.<column1> = <as name2>.<column1> OR <table name1>.<column2> = <as name2>.<column2>
+    ```
+
+1. `joinSubWhere`
+
+    ```php
+
+    $db->from('<table name1>')->joinSubWhere(
+        function ($builder) {
+            $builder->table('<table name2>');
+
+            // do something
+        },
+        '<as name2>',
+        function (\Wilkques\Database\Queries\JoinClause $join) {
+            $join->on('<table name1>.<column1>', '<as name2>.<column1>')
+            ->orOn('<table name1>.<column2>', '<as name2>.<column2>');
+        }
+    );
+
+    // output: select ... join (select ...) as `<as name2>` WHERE <table name1>.<column1> = <as name2>.<column1> OR <table name1>.<column2> = <as name2>.<column2>
+
+    // or
+
+    $dbTable = (
+        new \Wilkques\Database\Queries\Builder(
+            $connection,
+            new \Wilkques\Database\Queries\Grammar\MySql,
+            new \Wilkques\Database\Queries\Processors\Processor,
+        )
+    )->table('<table name1>');
+
+    $db->from('<table name1>')->joinSubWhere(
+        $dbTable,
+        '<as name2>',
+        function (\Wilkques\Database\Queries\JoinClause $join) {
+            $join->on('<table name1>.<column1>', '<as name2>.<column1>')
+            ->orOn('<table name1>.<column2>', '<as name2>.<column2>');
+        }
+    );
+
+    // output: select ... join (select ...) as `<as name2>` WHERE <table name1>.<column1> = <as name2>.<column1> OR <table name1>.<column2> = <as name2>.<column2>
+    ```
+
+1. `leftJoin`
+
+    same `join`
+
+1. `leftJoinSub`
+
+    same `joinSub`
+
+1. `leftJoinWhere`
+
+    same `join`
+
+1. `leftJoinSubWhere`
+
+    same `joinSub`
+
+1. `rightJoin`
+
+    same `join`
+
+1. `rightJoinSub`
+
+    same `joinSub`
+
+1. `rightJoinWhere`
+
+    same `join`
+
+1. `rightJoinSubWhere`
+
+    same `joinSub`
+
+1. `crossJoin`
+
+    same `join`
+
+1. `crossJoinSub`
+
+    same `joinSub`
+
+1. `crossJoinWhere`
+
+    same `join`
+
+1. `crossJoinSubWhere`
+
+    same `joinSub`
+
+### where
+
+1. `where`
+
+    ```php
+
+    $db->where([
+        ['<columnName1>'],
+        ['<columnName2>'],
+        ['<columnName3>'],
+    ]);
+
+    // output: select ... where (<columnName1> IS NULL AND <columnName2> IS NULL AND <columnName3> IS NULL)
+
+    // or
+
+    $db->where('<columnName1>');
+
+    // output: select ... where (<columnName1> IS NULL)
+
+    // or
+
+    $db->where([
+        ['<columnName1>', '<value1>'],
+        ['<columnName2>', '<value2>'],
+        ['<columnName3>', '<value3>'],
+    ]);
+
+    // or
+
+    $db->where([
+        ['<columnName1>', '<operator1>', '<value1>'],
+        ['<columnName2>', '<operator2>', '<value2>'],
+        ['<columnName3>', '<operator3>', '<value3>'],
+    ]);
+
+    // or
+
+    $db->where('<columnName1>', "<operator>", '<columnValue1>');
+
+    // or
+
+    $db->where('<columnName1>', '<value1>')
+        ->where('<columnName2>', '<value2>')
+        ->where('<columnName3>', '<value3>');
+
+    // or
+
+    $db->where('<columnName1>', "<operator>", '<value1>')
+        ->where('<columnName2>', "<operator>", '<value2>')
+        ->where('<columnName3>', "<operator>", '<value3>');
+
+    // or
+
+    $db->where(function ($query) {
+        $query->where('<columnName1>', '<value1>')->where('<columnName2>', '<value2>');
+    });
+
+    // output: select ... where (<columnName1> = <value1> AND <columnName2> = <value2>)
+
+    // or
+
+    $dbTable = (
+        new \Wilkques\Database\Queries\Builder(
+            $connection,
+            new \Wilkques\Database\Queries\Grammar\MySql,
+            new \Wilkques\Database\Queries\Processors\Processor,
+        )
+    )->table('<table name1>');
+
+    $db->where($dbTable);
+
+    // same
+
+    $db->whereExists($dbTable);
+
+    // output: select ... where EXISTS (select ...)
+
+    // or
+
+    $db->where('<columnName>', $dbTable);
+
+    // output: select ... where '<columnName>' = (select ...)
+
+    // or
+
+    $db->where('<columnName>', "<operator>", $dbTable);
+
+    // output: select ... where '<columnName>' <operator> (select ...)
+
+    // or
+
+    $db->where('<columnName>', "<operator>", function ($query) {
+        $query->table('<table name>')->where('<columnName1>', '<value1>')->where('<columnName2>', '<value2>');
+    });
+
+    // output: select ... where '<columnName>' <operator> (select ...)
+    ```
+
+1. `orWhere`
+
+    same `where`
+
+1. `whereNull`
+
+    ```php
+
+    $db->whereNull('<columnName1>');
+    ```
+
+1. `orWhereNull`
+
+    same `whereNull`
+
+1. `whereNotNull`
+
+    same `whereNull`
+
+1. `orWhereNotNull`
+
+    same `whereNotNull`
+
+1. `whereIn`
+
+    ```php
+
+    $db->whereIn('<columnName1>', ['<columnValue1>', '<columnValue2>']);
+
+    // or
+
+    $dbTable = (
+        new \Wilkques\Database\Queries\Builder(
+            $connection,
+            new \Wilkques\Database\Queries\Grammar\MySql,
+            new \Wilkques\Database\Queries\Processors\Processor,
+        )
+    )->table('<table name1>');
+
+    $db->whereIn('<columnName1>', $dbTable);
+
+    // or
+
+    $db->whereIn('<columnName1>', function ($query) {
+        $query->select('<columnName2>')->table('<table name1>');
+    });
+    ```
+
+1. `orWhereIn`
+
+    same `whereIn`
+
+1. `whereNotIn`
+
+    same `whereIn`
+
+1. `orWhereNotIn`
+
+    same `whereIn`
+
+1. `whereBetween`
+
+    ```php
+
+    $db->whereBetween('<columnName1>', ['<columnValue1>', '<columnValue2>']);
+    ```
+
+1. `orWhereBetween`
+
+    same `whereBetween`
+
+1. `whereNotBetween`
+
+    same `whereBetween`
+
+1. `orWhereNotBetween`
+
+    same `whereBetween`
+
+1. `whereExists`
+
+    ```php
+
+    $db->whereExists(
+        function ($query) {
+            $query->table('<table name>');
+            // do something
+    });
+
+    // or
+
+    $dbTable = (
+        new \Wilkques\Database\Queries\Builder(
+            $connection,
+            new \Wilkques\Database\Queries\Grammar\MySql,
+            new \Wilkques\Database\Queries\Processors\Processor,
+        )
+    )->table('<table name1>');
+
+    $db->whereExists($dbTable);
+
+    // same
+
+    $db->where($dbTable);
+    ```
+
+1. `whereNotExists`
+
+    same `whereExists`
+
+1. `orWhereExists`
+
+    same `whereExists`
+
+1. `orWhereNotExists`
+
+    same `whereExists`
+
+1. `whereLike`
+
+    ```php
+
+    $db->whereLike('<columnName1>', '<columnValue2>');
+    ```
+
+1. `orWhereLike`
+
+    ```php
+
+    $db->orWhereLike('<columnName1>', '<columnValue2>');
+    ```
+
+### having
+
+1. `having`
+
+    ```php
+
+    $db->having(`<columnName1>`, `<columnValue1>`);
+
+    // or
+
+    $db->having(`<columnName1>`, "<operator>", `<columnValue1>`);
+
+    // or
+
+    $db->having(
+        `<columnName1>`,
+        function ($query) {
+            $query->table('<table name>');
+            // do something
+        }
+    );
+
+    // or
+
+    $db->having(
+        `<columnName1>`,
+        "<operator>",
+        function ($query) {
+            $query->table('<table name>');
+            // do something
+        }
+    );
+
+    // or
+
+    $dbTable = (
+        new \Wilkques\Database\Queries\Builder(
+            $connection,
+            new \Wilkques\Database\Queries\Grammar\MySql,
+            new \Wilkques\Database\Queries\Processors\Processor,
+        )
+    )->table('<table name1>');
+
+    $db->having(`<columnName1>`, $dbTable);
+
+    // or 
+
+    $db->having(`<columnName1>`, "<operator>", $dbTable);
+    ```
+
+1. `orHaving`
+
+    ```php
+
+    $db->orHaving(`<columnName1>`, `<columnValue1>`);
+
+    // or
+
+    $db->orHaving(`<columnName1>`, "<operator>", `<columnValue1>`);
+
+    // or
+
+    $db->orHaving(
+        `<columnName1>`,
+        function ($query) {
+            $query->table('<table name>');
+            // do something
+        }
+    );
+
+    // or
+
+    $db->orHaving(
+        `<columnName1>`,
+        "<operator>",
+        function ($query) {
+            $query->table('<table name>');
+            // do something
+        }
+    );
+
+    // or
+
+    $dbTable = (
+        new \Wilkques\Database\Queries\Builder(
+            $connection,
+            new \Wilkques\Database\Queries\Grammar\MySql,
+            new \Wilkques\Database\Queries\Processors\Processor,
+        )
+    )->table('<table name1>');
+
+    $db->orHaving(`<columnName1>`, $dbTable);
+
+    // or 
+
+    $db->orHaving(`<columnName1>`, "<operator>", $dbTable);
+    ```
+
+### limit or offset
 
 1. `limit`
 
     ```php
 
     $db->limit(1); // set query LIMIT
+
+    // or
+
+    $db->limit(10, 1); // set query LIMIT
     ```
 
 1. `offset`
@@ -90,19 +759,293 @@
     $db->offset(1); // set query OFFSET
     ```
 
+### group by
+
 1. `groupBy`
 
     ```php
 
-    $db->groupBy('<columnName1>');
+    $db->groupBy('<columnName1>', 'DESC'); // default ASC
+
+    // or
+
+    $db->groupBy([
+        ['<columnName1>', 'DESC'],
+        ['<columnName2>', 'ASC'],
+    ]);
+
+    // or
+
+    $db->groupBy([
+        [
+            function ($query) {
+                $query->table('<table name>');
+                // do something
+            }, 
+            'DESC'
+        ],
+        ['<columnName2>', 'ASC'],
+    ]);
+
+    // or
+
+    $dbTable = (
+        new \Wilkques\Database\Queries\Builder(
+            $connection,
+            new \Wilkques\Database\Queries\Grammar\MySql,
+            new \Wilkques\Database\Queries\Processors\Processor,
+        )
+    )->table('<table name1>');
+
+    $db->groupBy($dbTable, 'DESC'); // default ASC
+
+    // or
+
+    $db->groupBy([
+        [
+            $dbTable, 
+            'DESC'
+        ],
+        ['<columnName2>', 'ASC'],
+    ]);
     ```
+
+1. `groupByDesc`
+
+    ```php
+
+    $db->groupByDesc('<columnName1>');
+
+    // or
+
+    $db->groupByDesc('<columnName1>', '<columnName2>');
+
+    // or
+
+    $db->groupByDesc(
+        function ($query) {
+            $query->table('<table name>');
+            // do something
+        }, 
+        '<columnName2>'
+    );
+
+    // or
+
+    $db->groupByDesc(['<columnName1>', '<columnName2>']);
+
+    // or
+
+    $db->groupByDesc([
+        function ($query) {
+            $query->table('<table name>');
+            // do something
+        }, 
+        '<columnName2>'
+    ]);
+
+    // or
+
+    $dbTable = (
+        new \Wilkques\Database\Queries\Builder(
+            $connection,
+            new \Wilkques\Database\Queries\Grammar\MySql,
+            new \Wilkques\Database\Queries\Processors\Processor,
+        )
+    )->table('<table name1>');
+
+    $db->groupByDesc($dbTable, '<columnName1>'); // default ASC
+
+    // or
+
+    $db->groupByDesc([
+        $dbTable,
+        '<columnName1>'
+    ]);
+    ```
+
+1. `groupByAsc`
+
+    ```php
+
+    $db->groupByAsc('<columnName1>');
+
+    // or
+
+    $db->groupByAsc('<columnName1>', '<columnName2>');
+
+    // or
+
+    $db->groupByAsc(
+        function ($query) {
+            $query->table('<table name>');
+            // do something
+        }, 
+        '<columnName2>'
+    );
+
+    // or
+
+    $db->groupByAsc(['<columnName1>', '<columnName2>']);
+
+    // or
+
+    $db->groupByAsc([
+        function ($query) {
+            $query->table('<table name>');
+            // do something
+        }, 
+        '<columnName2>'
+    ]);
+
+    // or
+
+    $dbTable = (
+        new \Wilkques\Database\Queries\Builder(
+            $connection,
+            new \Wilkques\Database\Queries\Grammar\MySql,
+            new \Wilkques\Database\Queries\Processors\Processor,
+        )
+    )->table('<table name1>');
+
+    $db->groupByAsc($dbTable, '<columnName1>'); // default ASC
+
+    // or
+
+    $db->groupByAsc([
+        $dbTable,
+        '<columnName1>'
+    ]);
+    ```
+
+### order by
 
 1. `orderBy`
 
     ```php
 
     $db->orderBy('<columnName1>', "DESC"); // default ASC
+
+    // or
+
+    $db->orderBy([
+        ['<columnName1>', 'DESC'],
+        ['<columnName2>', 'ASC'],
+    ]);
+
+    // or
+
+    $db->orderBy([
+        [
+            function ($query) {
+                $query->table('<table name>');
+                // do something
+            }, 
+            'DESC'
+        ],
+        ['<columnName2>', 'ASC'],
+    ]);
     ```
+
+1. `orderByDesc`
+
+    ```php
+
+    $db->orderByDesc('<columnName1>');
+
+    // or
+
+    $db->orderByDesc('<columnName1>', '<columnName2>');
+
+    // or
+
+    $db->orderByDesc(
+        function ($query) {
+            $query->table('<table name>');
+            // do something
+        }, 
+        '<columnName2>'
+    );
+
+    // or
+
+    $db->orderByDesc(['<columnName1>', '<columnName2>']);
+
+    // or
+
+    $db->orderByDesc([
+        function ($query) {
+            $query->table('<table name>');
+            // do something
+        }, 
+        '<columnName2>'
+    ]);
+    ```
+
+1. `orderByAsc`
+
+    ```php
+
+    $db->orderByAsc('<columnName1>');
+
+    // or
+
+    $db->orderByAsc('<columnName1>', '<columnName2>');
+
+    // or
+
+    $db->orderByAsc(
+        function ($query) {
+            $query->table('<table name>');
+            // do something
+        }, 
+        '<columnName2>'
+    );
+
+    // or
+
+    $db->orderByAsc(['<columnName1>', '<columnName2>']);
+
+    // or
+
+    $db->orderByAsc([
+        function ($query) {
+            $query->table('<table name>');
+            // do something
+        }, 
+        '<columnName2>'
+    ]);
+    ```
+
+### union
+
+1. `union`
+
+    ```php
+
+    $db->union(function ($query) {
+        $query->table('<table name>');
+        // do something
+    });
+
+    // or
+
+    $dbTable = (
+        new \Wilkques\Database\Queries\Builder(
+            $connection,
+            new \Wilkques\Database\Queries\Grammar\MySql,
+            new \Wilkques\Database\Queries\Processors\Processor,
+        )
+    )->table('<table name1>');
+
+    $db->union($dbTable);
+
+    ```
+
+1. `unionAll`
+    sam `union`
+
+### Get Data
 
 1. `get`
 
@@ -115,8 +1058,17 @@
 
     ```php
 
-    $db->first(); // get data
+    $db->first(); // get first data
     ```
+
+1. `find`
+
+    ```php
+
+    $db->find('<id>'); // get find data
+    ```
+
+### Update
 
 1. `update`
 
@@ -134,17 +1086,29 @@
     $db->update([
         '<updateColumnName1>' => '<updateColumnValue1>'
     ]);
+
+    // or
+
+    $db->where('<columnName1>', "=", '<columnValue1>')->first();
+
+    $db->update([
+        '<updateColumnName1>' => function ($query) {
+            $query->table('<table name>')->select('<column name>');
+
+            // do something
+        }
+    ]);
     ```
 
 1. `increment`
 
     ```php
 
-    $db->increment('<columnNmae>');
+    $db->increment('<columnName>');
 
     // or
 
-    $db->increment('<columnNmae>', '<numeric>', [
+    $db->increment('<columnName>', '<numeric>', [
         '<update column 1>' => 'update value 1',
         '<update column 2>' => 'update value 2',
         ...
@@ -155,16 +1119,18 @@
 
     ```php
 
-    $db->decrement('<columnNmae>');
+    $db->decrement('<columnName>');
 
     // or
 
-    $db->decrement('<columnNmae>', '<numeric>', [
+    $db->decrement('<columnName>', '<numeric>', [
         '<update column 1>' => 'update value 1',
         '<update column 2>' => 'update value 2',
         ...
     ]);
     ```
+
+### Insert
 
 1. `insert`
 
@@ -192,6 +1158,25 @@
     ]);
     ```
 
+1. `insertSub`
+
+    ```php
+
+    $db->insertSub([
+        '<ColumnName1>' => 'ColumnValue1>',
+        '<ColumnName2>' => 'ColumnValue2>',
+        ...
+    ], function ($query) {
+        $query->table('<table name>')->select(
+            '<columnName1>',
+            '<ColumnName2>',
+            ...
+        )->where('<columnName3>', '<value3>')->where('<columnName4>', '<value4>');
+    });
+
+    // output: insert <table> (...) SELECT ...
+    ```
+
 ### Delete
 
 1. `delete`
@@ -207,9 +1192,7 @@
 
     $db->where('<columnName1>', "=", '<columnValue1>')->first();
 
-    $db->delete([
-        '<deleteColumnName1>' => '<deleteColumnValue1>'
-    ]);
+    $db->delete();
     ```
 
 1. `softDelete`
@@ -238,74 +1221,6 @@
     $db->where('<columnName1>', "=", '<columnValue1>')->first();
 
     $db->reStore('<deleteColumnName1>'); // default deleted_at
-    ```
-
-### Where
-
-1. `where`
-
-    ```php
-
-    $db->where([
-        ['<columnName1>', "=", '<columnValue1>'],
-    ]);
-
-    // or
-
-    $db->where('<columnName1>', "=", '<columnValue1>');
-    ```
-
-1. `whereIn`
-
-    ```php
-
-    $db->whereIn('<columnName1>', [
-        ['<columnValue1>', '<columnValue2>'],
-    ]);
-    ```
-
-1. `whereNull`
-
-    ```php
-
-    $db->whereNull('<columnName1>');
-
-    // or
-
-    $db->whereNull(['<columnName1>']);
-    ```
-
-1. `whereOrNull`
-
-    ```php
-
-    $db->whereOrNull('<columnName1>');
-
-    // or
-
-    $db->whereNull(['<columnName1>']);
-    ```
-
-1. `whereNotNull`
-
-    ```php
-
-    $db->whereNotNull('<columnName1>');
-
-    // or
-
-    $db->whereNotNull(['<columnName1>']);
-    ```
-
-1. `whereOrNotNull`
-
-    ```php
-
-    $db->whereOrNotNull('<columnName1>');
-
-    // or
-
-    $db->whereOrNotNull(['<columnName1>']);
     ```
 
 ### Raw
@@ -411,7 +1326,7 @@
     $db->getLastParseQuery();
     ```
 
-### 鎖
+### Lock
 
 1. `lockForUpdate`
 
@@ -448,6 +1363,10 @@
     ```php
 
     $db->getForPage(); // get page data
+
+    // or
+
+    $db->getForPage('<prePage>', '<currentPage>'); // get page data
     ```
 
 ### Transaction

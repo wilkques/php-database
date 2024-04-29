@@ -6,29 +6,30 @@ abstract class Connections
 {
     /** @var array */
     protected $config = array();
+
     /** @var static */
     protected $connection;
-    /** @var string */
-    protected $characterSet = "utf8mb4";
+
     /** @var bool */
     protected $loggingQueries = false;
+
     /** @var array */
-    protected $queryLog = [];
+    static $queryLog = array();
 
     /**
      * @param string $host
      * @param string $username
      * @param string $password
-     * @param string $dbname
+     * @param string $databaseName
      * @param string|int $port
      * @param string $characterSet
      */
-    public function __construct($host = null, $username = null, $password = null, $dbname = null, $port = 3306, $characterSet = "utf8mb4")
+    public function __construct($host = null, $username = null, $password = null, $databaseName = null, $port = 3306, $characterSet = "utf8mb4")
     {
         $this->setHost($host)
             ->setUsername($username)
             ->setPassword($password)
-            ->setDbname($dbname)
+            ->setDatabaseName($databaseName)
             ->setPort($port)
             ->setCharacterSet($characterSet);
     }
@@ -135,17 +136,17 @@ abstract class Connections
      * 
      * @return static
      */
-    public function setDbname($dbname)
+    public function setDatabaseName($dbname)
     {
-        return $this->setConfig("dbname", $dbname);
+        return $this->setConfig("databaseName", $dbname);
     }
 
     /**
      * @return string
      */
-    public function getDbname()
+    public function getDatabaseName()
     {
-        return $this->getConfig("dbname");
+        return $this->getConfig("databaseName");
     }
 
     /**
@@ -173,7 +174,7 @@ abstract class Connections
      */
     public function setCharacterSet($characterSet = "utf8mb4")
     {
-        $this->characterSet = $characterSet;
+        $this->setConfig('characterSet', $characterSet);
 
         return $this;
     }
@@ -183,7 +184,7 @@ abstract class Connections
      */
     public function getCharacterSet()
     {
-        return $this->characterSet;
+        return $this->getConfig('characterSet');
     }
 
     /**
@@ -193,7 +194,7 @@ abstract class Connections
      */
     public function setQueryLog($queryLog)
     {
-        $this->queryLog[] = $queryLog;
+        static::$queryLog[] = $queryLog;
 
         return $this;
     }
@@ -205,7 +206,7 @@ abstract class Connections
      */
     public function getQueryLog()
     {
-        return $this->queryLog;
+        return static::$queryLog;
     }
 
     /**
@@ -215,9 +216,19 @@ abstract class Connections
      */
     public function flushQueryLog()
     {
-        $this->queryLog = [];
+        static::$queryLog = [];
 
         return $this;
+    }
+
+    /**
+     * Get the connection query log.
+     *
+     * @return array
+     */
+    public function getLastQueryLog()
+    {
+        return end(static::$queryLog);
     }
 
     /**
@@ -272,7 +283,13 @@ abstract class Connections
         return array_map(function ($queryLog) {
             $stringSQL = str_replace('?', '"%s"', $queryLog['query']);
 
-            return sprintf($stringSQL, ...$queryLog['bindings']);
+            // return sprintf($stringSQL, ...$queryLog['bindings']);
+
+            $bindings = $queryLog['bindings'];
+
+            array_unshift($bindings, $stringSQL);
+
+            return array_map('sprintf', $bindings);
         }, $this->getQueryLog());
     }
 

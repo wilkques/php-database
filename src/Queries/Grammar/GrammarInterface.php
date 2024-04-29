@@ -2,41 +2,38 @@
 
 namespace Wilkques\Database\Queries\Grammar;
 
+use Wilkques\Database\Queries\Builder;
+
 interface GrammarInterface
 {
     /**
+     * @param Builder $builder
+     * 
      * @return string
      */
-    public function getQuery();
+    public function compilerSelect($builder);
+    
+    /**
+     * @param Builder $query
+     * @param array|[] $columns
+     * @param string|null $sql
+     * 
+     * @return string
+     */
+    public function compilerInsert($query, $data = [], $sql = null);
 
     /**
-     * @param string $from
+     * @param Builder $query
+     * @param array $columns
      * 
-     * @return static
+     * @return string
      */
-    public function setFrom(string $from);
+    public function compilerUpdate($query, $columns);
 
     /**
-     * @param int|string $offset
+     * @param Builder $query
      * 
-     * @return static
+     * @return string
      */
-    public function setOffset($offset = "?");
-
-    /**
-     * @param int|string $limit
-     * 
-     * @return static
-     */
-    public function setLimit($limit = "?");
-
-    /**
-     * @param string $column
-     * @param string $condition
-     * @param string $operate
-     * @param string $value
-     * 
-     * @return static
-     */
-    public function where($column, $condition = null, $operate = null, $value = "?");
+    public function compilerDelete($query);
 }

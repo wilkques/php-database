@@ -11,19 +11,15 @@ class Expression
      */
     protected $value;
 
-    protected $bindValue;
-
     /**
      * Create a new raw query expression.
      *
      * @param  mixed  $value
      * @return void
      */
-    public function __construct($value, $bindValue = null)
+    public function __construct($value)
     {
         $this->value = $value;
-
-        $this->bindValue = $bindValue;
     }
 
     /**
@@ -34,11 +30,6 @@ class Expression
     public function getValue()
     {
         return $this->value;
-    }
-
-    public function getBindValue()
-    {
-        return $this->bindValue;
     }
 
     /**

@@ -2,17 +2,22 @@
 
 namespace Wilkques\Database\Connections\PDO;
 
+use Wilkques\Database\Connections\Connections;
+
 class Result
 {
     /** @var \PDOStatement */
     protected $statement;
 
+    /** @var Connections */
+    protected $connections;
+
     /**
      * @param \PDOStatement $statement
      */
-    public function __construct(\PDOStatement $statement)
+    public function __construct($statement, Connections $connections)
     {
-        $this->setStatement($statement);
+        $this->setStatement($statement)->setConnections($connections);
     }
 
     /**
@@ -20,7 +25,7 @@ class Result
      * 
      * @return static
      */
-    public function setStatement(\PDOStatement $statement)
+    public function setStatement($statement)
     {
         $this->statement = $statement;
 
@@ -33,6 +38,26 @@ class Result
     public function getStatement()
     {
         return $this->statement;
+    }
+
+    /**
+     * @param Connections $connections
+     * 
+     * @return static
+     */
+    public function setConnections(Connections $connections)
+    {
+        $this->connections = $connections;
+
+        return $this;
+    }
+
+    /**
+     * @return Connections
+     */
+    public function getConnections()
+    {
+        return $this->connections;
     }
 
     /**
@@ -137,6 +162,18 @@ class Result
     public function fetchAll(int $mode = \PDO::FETCH_ASSOC)
     {
         $result = $this->getStatement()->fetchAll($mode);
+
+        $this->free();
+
+        return $result;
+    }
+
+    /**
+     * @return int|string
+     */
+    public function getLastInsertId()
+    {
+        $result = $this->getConnections()->getLastInsertId();
 
         $this->free();
 

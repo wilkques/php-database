@@ -2,55 +2,110 @@
 
 namespace Wilkques\Database\Queries;
 
+use Closure;
+use InvalidArgumentException;
 use Wilkques\Database\Connections\ConnectionInterface;
 use Wilkques\Database\Queries\Grammar\GrammarInterface;
-use Wilkques\Database\Queries\Process\ProcessInterface;
+use Wilkques\Database\Queries\Processors\ProcessorInterface;
 
 class Builder
 {
     /** @var array */
-    protected static $resolvers = array();
+    protected $resolvers = array();
+
     /** @var array */
-    protected $bindData = array();
+    protected $queries = array();
+
     /** @var array */
-    protected $paginate = array(
-        "prePage"       => 10,
-        "currentPage"   => 0,
+    protected $methods = array();
+
+    /**
+     * All of the available clause operators.
+     *
+     * @var string[]
+     */
+    public $operators = array(
+        '=', '<', '>', '<=', '>=', '<>', '!=', '<=>',
+        'like', 'like binary', 'not like', 'ilike',
+        '&', '|', '^', '<<', '>>', '&~',
+        'rlike', 'not rlike', 'regexp', 'not regexp',
+        '~', '~*', '!~', '!~*', 'similar to',
+        'not similar to', 'not ilike', '~~*', '!~~*',
+        'is not', 'is', 'not in', 'in', 'exists',
+        'not exists', 'between', 'not between',
+    );
+
+    /** @var array */
+    protected $bindingComponents = array(
+        'columns', 'from', 'joins', 'insert', 'update',
+        'wheres', 'groups', 'havings', 'orders', 'limit',
+        'offset', 'unions',
     );
 
     /**
      * @param ConnectionInterface $connection
      * @param GrammarInterface $grammar
-     * @param ProcessInterface $process
+     * @param ProcessorInterface $processor
      */
     public function __construct(
         ConnectionInterface $connection,
         GrammarInterface $grammar = null,
-        ProcessInterface $process = null
+        ProcessorInterface $processor = null
     ) {
-        static::resolverFor(static::class, $this);
-
-        $this->setConnection($connection)->setGrammar($grammar)->setProcess($process);
+        $this->resolverRegister(static::class, $this)
+            ->setConnection($connection)
+            ->setGrammar($grammar)
+            ->setProcessor($processor);
     }
 
     /**
-     * @param string $class
+     * @param string|object $abstract
+     * @param object|null $class
      * 
-     * @return string
+     * @return static
      */
-    public static function getResolverByKey($class)
+    public function resolverRegister($abstract, $class = null)
     {
-        foreach (static::$resolvers as $key => $abstract) {
-            if (in_array($class, class_implements($abstract))) {
-                break;
-            }
+        if (is_object($abstract)) {
+            $class = $abstract;
 
-            if (get_class($abstract) === $class) {
-                break;
-            }
+            $abstract = get_class($abstract);
         }
 
-        return $abstract;
+        data_set($this->resolvers, $abstract, $class);
+
+        return $this;
+    }
+
+    /**
+     * @return array
+     */
+    public function getResolvers()
+    {
+        return $this->resolvers;
+    }
+
+    /**
+     * @param string|object $abstract
+     * @param mixed|null $default
+     * 
+     * @return mixed
+     */
+    public function getResolver($abstract, $default = null)
+    {
+        if (is_object($abstract)) {
+            $abstract = array_search($abstract, $this->getResolvers());
+        }
+
+        if (interface_exists($abstract)) {
+            $abstract = array_filter($this->getResolvers(), function ($resolver) use ($abstract) {
+                return in_array($abstract, class_implements($resolver));
+            });
+
+            return current($abstract);
+        }
+
+        return data_get($this->getResolvers(), $abstract, $default);
     }
 
     /**
@@ -60,9 +115,7 @@ class Builder
      */
     public function setConnection(ConnectionInterface $connection)
     {
-        static::resolverFor(get_class($connection), $connection);
-
-        return $this;
+        return $this->resolverRegister($connection);
     }
 
     /**
@@ -70,7 +123,7 @@ class Builder
      */
     public function getConnection()
     {
-        return static::getResolverByKey(\Wilkques\Database\Connections\ConnectionInterface::class);
+        return $this->getResolver(ConnectionInterface::class);
     }
 
     /**
@@ -80,9 +133,7 @@ class Builder
      */
     public function setGrammar(GrammarInterface $grammar = null)
     {
-        static::resolverFor(get_class($grammar), $grammar);
-
-        return $this;
+        return $this->resolverRegister($grammar);
     }
 
     /**
@@ -90,228 +141,37 @@ class Builder
      */
     public function getGrammar()
     {
-        return static::getResolverByKey(\Wilkques\Database\Queries\Grammar\GrammarInterface::class);
+        return $this->getResolver(GrammarInterface::class);
     }
 
     /**
-     * @param ProcessInterface $process
+     * @param ProcessorInterface $processor
      * 
      * @return static
      */
-    public function setProcess(ProcessInterface $process = null)
+    public function setProcessor(ProcessorInterface $processor = null)
     {
-        static::resolverFor(get_class($process), $process);
+        return $this->resolverRegister($processor);
 
         return $this;
     }
 
     /**
-     * @return ProcessInterface
+     * @return ProcessorInterface
      */
-    public function getProcess()
+    public function getProcessor()
     {
-        return static::getResolverByKey(\Wilkques\Database\Queries\Process\ProcessInterface::class);
+        return $this->getResolver(ProcessorInterface::class);
     }
 
     /**
-     * @param int|string $limit
+     * @param array $queries
      * 
      * @return static
      */
-    public function setLimit($limit)
+    public function withQueries(array $queries)
     {
-        $this->getGrammar()->setLimit();
-
-        $index = $this->nextArrayIndex($this->getLimit());
-
-        return $this->setBindData("limit.{$index}", $limit);
-    }
-
-    /**
-     * @param int|string
-     */
-    public function getLimit()
-    {
-        return $this->getBindData("limit");
-    }
-
-    /**
-     * @param int|string $offset
-     * 
-     * @return static
-     */
-    public function setOffset($offset)
-    {
-        $this->getGrammar()->setOffset();
-
-        $index = $this->nextArrayIndex($this->getOffset());
-
-        return $this->setBindData("offset.{$index}", $offset);
-    }
-
-    /**
-     * @param int|string
-     */
-    public function getOffset()
-    {
-        return $this->getBindData("offset");
-    }
-
-    /**
-     * @param int|string $prePage
-     * 
-     * @return static
-     */
-    public function setPrePage($prePage = 10)
-    {
-        $this->paginate["prePage"] = $prePage;
-
-        return $this;
-    }
-
-    /**
-     * @return int|string
-     */
-    public function getPrePage()
-    {
-        return $this->paginate["prePage"];
-    }
-
-    /**
-     * @param int $prePage
-     * 
-     * @return static
-     */
-    public function setCurrentPage(int $currentPage = 1)
-    {
-        $this->paginate["currentPage"] = $currentPage;
-
-        return $this;
-    }
-
-    /**
-     * @return int
-     */
-    public function getCurrentPage()
-    {
-        return $this->paginate["currentPage"];
-    }
-
-    /**
-     * @param mixed $value
-     * @param mixed|null $bindValue
-     * 
-     * @return array
-     */
-    public function raw($value, $bindValue = null)
-    {
-        return new \Wilkques\Database\Queries\Expression($value, $bindValue);
-    }
-
-    /**
-     * @param string $column
-     * 
-     * @return static
-     */
-    public function setSelectRaw(string $column = "*")
-    {
-        return $this->select($this->raw($column));
-    }
-
-    /**
-     * @param string $where
-     * @param mixed|null $value
-     * 
-     * @return static
-     */
-    public function setWhereRaw(string $where, $value = null)
-    {
-        $this->getGrammar()->where($this->raw($where));
-
-        $value && $this->setBindData("where", $value);
-
-        return $this;
-    }
-
-    /**
-     * @param array $bindData
-     * 
-     * @return Result
-     */
-    public function exec(array $bindData = [])
-    {
-        $query = $this->getQuery();
-
-        $statement = $this->prepare($query);
-
-        $statement->bindParams($bindData);
-
-        if ($this->isLogging()) {
-            $bindings = $statement->getParams();
-
-            $this->setQueryLog(compact('query', 'bindings'));
-        }
-
-        return $statement->execute();
-    }
-
-    /**
-     * @return static
-     */
-    public function get()
-    {
-        return $this->compilerSelect()
-            ->exec($this->getForSelectBindData())
-            ->fetchAllAssociative();
-    }
-
-    /**
-     * @return static
-     */
-    public function first()
-    {
-        return $this->limit(1)
-            ->compilerSelect()
-            ->exec($this->getForSelectBindData())
-            ->fetchAssociative();
-    }
-
-    /**
-     * @param array $keys
-     * 
-     * @return array
-     */
-    public function getOnlyBindData(array $keys = null)
-    {
-        return \array_only($this->getBindData(), $keys);
-    }
-
-    /**
-     * @param array $keys
-     * 
-     * @return array
-     */
-    public function getOnlyBindDataField(array $keys)
-    {
-        return \array_field($this->getOnlyBindData($keys), $keys);
-    }
-
-    /**
-     * @param array $keys
-     * 
-     * @return array
-     */
-    public function getForSelectBindData(array $keys = array("where", "limit", "offset"))
-    {
-        return $this->getOnlyBindDataField($keys);
-    }
-
-    /**
-     * @param array $bindData
-     */
-    public function withBindData($bindData)
-    {
-        $this->bindData = $bindData;
+        $this->queries = $queries;
 
         return $this;
     }
@@ -322,340 +182,54 @@ class Builder
      * 
      * @return static
      */
-    public function setBindData(string $key, $value = null)
+    public function setQuery(string $key, $value = null)
     {
-        $bindData = $this->getBindData();
-
-        array_set($bindData, $key, $value);
-
-        $this->bindData = $bindData;
+        array_set($this->queries, $key, $value);
 
         return $this;
     }
 
     /**
-     * @param string|null $key
+     * @return array
+     */
+    public function getQueries()
+    {
+        return $this->queries;
+    }
+
+    /**
+     * @param string $key
      * @param mixed|null $default
      * 
-     * @return string|array
+     * @return mixed|null
      */
-    public function getBindData(string $key = null, $default = null)
+    public function getQuery($key, $default = null)
     {
-        $bindData = $this->bindData;
-
-        return array_get($bindData, $key, $default);
-    }
-
-    /**
-     * @param array $data
-     * 
-     * @return int
-     */
-    public function nextArrayIndex($data)
-    {
-        $index = 0;
-
-        $data && $index = array_key_last($data) + 1;
-
-        return $index;
-    }
-
-    /**
-     * @param array|string $key
-     * @param string|mixed|null $condition
-     * @param mixed|null $value
-     * 
-     * @return static
-     */
-    public function where($key, $condition = null, $value = null)
-    {
-        return $this->whereCondition($key, $condition, $value);
-    }
-
-    /**
-     * @param array|string $key
-     * @param string|mixed|null $condition
-     * @param mixed|null $value
-     * 
-     * @return static
-     */
-    public function orWhere($key, $condition = null, $value = null)
-    {
-        return $this->whereCondition($key, $condition, $value, "OR", "orWhere");
-    }
-
-    /**
-     * @param array|string $key
-     * @param string|mixed $condition
-     * @param mixed|null $value
-     * @param string $andOr
-     * @param string $method
-     * 
-     * @return static
-     */
-    protected function whereCondition($key, $condition, $value = null, string $andOr = "AND", string $method = "where")
-    {
-        if (is_array($key)) {
-            array_map(function ($item) use ($method) {
-                call_user_func_array(array($this, $method), $item);
-            }, $key);
-
-            return $this;
-        }
-
-        $whereBindData = $this->getBindData("where") ?: array();
-
-        $index = $this->nextArrayIndex($whereBindData);
-
-        if (!$value) {
-            $value = $condition;
-            $condition = "=";
-        }
-
-        $this->getGrammar()->where($key, $condition, $andOr);
-
-        if ($key instanceof \Wilkques\Database\Queries\Expression) {
-            $data = $key->getBindValue();
-
-            array_push($whereBindData, ...$data);
-
-            return $this->setBindData("where", $whereBindData);
-        }
-
-        $value && $this->setBindData("where.{$index}", $value);
-
-        return $this;
-    }
-
-    /**
-     * @param string $column
-     * @param array  $data
-     * 
-     * @return static
-     */
-    public function whereIn($column, $data)
-    {
-        !is_string($column) && $this->argumentsThrowError(" First Arguments must be string");
-
-        $query = implode(", ", array_fill(0, count($data), "?"));
-
-        $whereBindData = $this->getBindData("where") ?: array();
-
-        array_push($whereBindData, ...$data);
-
-        return $this->setBindData("where", $whereBindData)->whereRaw("`{$column}` IN ({$query})");
-    }
-
-    /**
-     * @return int
-     */
-    public function count()
-    {
-        return (int) $this->fromSub(function (self $query) {
-            $query->compilerSelect(array("from", "where", "groupBy", "orderBy"));
-        }, "total_count")
-            ->selectRaw("COUNT(*) as count")
-            ->compilerSelect(array("from"))
-            ->exec($this->getForSelectBindData(array("from", "where")))
-            ->fetchFirstColumn();
+        return array_get($this->getQueries(), $key, $default);
     }
 
     /**
      * @return static
      */
-    public function getForPage()
+    public function newQuery()
     {
-        $this->setLimit($this->getPrePage())->setOffset(((int) $this->getCurrentPage() - 1) * $this->getPrePage());
-
-        $items = $this->get();
-
-        $total = $this->count();
-
-        return compact('total', 'items');
+        return new static($this->getConnection(), $this->getGrammar(), $this->getProcessor());
     }
 
     /**
+     * @param callback|static|Closure $callback
+     * 
      * @return array
-     */
-    public function getForUpdateBindData()
-    {
-        return $this->getOnlyBindDataField(array("update", "where"));
-    }
-
-    /**
-     * @param array $data
      * 
-     * @return static
+     * @throws InvalidArgumentException
      */
-    public function update($data)
+    protected function createSub($callback)
     {
-        !is_array($data) && $this->argumentsThrowError(" first Arguments must be array");
-
-        return $this->setBindData("update", array_values($data))
-            ->setUpdate($data)
-            ->compilerUpdate()
-            ->exec($this->getForUpdateBindData())
-            ->rowCount();
-    }
-
-    /**
-     * @param string $column
-     * @param int|string $value
-     * @param array $data
-     * 
-     * @return static
-     */
-    public function increment($column, $value = 1, $data = array())
-    {
-        !is_numeric($value) && $this->argumentsThrowError(" second Arguments must be numeric");
-
-        return $this->update($data + [
-            $column => $this->raw("`{$column}` = `{$column}` + ?", $value)
-        ]);
-    }
-
-    /**
-     * @param string $column
-     * @param int|string $value
-     * @param array $data
-     * 
-     * @return static
-     */
-    public function decrement($column, $value = 1, $data = array())
-    {
-        !is_numeric($value) && $this->argumentsThrowError(" second Arguments must be numeric");
-
-        return $this->update($data + [
-            $column => $this->raw("`{$column}` = `{$column}` - ?", $value)
-        ]);
-    }
-
-    /**
-     * @return array
-     */
-    public function getForWhereBindData()
-    {
-        return $this->getOnlyBindDataField(array("where"));
-    }
-
-    /**
-     * @return static
-     */
-    public function delete()
-    {
-        return $this->compilerDelete()
-            ->exec($this->getForWhereBindData())
-            ->rowCount();
-    }
-
-    /**
-     * @param string $column
-     * @param string $dateTimeFormat
-     * 
-     * @return static
-     */
-    public function softDelete(string $column = 'deleted_at', string $dateTimeFormat = "Y-m-d H:i:s")
-    {
-        !is_string($column) && $this->argumentsThrowError(" first Arguments must be string");
-
-        $value = date($dateTimeFormat);
-
-        return $this->update([
-            $column => $value
-        ]);
-    }
-
-    /**
-     * @param string $column
-     * 
-     * @return static
-     */
-    public function reStore(string $column = 'deleted_at')
-    {
-        !is_string($column) && $this->argumentsThrowError(" first Arguments must be string");
-
-        $value = null;
-
-        return $this->update([
-            $column => $value
-        ]);
-    }
-
-    /**
-     * @param array $data
-     * 
-     * @return static
-     */
-    public function insert($data)
-    {
-        !is_array($data) && $this->argumentsThrowError(" first Arguments must be array");
-
-        return $this->setBindData("insert", $data)
-            ->setInsert($data)
-            ->compilerInsert()
-            ->exec($this->getOnlyBindData(array("insert")))
-            ->rowCount();
-    }
-
-    /**
-     * @param string $from
-     * @param mixed|null $value
-     * 
-     * @return static
-     */
-    public function setFromRaw($from, $value = null)
-    {
-        $this->getGrammar()->setFrom((string) $this->raw($from));
-
-        $value && $this->setBindData("from", $value);
-
-        return $this;
-    }
-
-    /**
-     * Makes "from" fetch from a subquery.
-     *
-     * @param  \Closure|\Illuminate\Database\Query\Builder|string  $query
-     * @param  string  $as
-     * @return static
-     *
-     * @throws \InvalidArgumentException
-     */
-    public function fromSub($query, $as)
-    {
-        list($query, $bindData) = $this->createSub($query);
-
-        return $this->setFromRaw('(' . $query . ') as ' . $as, $bindData);
-    }
-
-    /**
-     * Creates a subquery and parse it.
-     *
-     * @param  \Closure|\Illuminate\Database\Query\Builder|string  $query
-     * @return array
-     */
-    protected function createSub($query)
-    {
-        // If the given query is a Closure, we will execute it while passing in a new
-        // query instance to the Closure. This will give the developer a chance to
-        // format and work with the query before we cast it to a raw SQL string.
-        if ($query instanceof \Closure) {
-            $callback = $query;
-
-            $callback($query = $this->forSubQuery());
+        if ($callback instanceof Closure) {
+            call_user_func($callback, $callback = $this->forSubQuery());
         }
 
-        return $this->parseSub($query);
-    }
-
-    /**
-     * Create a new query instance for a sub-query.
-     *
-     * @return \Illuminate\Database\Query\Builder
-     */
-    protected function forSubQuery()
-    {
-        return $this->newQuery();
+        return $this->parseSub($callback);
     }
 
     /**
@@ -671,14 +245,16 @@ class Builder
         if ($query instanceof self) {
             $query = $this->prependDatabaseNameIfCrossDatabaseQuery($query);
 
-            return array($query->getQuery(), $query->getBindData());
-        } elseif (is_string($query)) {
-            return array($query, array());
-        } else {
-            throw new \InvalidArgumentException(
-                'A subquery must be a query builder instance, a Closure, or a string.'
-            );
+            return array($query->toSql(), $query->getBindings());
         }
+
+        if (is_string($query) || is_numeric($query) || $query instanceof Expression) {
+            return array($query, array());
+        }
+
+        throw new InvalidArgumentException(
+            'A subquery must be a query builder instance, a Closure, or a string.'
+        );
     }
 
     /**
@@ -690,13 +266,15 @@ class Builder
     protected function prependDatabaseNameIfCrossDatabaseQuery($query)
     {
         if (
-            $query->getConnection()->getDbname() !==
-            $this->getConnection()->getDbname()
+            $query->getConnection()->getDatabaseName() !==
+            $this->getConnection()->getDatabaseName()
         ) {
-            $databaseName = $query->getConnection()->getDbname();
+            $databaseName = $query->getConnection()->getDatabaseName();
 
-            if (strpos($query->getFrom(), $databaseName) !== 0 && strpos($query->getFrom(), '.') === false) {
-                $query->from($databaseName . '.' . $query->getFrom());
+            $from = $query->getFrom();
+
+            if (strpos($from, $databaseName) !== 0 && strpos($from, '.') === false) {
+                $query->setFrom($databaseName . '.' . $from);
             }
         }
 
@@ -704,50 +282,1642 @@ class Builder
     }
 
     /**
-     * Get a new instance of the query builder.
-     *
-     * @return \Wilkques\Database\Queries\Builder
+     * @return string
      */
-    public function newQuery()
+    protected function toSql()
     {
-        return new static($this->getConnection(), $this->getGrammar(), $this->getProcess());
+        return $this->getGrammar()->compilerSelect($this);
     }
 
     /**
-     * @throws \UnexpectedValueException
+     * @param array|[] $except
+     * 
+     * @return array
      */
-    protected function argumentsThrowError($message = "")
+    protected function getBindings($except = array())
     {
-        throw new \UnexpectedValueException(
-            sprintf(
-                "DB::%s arguments is error.%s",
-                debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1]['function'],
-                $message
-            )
+        $components = $this->bindingComponents;
+
+        $components = array_filter($components, function ($component) use ($except) {
+            return !in_array($component, $except);
+        });
+
+        $bindings = array();
+
+        foreach ($components as $component) {
+            $binding = $this->getQuery("{$component}.bindings");
+
+            if (is_array($binding)) {
+                $bindings = array_merge($bindings, $binding);
+            } else if (!is_null($binding)) {
+                $bindings[] = $binding;
+            }
+        }
+
+        return array_reduce($bindings, function ($carry, $binding) {
+            if (!$carry) {
+                $carry = array();
+            }
+
+            if (is_array($binding)) {
+                return array_merge($carry, $binding);
+            } else {
+                $carry[] = $binding;
+
+                return $carry;
+            }
+        });
+    }
+
+    /**
+     * @param  mixed  $query
+     * @param  mixed  $binding
+     * @param  string  $type
+     * 
+     * @return static
+     *
+     * @throws \InvalidArgumentException
+     */
+    protected function queriesPush($query, $binding, $type = 'wheres')
+    {
+        $this->queries[$type]['queries'][] = $query;
+
+        $this->queries[$type]['bindings'][] = $binding;
+
+        return $this;
+    }
+
+    /**
+     * @param  mixed  $value
+     * @param  string  $type
+     * 
+     * @return static
+     *
+     * @throws \InvalidArgumentException
+     */
+    protected function queryPush($values, $type = 'wheres')
+    {
+        $this->queries[$type]['queries'][] = $values;
+
+        return $this;
+    }
+
+    /**
+     * Add a binding to the query.
+     *
+     * @param  mixed  $value
+     * @param  string  $type
+     * @return static
+     *
+     * @throws \InvalidArgumentException
+     */
+    protected function bindingPush($values, $type = 'wheres')
+    {
+        $this->queries[$type]['bindings'][] = $values;
+
+        return $this;
+    }
+
+    /**
+     * @param string|int $value
+     * 
+     * @return Expression
+     */
+    public function raw($value)
+    {
+        return new Expression($value);
+    }
+
+    /**
+     * @param string|callback $froms
+     * @param string|null $as
+     * 
+     * @return static
+     */
+    public function from($froms, $as = null)
+    {
+        if (!is_array($froms)) {
+            if ($as) {
+                $froms = array(
+                    $as => $froms
+                );
+            } else {
+                $froms = array(
+                    $froms
+                );
+            }
+        }
+
+        foreach ($froms as $as => $from) {
+            if ($from instanceof Closure || $from instanceof self) {
+                $this->fromSub($from, (is_string($as) ? $as : null));
+            } else {
+                $from = is_string($as) ? "{$from} AS `{$as}`" : $from;
+
+                $this->queryPush($from, 'from');
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @param string|callback $from
+     * @param string|null $as
+     * 
+     * @return static
+     */
+    public function fromSub($from, $as = null)
+    {
+        if (is_array($from)) {
+            return $this->from($from);
+        }
+
+        list($query, $bindings) = $this->createSub($from);
+
+        $query = "({$query})";
+
+        $query = $as ? "{$query} AS `{$as}`" : $query;
+
+        if (!empty($bindings)) {
+            $this->bindingPush($bindings, 'from');
+        }
+
+        $this->queryPush($query, 'from');
+
+        return $this;
+    }
+
+    /**
+     * @return array
+     */
+    public function getFrom()
+    {
+        return $this->getQuery("from.queries");
+    }
+
+    /**
+     * @param string|callback $table
+     * @param string|null $as
+     * 
+     * @return static
+     */
+    public function setTable($table, $as = null)
+    {
+        return $this->from($table, $as);
+    }
+
+    /**
+     * @return string
+     */
+    public function getTable()
+    {
+        return $this->getFrom();
+    }
+
+    /**
+     * @param array|string <$column|...$column>
+     * 
+     * @return static
+     */
+    public function select($columns = array('*'))
+    {
+        if (!is_array($columns)) {
+            $columns = func_get_args();
+        }
+
+        foreach ($columns as $as => $column) {
+            if ($column instanceof Closure || $column instanceof self) {
+                $this->selectSub($column, (is_string($as) ? $as : null));
+            } else {
+                $this->queryPush($column, 'columns');
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @param string $column
+     * @param string|null $as
+     * 
+     * @return static
+     */
+    public function selectSub($column, $as = null)
+    {
+        if (is_array($column)) {
+            return $this->select($column);
+        }
+
+        list($queries, $bindings) = $this->createSub($column);
+
+        $queries = "({$queries})";
+
+        $queries = $as ? "{$queries} AS `{$as}`" : $queries;
+
+        $this->queryPush($queries, 'columns');
+
+        if (!empty($bindings)) {
+            $this->bindingPush($bindings, 'columns');
+        }
+
+        return $this;
+    }
+
+    /**
+     * Prepare the value and operator for a where clause.
+     *
+     * @param  string  $value
+     * @param  string  $operator
+     * @param  bool  $useDefault
+     * @return array
+     *
+     * @throws \InvalidArgumentException
+     */
+    public function prepareValueAndOperator($value, $operator, $useDefault = false)
+    {
+        if ($useDefault) {
+            return array($operator, '=');
+        } elseif ($this->invalidOperatorAndValue($operator, $value)) {
+            throw new InvalidArgumentException('Illegal operator and value combination.');
+        }
+
+        return array($value, $operator);
+    }
+
+    /**
+     * Determine if the given operator and value combination is legal.
+     *
+     * Prevents using Null values with invalid operators.
+     *
+     * @param  string  $operator
+     * @param  mixed  $value
+     * @return bool
+     */
+    protected function invalidOperatorAndValue($operator, $value)
+    {
+        return is_null($value) && in_array($operator, $this->operators) &&
+            !in_array($operator, array('=', '<>', '!='));
+    }
+
+    /**
+     * Determine if the given operator is supported.
+     *
+     * @param  string  $operator
+     * @return bool
+     */
+    protected function invalidOperator($operator)
+    {
+        return !is_string($operator) || (!in_array(strtolower($operator), $this->operators, true));
+    }
+
+    /**
+     * Add an array of where clauses to the query.
+     *
+     * @param  array  $column
+     * @param  string  $join
+     * @param  string  $method
+     * @param  string  $type
+     * 
+     * @return static
+     */
+    protected function arrayNested($column, $join, $method = 'where', $type = 'wheres')
+    {
+        return call_user_func(function ($column, $method, $join, $type) {
+            return call_user_func(array($this, 'nested'), function ($query) use ($column, $method, $join) {
+                foreach ($column as $key => $value) {
+                    if (is_numeric($key) && is_array($value)) {
+                        call_user_func_array(array($query, $method), array_values($value));
+                    } else {
+                        call_user_func_array(array($query, $method), array($key, '=', $value, $join));
+                    }
+                }
+            }, $join, $type);
+        }, $column, $method, $join, $type);
+    }
+
+    /**
+     * Add a nested where statement to the query.
+     *
+     * @param  \Closure|callback  $callback
+     * @param  string  $join
+     * @param  string  $type
+     * 
+     * @return static
+     */
+    public function nested($callback, $join = 'and', $type = 'wheres')
+    {
+        call_user_func($callback, $query = $this->forNested());
+
+        return $this->addNestedQuery($query, $join, $type);
+    }
+
+    /**
+     * Create a new query instance for nested condition.
+     *
+     * @return Builder
+     */
+    public function forNested()
+    {
+        return $this->newQuery()->from($this->getQuery('from.queries'));
+    }
+
+    /**
+     * Add another query builder as a nested where to the query builder.
+     *
+     * @param  Builder  $query
+     * @param  string  $join
+     * @param  string  $type
+     * 
+     * @return static
+     */
+    public function addNestedQuery($query, $join = 'and', $type = 'wheres')
+    {
+        $queries = $query->getQuery("{$type}.queries");
+
+        if (in_array($type, array('groups', 'orders'))) {
+            $sql = join(', ', $queries);
+
+            $this->queryPush($sql, $type);
+        } else {
+            $sql = join(' ', $queries);
+
+            $sql = ltrim(ltrim($sql, 'AND '), 'OR ');
+
+            $join = strtoupper($join);
+
+            $this->queryPush("{$join} ({$sql})", $type);
+        }
+
+        $bindings = $query->getQuery("{$type}.bindings");
+
+        if (!empty($bindings)) {
+            $this->bindingPush($bindings, $type);
+        }
+
+        return $this;
+    }
+
+    /**
+     * @param string|array|callback $column
+     * @param string|null $operator
+     * @param mixed|null $value
+     * @param string $andOr
+     * 
+     * @return static
+     */
+    public function where($column, $operator = null, $value = null, $andOr = 'and')
+    {
+        // 參數若為: array(array($column, $operator, $value, $andOr), array($column, $operator, $value, $andOr))
+        if (is_array($column)) {
+            return $this->arrayNested($column, $andOr);
+        }
+
+        // 如果帶入參數只有兩個，則 $value = $operator and $operator = '='
+        // 若否判斷 $operator 在 $this->operators 裡面有無符合的
+        // 有，返回 $operator 無，則返回例外
+        list($value, $operator) = $this->prepareValueAndOperator(
+            $value,
+            $operator,
+            func_num_args() === 2
+        );
+
+        if ($column instanceof Closure && is_null($operator)) {
+            return $this->nested($column, $andOr);
+        }
+
+        if ($column instanceof self && !is_null($operator)) {
+            list($sub, $bindings) = $this->createSub($column);
+
+            if (!empty($bindings)) {
+                $this->bindingPush($bindings);
+            }
+
+            return $this->where($this->raw('(' . $sub . ')'), $operator, $value, $andOr);
+        }
+
+        if ($this->invalidOperator($operator)) {
+            list($value, $operator) = array($operator, '=');
+        }
+
+        if (is_null($value) && $column instanceof self) {
+            if ('and' == $andOr) {
+                return $this->whereExists($column);
+            }
+
+            return $this->orWhereExists($column);
+        }
+
+        if ($value instanceof self || $value instanceof Closure) {
+            return $this->whereSub($column, $operator, $value, $andOr);
+        }
+
+        if ($value instanceof Expression) {
+            $andOr = strtoupper($andOr);
+
+            $operator = strtoupper($operator);
+
+            return $this->queryPush("{$andOr} {$column} {$operator} {$value}");
+        }
+
+        if (is_null($value)) {
+            if ('and' == $andOr) {
+                return $this->whereNull($column);
+            }
+
+            return $this->orWhereNull($column);
+        }
+
+        $varValue = '?';
+
+        $andOr = strtoupper($andOr);
+
+        if (is_array($value)) {
+            if (in_array($operator, ['between', 'not between'])) {
+                $varValue = join(" {$andOr} ", array_fill(0, count($value), "?"));
+            } else {
+                $varValue = "(" . join(',', array_fill(0, count($value), "?")) . ")";
+            }
+        }
+
+        $operator = strtoupper($operator);
+
+        return $this->queriesPush("{$andOr} {$column} {$operator} {$varValue}", $value);
+    }
+
+    /**
+     * Add a full sub-select to the query.
+     *
+     * @param  string|array  $column
+     * @param  string  $operator
+     * @param  \Closure  $callback
+     * @param  string  $andOr
+     * 
+     * @return static
+     */
+    public function whereSub($column, $operator, $callback, $andOr = 'and')
+    {
+        $operator = strtolower($operator);
+
+        // 如果帶入參數只有兩個，則 $value = $operator and $operator = '='
+        // 若否判斷 $operator 在 $this->operators 裡面有無符合的
+        // 有，返回 $operator 無，則返回例外
+        list($callback, $operator) = $this->prepareValueAndOperator(
+            $callback,
+            $operator,
+            func_num_args() === 2
+        );
+
+        $andOr = strtoupper($andOr);
+
+        $operator = strtoupper($operator);
+
+        list($sql, $bindings) = $this->createSub($callback);
+
+        $this->queryPush("{$andOr} {$column} {$operator} ({$sql})");
+
+        if (!empty($bindings)) {
+            $this->bindingPush($bindings);
+        }
+
+        return $this;
+    }
+
+    /**
+     * Add a full sub-select to the query.
+     *
+     * @param  string  $column
+     * @param  string  $operator
+     * @param  \Closure  $callback
+     * 
+     * @return static
+     */
+    public function orWhereSub($column, $operator, $callback)
+    {
+        return $this->whereSub($column, $operator, $callback, 'or');
+    }
+
+    /**
+     * @param string|array $column
+     * @param string|null $operator
+     * @param mixed|null $value
+     * 
+     * @return static
+     */
+    public function orWhere($column, $operator = null, $value = null)
+    {
+        return $this->where($column, $operator, $value, 'or');
+    }
+
+    /**
+     * @param string $column
+     * @param string $andOr
+     * @param bool|false $not
+     * 
+     * @return static
+     */
+    public function whereNull($column, $andOr = 'and', $not = false)
+    {
+        if ($column instanceof Closure) {
+            return $this->nested($column, $andOr);
+        }
+
+        $andOr = strtoupper($andOr);
+
+        $type = $not ? 'NOT NULL' : 'NULL';
+
+        $this->queryPush("{$andOr} {$column} IS {$type}");
+
+        return $this;
+    }
+
+    /**
+     * @param string $column
+     * @param bool|false $not
+     * 
+     * @return static
+     */
+    public function orWhereNull($column, $not = false)
+    {
+        return $this->whereNull($column, 'or', $not);
+    }
+
+    /**
+     * @param string $column
+     * 
+     * @return static
+     */
+    public function whereNotNull($column)
+    {
+        return $this->whereNull($column, 'and', true);
+    }
+
+    /**
+     * @param string $column
+     * 
+     * @return static
+     */
+    public function orWhereNotNull($column)
+    {
+        return $this->orWhereNull($column, true);
+    }
+
+    /**
+     * @param string $column
+     * @param array|callback $in
+     * 
+     * @return static
+     */
+    public function whereIn($column, $in)
+    {
+        if ($in instanceof Closure || $in instanceof self) {
+            return $this->whereSub($column, 'in', $in);
+        }
+
+        return $this->where($column, 'in', $in);
+    }
+
+    /**
+     * @param string $column
+     * @param array $in
+     * 
+     * @return static
+     */
+    public function orWhereIn($column, $in)
+    {
+        if ($in instanceof Closure || $in instanceof self) {
+            return $this->orWhereSub($column, 'in', $in);
+        }
+
+        return $this->orWhere($column, 'in', $in);
+    }
+
+    /**
+     * @param string $column
+     * @param array $in
+     * 
+     * @return static
+     */
+    public function whereNotIn($column, $in)
+    {
+        return $this->where($column, 'not in', $in);
+    }
+
+    /**
+     * @param string $column
+     * @param array $in
+     * 
+     * @return static
+     */
+    public function orWhereNotIn($column, $in)
+    {
+        return $this->orWhere($column, 'not in', $in);
+    }
+
+    /**
+     * @param string|array $column
+     * @param string $value
+     * 
+     * @return static
+     */
+    public function whereLike($column, $value)
+    {
+        return $this->where($column, 'like', $value);
+    }
+
+    /**
+     * @param string|array $column
+     * @param string $value
+     * 
+     * @return static
+     */
+    public function orWhereLike($column, $value)
+    {
+        return $this->orWhere($column, 'like', $value);
+    }
+
+    /**
+     * @param callback|static $callback
+     * @param string $andOr
+     * @param bool|false $not
+     * 
+     * @return static
+     */
+    public function whereExists($callback, $andOr = 'and', $not = false)
+    {
+        list($sql, $bindings) = $this->createSub($callback);
+
+        $andOr = strtoupper($andOr);
+
+        $type = $not ? 'NOT ' : '';
+
+        $this->queryPush(sprintf("%s %sEXISTS (%s)", $andOr, $type, $sql));
+
+        if (!empty($bindings)) {
+            $this->bindingPush($bindings);
+        }
+
+        return $this;
+    }
+
+    /**
+     * @param callback|static $callback
+     * 
+     * @return static
+     */
+    public function whereNotExists($callback)
+    {
+        return $this->whereExists($callback, 'and', true);
+    }
+
+    /**
+     * @param callback|static $callback
+     * @param bool|false $not
+     * 
+     * @return static
+     */
+    public function orWhereExists($callback, $not = false)
+    {
+        return $this->whereExists($callback, 'or', $not);
+    }
+
+    /**
+     * @param callback|static $callback
+     * 
+     * @return static
+     */
+    public function orWhereNotExists($callback)
+    {
+        return $this->orWhereExists($callback, true);
+    }
+
+    /**
+     * @param string $column
+     * @param array $values
+     * @param bool|false $not
+     * 
+     * @return static
+     */
+    public function whereBetween($column, $values, $not = false)
+    {
+        return $this->where($column, ($not ? 'not between' : 'between'), $values);
+    }
+
+    /**
+     * @param string $column
+     * @param array $values
+     * @param bool|false $not
+     * 
+     * @return static
+     */
+    public function orWhereBetween($column, $values, $not = false)
+    {
+        return $this->orWhere($column, ($not ? 'not between' : 'between'), $values);
+    }
+
+    /**
+     * @param string $column
+     * @param array $values
+     * 
+     * @return static
+     */
+    public function whereNotBetween($column, $values)
+    {
+        return $this->whereBetween($column, $values, true);
+    }
+
+    /**
+     * @param string $column
+     * @param array $values
+     * 
+     * @return static
+     */
+    public function orWhereNotBetween($column, $values)
+    {
+        return $this->orWhereBetween($column, $values, true);
+    }
+
+    /**
+     * @param string|array $column
+     * @param string $sort
+     * 
+     * @return static
+     */
+    public function groupBy($column, $sort = 'ASC')
+    {
+        // 參數若為: array(array($column, $sort), array($column, $sort))
+        if (is_array($column)) {
+            return $this->arrayNested($column, '', 'groupBy', 'groups');
+        }
+
+        if ($column instanceof Closure || $column instanceof self) {
+            return $this->groupBySub($column, $sort);
+        }
+
+        return $this->queryPush("{$column} {$sort}", 'groups');
+    }
+
+    /**
+     * @param string|array|callback|static $column
+     * @param string $sort
+     * 
+     * @return static
+     */
+    public function groupBySub($column, $sort = 'ASC')
+    {
+        list($sub, $bindings) = $this->createSub($column);
+
+        if (!empty($bindings)) {
+            $this->bindingPush($bindings, 'groups');
+        }
+
+        return $this->queryPush("({$sub}) {$sort}", 'groups');
+    }
+
+    /**
+     * @param string|array $column
+     * 
+     * @return static
+     */
+    public function groupByAsc($column)
+    {
+        if (!is_array($column)) {
+            $column = func_get_args();
+        }
+
+        return $this->groupBy(
+            array_map(function ($column) {
+                return array($column, 'ASC');
+            }, $column)
         );
     }
 
     /**
-     * Register a connection resolver.
-     *
-     * @param  string  $abstract
-     * @param  mixed  $class
-     * @return void
+     * @param string|array $column
+     * 
+     * @return static
      */
-    public static function resolverFor($abstract, $class)
+    public function groupByDesc($column)
     {
-        static::$resolvers[$abstract] = $class;
+        if (!is_array($column)) {
+            $column = func_get_args();
+        }
+
+        return $this->groupBy(
+            array_map(function ($column) {
+                return array($column, 'DESC');
+            }, $column)
+        );
     }
 
     /**
-     * Get the connection resolver for the given driver.
+     * Add a "having" clause to the query.
      *
-     * @param  string  $abstract
+     * @param  string  $column
+     * @param  string|null  $operator
+     * @param  string|null  $value
+     * @param  string  $andOr
+     * 
+     * @return static
+     */
+    public function having($column, $operator = null, $value = null, $andOr = 'and')
+    {
+        // 參數若為: array(array($column, $operator, $value, $andOr), array($column, $operator, $value, $andOr))
+        if (is_array($column)) {
+            return $this->arrayNested($column, $andOr, 'having', 'havings');
+        }
+
+        // 如果帶入參數只有兩個，則 $value = $operator and $operator = '='
+        // 若否判斷 $operator 在 $this->operators 裡面有無符合的
+        // 有，返回 $operator 無，則返回例外
+        list($value, $operator) = $this->prepareValueAndOperator(
+            $value,
+            $operator,
+            func_num_args() === 2
+        );
+
+        if ($column instanceof Closure && is_null($operator)) {
+            return $this->nested($column, $andOr, 'havings');
+        }
+
+        if ($column instanceof self && !is_null($operator)) {
+            list($sub, $bindings) = $this->createSub($column);
+
+            if (!empty($bindings)) {
+                $this->bindingPush($bindings, 'havings');
+            }
+
+            return $this->having($this->raw('(' . $sub . ')'), $operator, $value, $andOr);
+        }
+
+        if ($this->invalidOperator($operator)) {
+            list($value, $operator) = array($operator, '=');
+        }
+
+        if ($value instanceof self || $value instanceof Closure) {
+            list($sub, $bindings) = $this->createSub($value);
+
+            if (!empty($bindings)) {
+                $this->bindingPush($bindings, 'havings');
+            }
+
+            return $this->having($column, $operator, $this->raw('(' . $sub . ')'), $andOr);
+        }
+
+        if ($value instanceof Expression) {
+            $andOr = strtoupper($andOr);
+
+            $operator = strtoupper($operator);
+
+            return $this->queryPush("{$andOr} {$column} {$operator} {$value}", 'havings');
+        }
+
+        if (is_null($value)) {
+            $value = 'NULL';
+        }
+
+        $varValue = '?';
+
+        if (is_array($value)) {
+            $varValue = "(" . join(',', array_fill(0, count($value), "?")) . ")";
+        }
+
+        $operator = strtoupper($operator);
+
+        $andOr = strtoupper($andOr);
+
+        $this->queriesPush("{$andOr} {$column} {$operator} {$varValue}", $value, 'havings');
+
+        return $this;
+    }
+
+    /**
+     * @param string|array $column
+     * @param string|null $operator
+     * @param mixed|null $value
+     * 
+     * @return static
+     */
+    public function orHaving($column, $operator = null, $value = null)
+    {
+        return $this->having($column, $operator, $value, 'or');
+    }
+
+    /**
+     * @param string|array $column
+     * @param string $sort
+     * 
+     * @return static
+     */
+    public function orderBy($column, $sort = 'ASC')
+    {
+        // 參數若為: array(array($column, $sort), array($column, $sort))
+        if (is_array($column)) {
+            return $this->arrayNested($column, '', 'orderBy', 'orders');
+        }
+
+        if ($column instanceof Closure || $column instanceof self) {
+            return $this->orderBySub($column, $sort);
+        }
+
+        return $this->queryPush("{$column} {$sort}", 'orders');
+    }
+
+    /**
+     * @param string|array $column
+     * @param string $sort
+     * 
+     * @return static
+     */
+    public function orderBySub($column, $sort = 'ASC')
+    {
+        list($sub, $bindings) = $this->createSub($column);
+
+        if (!empty($bindings)) {
+            $this->bindingPush($bindings, 'orders');
+        }
+
+        return $this->queryPush("({$sub}) {$sort}", 'orders');
+    }
+
+    /**
+     * @param string|array $column
+     * 
+     * @return static
+     */
+    public function orderByAsc($column)
+    {
+        if (!is_array($column)) {
+            $column = func_get_args();
+        }
+
+        return $this->orderBy(
+            array_map(function ($column) {
+                return array($column, 'ASC');
+            }, $column)
+        );
+    }
+
+    /**
+     * @param string|array $column
+     * 
+     * @return static
+     */
+    public function orderByDesc($column)
+    {
+        if (!is_array($column)) {
+            $column = func_get_args();
+        }
+
+        return $this->orderBy(
+            array_map(function ($column) {
+                return array($column, 'DESC');
+            }, $column)
+        );
+    }
+
+    /**
+     * @return static
+     */
+    protected function forSubQuery()
+    {
+        return $this->newQuery();
+    }
+
+    /**
+     * @param array $columns
+     * 
+     * @return array
+     */
+    public function first($columns = array('*'))
+    {
+        if (!$this->getQuery('columns.queries') || array('*') != $columns) {
+            $this->select($columns);
+        }
+
+        return $this->getConnection()->exec(
+            $this->toSql() . " LIMIT 1",
+            $this->getBindings(array('insert', 'update'))
+        )->fetch();
+    }
+
+    /**
+     * @param int|string $target
+     * @param string $column
+     * @param array $columns
+     * 
+     * @return array
+     */
+    public function find($target, $column = 'id', $columns = array('*'))
+    {
+        return $this->where($column, $target)->first($columns);
+    }
+
+    /**
+     * @param array $columns
+     * 
+     * @return array
+     */
+    public function get($columns = array('*'))
+    {
+        if (!$this->getQuery('columns.queries') || array('*') != $columns) {
+            $this->select($columns);
+        }
+
+        return $this->getConnection()->exec(
+            $this->toSql(),
+            $this->getBindings(array('insert', 'update'))
+        )->fetchAll();
+    }
+
+    /**
+     * @param array $data
+     * 
      * @return mixed
      */
-    public static function getResolver($abstract)
+    public function update($data)
     {
-        return static::$resolvers[$abstract] ?? null;
+        $values = array();
+
+        $columns = array();
+
+        foreach ($data as $column => $value) {
+            if ($value instanceof Closure || $value instanceof self) {
+                list($sql, $bindings) = $this->createSub($value);
+
+                $columns[] = $this->raw("{$column} = ({$sql})");
+
+                $values = array_merge($values, $bindings);
+            } else if ($value instanceof Expression) {
+                $columns[] = $value;
+            } else {
+                $columns[] = $column;
+
+                $values[] = $value;
+            }
+        }
+
+        return $this->bindingPush($values, 'update')->getConnection()->exec(
+            $this->getGrammar()->compilerUpdate($this, $columns),
+            $this->getBindings()
+        )->rowCount();
+    }
+
+    /**
+     * @param string $column
+     * @param int|string|float $amount
+     * @param array $data
+     * 
+     * @return static
+     * 
+     * @throws \InvalidArgumentException
+     */
+    public function increment($column, $amount = 1, $data = array())
+    {
+        if (!is_numeric($amount)) {
+            throw new \InvalidArgumentException(" second Arguments must be numeric");
+        }
+
+        $values = $data;
+
+        array_push($values, $amount);
+
+        return $this->bindingPush($values, 'update')->update(array_merge($data, [
+            $this->raw("`{$column}` = `{$column}` + ?")
+        ]));
+    }
+
+    /**
+     * @param string $column
+     * @param int|string|float $amount
+     * @param array $data
+     * 
+     * @return static
+     * 
+     * @throws \InvalidArgumentException
+     */
+    public function decrement($column, $amount = 1, $data = array())
+    {
+        if (!is_numeric($amount)) {
+            throw new \InvalidArgumentException(" second Arguments must be numeric");
+        }
+
+        $values = $data;
+
+        array_push($values, $amount);
+
+        return $this->bindingPush($values, 'update')->update(array_merge($data, [
+            $this->raw("`{$column}` = `{$column}` - ?")
+        ]));
+    }
+
+    /**
+     * @param array|[] $data
+     * 
+     * @return mixed
+     */
+    public function insert($data = array())
+    {
+        $first = current($data);
+
+        if (!is_array($first)) {
+            $data = array(
+                $data
+            );
+        }
+
+        $bindings = array_reduce($data, function ($carry, $values) {
+            if (!$carry) {
+                $carry = array();
+            }
+
+            $values = array_values($values);
+
+            return array_merge($carry, $values);
+        });
+
+        return $this->bindingPush($bindings, 'insert')->getConnection()->exec(
+            $this->getGrammar()->compilerInsert($this, $data),
+            $this->getBindings()
+        )->rowCount();
+    }
+
+    /**
+     * @param array $columns
+     * @param callback|static $query
+     * 
+     * @return mixed
+     */
+    public function insertSub($columns, $query)
+    {
+        list($sql, $bindings) = $this->createSub($query);
+
+        return $this->bindingPush($bindings, 'insert')->getConnection()->exec(
+            $this->getGrammar()->compilerInsert($this, array_flip($columns), $sql),
+            $this->getBindings()
+        )->rowCount();
+    }
+
+    /**
+     * @return mixed
+     */
+    public function delete()
+    {
+        return $this->getConnection()->exec(
+            $this->getGrammar()->compilerDelete($this),
+            $this->getBindings()
+        )->rowCount();
+    }
+
+    /**
+     * @param string $column
+     * @param string $dateTimeFormat
+     * 
+     * @return static
+     * 
+     * @throws \InvalidArgumentException
+     */
+    public function softDelete(string $column = 'deleted_at', string $dateTimeFormat = "Y-m-d H:i:s")
+    {
+        if (!is_string($column)) {
+            throw new \InvalidArgumentException(" first Arguments must be string");
+        }
+
+        $value = date($dateTimeFormat);
+
+        return $this->update([
+            $column => $value
+        ]);
+    }
+
+    /**
+     * @param string $column
+     * 
+     * @return static
+     * 
+     * @throws \InvalidArgumentException
+     */
+    public function reStore(string $column = 'deleted_at')
+    {
+        if (!is_string($column)) {
+            throw new \InvalidArgumentException(" first Arguments must be string");
+        }
+
+        $value = null;
+
+        return $this->update([
+            $column => $value
+        ]);
+    }
+
+    /**
+     * Get a new join clause.
+     *
+     * @param  static  $parentQuery
+     * @param  string  $type
+     * @param  string  $table
+     * 
+     * @return JoinClause
+     */
+    public function newJoinClause($parentQuery, $type, $table)
+    {
+        return new JoinClause($parentQuery, $type, $table);
+    }
+
+    /**
+     * @param  string  $table
+     * @param  \Closure|string  $first
+     * @param  string|null  $operator
+     * @param  string|null  $second
+     * @param  string  $type
+     * @param  bool|false  $isWhere
+     * 
+     * @return static
+     */
+    public function join($table, $first, $operator = null, $second = null, $type = 'inner', $isWhere = false)
+    {
+        $join = $this->newJoinClause($this, $type, $table);
+
+        $method = $isWhere ? 'WHERE' : 'ON';
+
+        if ($first instanceof Closure) {
+            $first(
+                $join
+            );
+
+            list('queries'  => $queries, 'bindings' => $bindings) = array_replace([
+                'bindings'  => array(),
+                'queries'   => array(),
+            ], $join->getQuery('joins'));
+
+            if (!empty($bindings)) {
+                $this->bindingPush($bindings, 'joins');
+            }
+
+            $sql = join(' ', $queries);
+
+            $sql = ltrim(ltrim($sql, 'AND '), 'OR ');
+
+            $type = strtoupper($type);
+
+            return $this->queryPush("{$type} JOIN {$table} {$method} {$sql}", 'joins');
+        }
+
+        // 如果帶入參數只有兩個，則 $second = $operator and $operator = '='
+        // 若否判斷 $operator 在 $this->operators 裡面有無符合的
+        // 有，返回 $operator 無，則返回例外
+        list($second, $operator) = $this->prepareValueAndOperator(
+            $second,
+            $operator,
+            func_num_args() === 3
+        );
+
+        if ($this->invalidOperator($operator)) {
+            list($second, $operator) = array($operator, '=');
+        }
+
+        $type = strtoupper($type);
+
+        return $this->queryPush("{$type} JOIN {$table} {$method} {$first} {$operator} {$second}", 'joins');
+    }
+
+    /**
+     * @param  string  $table
+     * @param  \Closure|string  $first
+     * @param  string|null  $operator
+     * @param  string|null  $second
+     * @param  string  $type
+     * 
+     * @return static
+     */
+    public function joinWhere($table, $first, $operator = null, $second = null, $type = 'inner')
+    {
+        return $this->join($table, $first, $operator, $second, $type, true);
+    }
+
+    /**
+     * Add a subquery join clause to the query.
+     *
+     * @param  \Closure|static|string  $query
+     * @param  string  $as
+     * @param  \Closure|string  $first
+     * @param  string|null  $operator
+     * @param  string|null  $second
+     * @param  string  $type
+     * @param  bool|false  $isWhere
+     * 
+     * @return $this
+     *
+     * @throws \InvalidArgumentException
+     */
+    public function joinSub($table, $as, $first, $operator = null, $second = null, $type = 'inner', $isWhere = false)
+    {
+        list($query, $bindings) = $this->createSub($table);
+
+        if (!empty($bindings)) {
+            $this->queryPush($bindings, 'joins');
+        }
+
+        $table = "({$query}) AS `{$as}`";
+
+        return $this->join($table, $first, $operator, $second, $type, $isWhere);
+    }
+
+    /**
+     * @param  string  $table
+     * @param  \Closure|string  $first
+     * @param  string|null  $operator
+     * @param  string|null  $second
+     * @param  string  $type
+     * 
+     * @return static
+     */
+    public function joinSubWhere($table, $first, $operator = null, $second = null, $type = 'inner')
+    {
+        return $this->joinSub($table, $first, $operator, $second, $type, true);
+    }
+
+    /**
+     * @param  string  $table
+     * @param  \Closure|string  $first
+     * @param  string|null  $operator
+     * @param  string|null  $second
+     * @param  string  $type
+     * 
+     * @return static
+     */
+    public function leftJoin($table, $first, $operator = null, $second = null)
+    {
+        return $this->join($table, $first, $operator, $second, 'left');
+    }
+
+    /**
+     * @param  string  $table
+     * @param  string  $as
+     * @param  \Closure|string  $first
+     * @param  string|null  $operator
+     * @param  string|null  $second
+     * @param  string  $type
+     * 
+     * @return static
+     */
+    public function leftJoinSub($table, $as, $first, $operator = null, $second = null)
+    {
+        return $this->joinSub($table, $as, $first, $operator, $second, 'left');
+    }
+
+    /**
+     * @param  string  $table
+     * @param  \Closure|string  $first
+     * @param  string|null  $operator
+     * @param  string|null  $second
+     * @param  string  $type
+     * 
+     * @return static
+     */
+    public function leftJoinWhere($table, $first, $operator = null, $second = null)
+    {
+        return $this->join($table, $first, $operator, $second, 'left', true);
+    }
+
+    /**
+     * @param  string  $table
+     * @param  string  $as
+     * @param  \Closure|string  $first
+     * @param  string|null  $operator
+     * @param  string|null  $second
+     * @param  string  $type
+     * 
+     * @return static
+     */
+    public function leftJoinSubWhere($table, $as, $first, $operator = null, $second = null)
+    {
+        return $this->joinSub($table, $as, $first, $operator, $second, 'left', true);
+    }
+
+    /**
+     * @param  string  $table
+     * @param  \Closure|string  $first
+     * @param  string|null  $operator
+     * @param  string|null  $second
+     * @param  string  $type
+     * 
+     * @return static
+     */
+    public function rightJoin($table, $first, $operator = null, $second = null)
+    {
+        return $this->join($table, $first, $operator, $second, 'right');
+    }
+
+    /**
+     * @param  string  $table
+     * @param  string  $as
+     * @param  \Closure|string  $first
+     * @param  string|null  $operator
+     * @param  string|null  $second
+     * @param  string  $type
+     * 
+     * @return static
+     */
+    public function rightJoinSub($table, $as, $first, $operator = null, $second = null)
+    {
+        return $this->joinSub($table, $as, $first, $operator, $second, 'right');
+    }
+
+    /**
+     * @param  string  $table
+     * @param  \Closure|string  $first
+     * @param  string|null  $operator
+     * @param  string|null  $second
+     * @param  string  $type
+     * 
+     * @return static
+     */
+    public function rightJoinWhere($table, $first, $operator = null, $second = null)
+    {
+        return $this->join($table, $first, $operator, $second, 'right', true);
+    }
+
+    /**
+     * @param  string  $table
+     * @param  string  $as
+     * @param  \Closure|string  $first
+     * @param  string|null  $operator
+     * @param  string|null  $second
+     * @param  string  $type
+     * 
+     * @return static
+     */
+    public function rightJoinSubWhere($table, $as, $first, $operator = null, $second = null)
+    {
+        return $this->joinSub($table, $as, $first, $operator, $second, 'right', true);
+    }
+
+    /**
+     * Add a "cross join" clause to the query.
+     *
+     * @param  string  $table
+     * @param  \Closure|string|null  $first
+     * @param  string|null  $operator
+     * @param  string|null  $second
+     * @return $this
+     */
+    public function crossJoin($table, $first = null, $operator = null, $second = null)
+    {
+        return $this->join($table, $first, $operator, $second, 'cross');
+    }
+
+    /**
+     * @param  string  $table
+     * @param  string  $as
+     * @param  \Closure|string  $first
+     * @param  string|null  $operator
+     * @param  string|null  $second
+     * @param  string  $type
+     * 
+     * @return static
+     */
+    public function crossJoinSub($table, $as, $first, $operator = null, $second = null)
+    {
+        return $this->joinSub($table, $as, $first, $operator, $second, 'cross');
+    }
+
+    /**
+     * Add a "cross join" clause to the query.
+     *
+     * @param  string  $table
+     * @param  \Closure|string|null  $first
+     * @param  string|null  $operator
+     * @param  string|null  $second
+     * @return $this
+     */
+    public function crossJoinWhere($table, $first = null, $operator = null, $second = null)
+    {
+        return $this->join($table, $first, $operator, $second, 'cross', true);
+    }
+
+    /**
+     * @param  string  $table
+     * @param  string  $as
+     * @param  \Closure|string  $first
+     * @param  string|null  $operator
+     * @param  string|null  $second
+     * @param  string  $type
+     * 
+     * @return static
+     */
+    public function crossJoinSubWhere($table, $as, $first, $operator = null, $second = null)
+    {
+        return $this->joinSub($table, $as, $first, $operator, $second, 'cross', true);
+    }
+
+    /**
+     * @param int|string $limit
+     * @param int|string|null $offset
+     * 
+     * @return static
+     */
+    public function limit($limit, $offset = null)
+    {
+        $bindings = array($limit);
+
+        $queries = array("?");
+
+        if ($offset) {
+            $bindings[] = $offset;
+
+            $queries[] = "?";
+        }
+
+        return $this->setQuery('limit', compact('queries', 'bindings'));
+    }
+
+    /**
+     * @param int|string $offset
+     * 
+     * @return static
+     */
+    public function offset($offset)
+    {
+        return $this->setQuery('offset.queries', "?")->setQuery('offset.bindings', $offset);
+    }
+
+    /**
+     * @param int|string $page
+     * 
+     * @return static
+     */
+    public function currentPage($page)
+    {
+        return $this->offset($page);
+    }
+
+    /**
+     * @param int|string $page
+     * 
+     * @return static
+     */
+    public function prePage($page)
+    {
+        return $this->limit($page);
+    }
+
+    /**
+     * @param int|string|null $prePage
+     * @param int|string|null $currentPage
+     * 
+     * @return array
+     */
+    public function getForPage($prePage = 10, $currentPage = 1)
+    {
+        $prePage = $this->getQuery('limit.bindings', $prePage);
+
+        $currentPage = $this->getQuery('offset.bindings', $currentPage);
+
+        return $this->prePage($prePage)->currentPage(((int) $currentPage - 1) * $prePage)->get();
+    }
+
+    /**
+     * Add a union statement to the query.
+     *
+     * @param  static|callback|\Closure  $query
+     * @param  bool  $all
+     * @return static
+     */
+    public function union($query, $all = false)
+    {
+        list($queries, $bindings) = $this->createSub($query);
+
+        $type = $all ? 'UNION ALL' : 'UNION';
+
+        return $this->queriesPush("{$type} {$queries}", $bindings, 'unions');
+    }
+
+    /**
+     * Add a union all statement to the query.
+     *
+     * @param  static|callback|\Closure  $query
+     * @return static
+     */
+    public function unionAll($query)
+    {
+        return $this->union($query, true);
+    }
+
+    /**
+     * @return static
+     */
+    public function lockForUpdate()
+    {
+        return $this->setQuery('lock', $this->getGrammar()->lockForUpdate());
+    }
+
+    /**
+     * @return static
+     */
+    public function sharedLock()
+    {
+        return $this->setQuery('lock', $this->getGrammar()->sharedLock());
     }
 
     /**
@@ -757,29 +1927,35 @@ class Builder
      */
     protected function method($method)
     {
-        $methods = array(
-            "set"       => array(
-                'table', 'username', 'password', 'dbname', 'host', 'bindData', 'select',
-                'orderBy', 'groupBy', 'limit', 'offset', 'connection', 'grammar', 'currentPage',
-                'prePage', "process", 'selectRaw', 'raw', 'whereRaw', "from", "fromRaw"
-            ),
-            "process"   => array(
-                'InsertGetId'
-            ),
-            "get"       => array(
-                "parseQueryLog", "lastParseQuery"
-            )
-        );
+        if (empty($this->methods)) {
+            $methods = array(
+                "set"       => array(
+                    'table', 'username', 'password', 'databaseName', 'host',
+                    'connection', 'grammar',
+                    'processor', 'raw', 'from'
+                ),
+                "process"   => array(
+                    'insertGetId'
+                ),
+                "get"       => array(
+                    "parseQueryLog", "lastParseQuery", "lastInsertId"
+                )
+            );
 
-        foreach ($methods as $index => $item) {
-            if (in_array($method, $item)) {
-                $method = $index . ucfirst($method);
-
-                break;
-            }
+            $this->methods = $methods;
         }
 
-        return $method;
+        $getMethods = array_map(function ($bindMethods, $bindMethod) use ($method) {
+            if (in_array($method, $bindMethods)) {
+                return $bindMethod . ucfirst($method);
+            }
+
+            return false;
+        }, $this->methods, array_keys($this->methods));
+
+        $getMethods = array_filter($getMethods);
+
+        return current($getMethods) ?: $method;
     }
 
     /**
@@ -792,24 +1968,26 @@ class Builder
     {
         $method = $this->method($method);
 
-        foreach (static::$resolvers as $abstract) {
-            if (method_exists($abstract, $method)) {
-                break;
+        $abstract = null;
+
+        foreach ($this->getResolvers() as $resolver) {
+            if (!method_exists($resolver, $method)) {
+                continue;
+            }
+
+            if ($resolver instanceof ProcessorInterface) {
+                array_unshift($arguments, $this);
+            }
+
+            $abstract = call_user_func_array(array($resolver, $method), $arguments);
+
+            is_object($abstract) && $this->resolverRegister($abstract);
+
+            if ($abstract instanceof GrammarInterface) {
+                $abstract = $this;
             }
         }
 
-        if ($abstract instanceof \Wilkques\Database\Queries\Process\ProcessInterface) {
-            array_unshift($arguments, $this);
-        }
-
-        $abstract = call_user_func_array(array($abstract, $method), $arguments);
-
-        is_object($abstract) && static::resolverFor(get_class($abstract), $abstract);
-
-        if ($abstract instanceof \Wilkques\Database\Queries\Grammar\GrammarInterface) {
-            $abstract = $this;
-        }
-
-        return $abstract;
+        return $abstract ?: $this;
     }
 }

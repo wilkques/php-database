@@ -2,562 +2,430 @@
 
 namespace Wilkques\Database\Queries\Grammar;
 
+use Wilkques\Database\Queries\Builder;
+use Wilkques\Database\Queries\Expression;
+
 abstract class Grammar implements GrammarInterface
 {
-    /** @var string */
-    protected $query;
-    /** @var string */
-    protected $lock = "";
-    /** @var array */
-    protected $bindQueries = array();
-
     /**
-     * @param string $query
-     * 
-     * @return static
+     * The components that make up a select clause.
+     *
+     * @var string[]
      */
-    public function setQuery($query)
-    {
-        $this->query = $query;
-
-        return $this;
-    }
+    protected $selectComponents = array(
+        'columns',
+        'from',
+        'joins',
+        'wheres',
+        'groups',
+        'havings',
+        'orders',
+        'limit',
+        'offset',
+        'lock',
+    );
 
     /**
+     * @param Builder $query
+     * 
      * @return string
      */
-    public function getQuery()
+    public function compilerColumns($query)
     {
-        return $this->query;
+        $columns = $query->getQuery('columns.queries', ['*']);
+
+        return join(',', $columns);
     }
 
     /**
-     * @param string $from
+     * @param Builder $query
      * 
-     * @return static
-     */
-    public function setFrom(string $from)
-    {
-        return $this->setBindQueries("from", $from);
-    }
-
-    /**
      * @return string
      */
-    public function getFrom()
+    public function compilerSelect($query)
     {
-        return $this->getBindQueries("from");
-    }
-
-    /**
-     * @param string $table
-     * 
-     * @return static
-     */
-    public function setTable($table)
-    {
-        return $this->setFrom($table);
-    }
-
-    /**
-     * @return string
-     */
-    public function getTable()
-    {
-        return $this->getFrom();
-    }
-
-    /**
-     * @param array $bindQueries
-     * 
-     * @return static
-     */
-    public function withBindQueries(array $bindQueries)
-    {
-        $this->bindQueries = $bindQueries;
-
-        return $this;
-    }
-
-    /**
-     * @param string $key
-     * @param mixed $value
-     * 
-     * @return static
-     */
-    public function setBindQueries(string $key, $value = null)
-    {
-        $bindQueries = $this->getBindQueries();
-
-        array_set($bindQueries, $key, $value);
-
-        $this->bindQueries = $bindQueries;
-
-        return $this;
-    }
-
-    /**
-     * @param string|null $key
-     * @param mixed|null $default
-     * 
-     * @return string|array
-     */
-    public function getBindQueries(string $key = null, $default = null)
-    {
-        $bindQueries = $this->bindQueries;
-
-        return array_get($bindQueries, $key, $default);
-    }
-
-    /**
-     * @param string $query
-     * 
-     * @return static
-     */
-    protected function selectBindQuery($query)
-    {
-        if (is_string($query)) {
-            $query = preg_replace("/(\w+)|,\s?+$/i",  "`$1`", $query);
+        if (!$query->getQuery('columns.queries')) {
+            $query->setQuery('columns.queries', ['*']);
         }
 
-        $index = $this->nextArrayIndex($this->getBindQueries("select"));
-
-        return $this->setBindQueries("select.{$index}", (string) $query);
-    }
-
-    /**
-     * @param array $data
-     * 
-     * @return int
-     */
-    public function nextArrayIndex($data)
-    {
-        $index = 0;
-
-        $data && $index = array_key_last($data) + 1;
-
-        return $index;
-    }
-
-    /**
-     * @param string $bindParam
-     * @param string $column
-     * @param string $condition
-     * @param string $operate
-     * @param string $value
-     * 
-     * @return static
-     */
-    public function setConditionQuery(string $bindParam, $column, $condition = null, $operate = null, $value = "?")
-    {
-        $bindQueries = $this->getBindQueries($bindParam);
-
-        $index = $this->nextArrayIndex($bindQueries);
-
-        $operate = $bindQueries ? "{$operate} " : "";
-
-        $sql = "{$operate}`{$column}` {$condition} {$value}";
-
-        if (is_object($column) && $this->isSameClassName($column, \Wilkques\Database\Queries\Expression::class)) {
-            $sql = $operate . (string) $column;
-        }
-
-        return $this->setBindQueries("{$bindParam}.{$index}", $sql);
-    }
-
-    /**
-     * @param string $column
-     * @param string $condition
-     * @param string $operate
-     * @param string $value
-     * 
-     * @return static
-     */
-    public function where($column, $condition = null, $operate = null, $value = "?")
-    {
-        return $this->setConditionQuery("where", $column, $condition, $operate, $value);
-    }
-
-    /**
-     * @param string|array $column
-     * 
-     * @return static
-     */
-    public function whereNull($column)
-    {
-        if (is_array($column)) {
-            array_map(function ($item) {
-                $this->where($item, "IS", "AND", "NULL");
-            }, $column);
-        } else if (is_string($column)) {
-            $this->where($column, "IS", "AND", "NULL");
-        }
-
-        return $this;
-    }
-
-    /**
-     * @param string|array $column
-     * 
-     * @return static
-     */
-    public function whereOrNull($column)
-    {
-        if (is_array($column)) {
-            array_map(function ($item) {
-                $this->where($item, "IS", "OR", "NULL");
-            }, $column);
-        } else if (is_string($column)) {
-            $this->where($column, "IS", "OR", "NULL");
-        }
-
-        return $this;
-    }
-
-    /**
-     * @param string|array $column
-     * 
-     * @return static
-     */
-    public function whereNotNull($column)
-    {
-        if (is_array($column)) {
-            array_map(function ($item) {
-                $this->where($item, "IS NOT", "AND", "NULL");
-            }, $column);
-        } else if (is_string($column)) {
-            $this->where($column, "IS NOT", "AND", "NULL");
-        }
-
-        return $this;
-    }
-
-    /**
-     * @param string|array $column
-     * 
-     * @return static
-     */
-    public function whereOrNotNull($column)
-    {
-        if (is_array($column)) {
-            array_map(function ($item) {
-                $this->where($item, "IS NOT", "OR", "NULL");
-            }, $column);
-        } else if (is_string($column)) {
-            $this->where($column, "IS NOT", "OR", "NULL");
-        }
-
-        return $this;
-    }
-
-    /**
-     * @param array $data
-     * 
-     * @return static
-     */
-    public function setUpdate($data)
-    {
-        array_map(function ($item, $index) {
-            $column = is_object($item) ? $item : $index;
-
-            $this->setConditionQuery("update", $column, "=", ",");
-        }, $data, array_keys($data));
-
-        return $this;
-    }
-
-    /**
-     * @return static
-     */
-    public function compilerUpdate()
-    {
-        $update = join("", $this->getbindQueries("update"));
-
-        $sql = "UPDATE `{$this->getTable()}` SET {$update}";
-
-        $where = $this->getOnlyBindQueries(array("where"));
-
-        $where && $sql .= " " . $this->arrayToSql($where);
-
-        return $this->setQuery($sql);
-    }
-
-    /**
-     * @throws \UnexpectedValueException
-     */
-    protected function argumentsThrowError($message = "")
-    {
-        throw new \UnexpectedValueException(
-            sprintf(
-                "DB::%s arguments is error.%s",
-                debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1]['function'],
-                $message
-            )
+        $sql = $this->concatenate(
+            $this->compilerComponent($query)
         );
-    }
 
-    /**
-     * @param array $keys
-     * 
-     * @return array
-     */
-    public function getOnlyBindQueries(array $keys)
-    {
-        return \array_only($this->getBindQueries(), $keys);
-    }
-
-    /**
-     * @param array $keys
-     * 
-     * @return array
-     */
-    public function getOnlyBindFieldQueries(array $keys)
-    {
-        return \array_field($this->getOnlyBindQueries($keys), $keys);
-    }
-
-    /**
-     * @return array
-     */
-    public function getForSelectQueries($keepKeys = array("from", "where", "groupBy", "orderBy", "limit", "offset", "lock"))
-    {
-        return $this->getOnlyBindFieldQueries($keepKeys);
-    }
-
-    /**
-     * @return static
-     */
-    public function compilerSelect($keepKeys = array("from", "where", "groupBy", "orderBy", "limit", "offset", "lock"))
-    {
-        $column = $this->getBindQueries("select", "*");
-
-        $column = is_string($column) ? $column : join(", ", $column);
-
-        $sql = "SELECT {$column}";
-
-        $selectAry = $this->getForSelectQueries($keepKeys);
-
-        $selectAry && $sql .= " " . $this->arrayToSql($selectAry);
-
-        return $this->setQuery($sql);
-    }
-
-    /**
-     * @param array $array
-     * @param string|array $separator
-     * 
-     * @return string
-     */
-    protected function arrayToSql(array $array, $separator = " ")
-    {
-        return join(" ", array_map(function ($item, $index) use ($separator) {
-            $index = in_array($index, array("groupBy", "orderBy")) ? str_delimiter_replace($index, " ", MB_CASE_UPPER) : $index;
-
-            // 排除 lock
-            return (!in_array($index, array("lock")) ? str_convert_case($index, MB_CASE_UPPER) . " " : "") . (is_array($item) ? join($separator, $item) : $item);
-        }, $array, array_keys($array)));
-    }
-
-    /**
-     * @param array|string $column
-     */
-    public function setSelect($column = ['*'])
-    {
-        func_num_args() > 1 && $column = func_get_args();
-
-        if (is_array($column)) {
-            array_map(function ($item) {
-                !is_string($item) || (is_object($item) && $this->isNotSameClassName($item, \Wilkques\Database\Queries\Expression::class)) &&
-                    $this->argumentsThrowError(" first Arguments must be array or string or \Wilkques\Database\Queries\Expression class");
-
-                $this->selectBindQuery($item);
-            }, $column);
-        } else if (is_string($column) || $this->isSameClassName($column, \Wilkques\Database\Queries\Expression::class)) {
-            $this->selectBindQuery($column);
-        } else {
-            $this->argumentsThrowError(" first Arguments must be array or string");
+        if ($query->getQuery('unions.queries')) {
+            $sql .= ' ' . $this->compilerUnions($query);
         }
 
-        return $this;
+        return "SELECT {$sql}";
     }
 
     /**
-     * @param object $object
-     * @param string $className
+     * @param Builder $query
      * 
-     * @return bool
-     */
-    public function isSameClassName($object, string $className)
-    {
-        return get_class($object) === $className;
-    }
-
-    /**
-     * @param object $object
-     * @param string $className
-     * 
-     * @return bool
-     */
-    public function isNotSameClassName($object, string $className)
-    {
-        return !$this->isSameClassName($object, $className);
-    }
-
-    /**
-     * @param string $column
-     * @param string $sort
-     * 
-     * @return static
-     */
-    public function setOrderBy($column, $sort = "ASC")
-    {
-        return $this->setBindQueries("orderBy", array("`{$column}`", $sort));
-    }
-
-    /**
      * @return string
      */
-    public function getOrderBy()
+    public function compilerFrom($query)
     {
-        return $this->getBindQueries("orderBy");
+        $from = $query->getQuery('from.queries', []);
+
+        if (empty($from)) {
+            return false;
+        }
+
+        $from = join(', ', $from);
+
+        return "FROM {$from}";
     }
 
     /**
-     * @param string $column
+     * @param Builder $query
      * 
-     * @return static
+     * @return string|false
      */
-    public function setGroupBy($column, $sort = "ASC")
+    public function compilerWheres($query)
     {
-        return $this->setBindQueries("groupBy", array("`{$column}`", $sort));
+        $wheres = $query->getQuery('wheres.queries', []);
+
+        if (empty($wheres)) {
+            return false;
+        }
+
+        $wheres = join(' ', $wheres);
+
+        return "WHERE " . ltrim(ltrim($wheres, 'AND '), 'OR ');
     }
 
     /**
+     * @param Builder $query
+     * 
+     * @return string|false
+     */
+    public function compilerHavings($query)
+    {
+        $havings = $query->getQuery('havings.queries', []);
+
+        if (empty($havings)) {
+            return false;
+        }
+
+        $havings = join(' ', $havings);
+
+        return "HAVING " . ltrim(ltrim($havings, 'AND '), 'OR ');
+    }
+
+    /**
+     * @param Builder $query
+     * 
+     * @return string|false
+     */
+    public function compilerLimit($query)
+    {
+        $limit = $query->getQuery('limit.queries', []);
+
+        if (empty($limit)) {
+            return false;
+        }
+
+        return "LIMIT " . join(',', $limit);
+    }
+
+    /**
+     * @param Builder $query
+     * 
+     * @return string|false
+     */
+    public function compilerGroups($query)
+    {
+        $groups = $query->getQuery('groups.queries', []);
+
+        if (empty($groups)) {
+            return false;
+        }
+
+        $groups = join(', ', $groups);
+
+        return "GROUP BY " . ltrim($groups, ', ');
+    }
+
+    /**
+     * @param Builder $query
+     * 
+     * @return string|false
+     */
+    public function compilerOrders($query)
+    {
+        $orders = $query->getQuery('orders.queries', []);
+
+        if (empty($orders)) {
+            return false;
+        }
+
+        $orders = join(', ', $orders);
+
+        return "ORDER BY " . ltrim($orders, ', ');
+    }
+
+    /**
+     * @param Builder $query
+     * 
+     * @return string|false
+     */
+    public function compilerOffset($query)
+    {
+        $offset = $query->getQuery('offset.queries', false);
+
+        if (!$offset) {
+            return false;
+        }
+
+        return "OFFSET " . $offset;
+    }
+
+    /**
+     * @param Builder $query
+     * 
+     * @return string|false
+     */
+    public function compilerLock($query)
+    {
+        $lock = $query->getQuery('lock', false);
+
+        if (!$lock) {
+            return false;
+        }
+
+        return $lock;
+    }
+
+    /**
+     * @param Builder $query
+     * 
+     * @return string|false
+     */
+    public function compilerJoins($query)
+    {
+        $joins = $query->getQuery('joins.queries', []);
+
+        if (empty($joins)) {
+            return false;
+        }
+
+        return join(' ', $joins);
+    }
+
+    /**
+     * @param Builder $query
+     * 
+     * @return array
+     */
+    protected function compilerComponent($query)
+    {
+        $sql = [];
+
+        foreach ($this->selectComponents as $component) {
+            if ($query->getQuery($component, false)) {
+                $method = 'compiler' . ucfirst($component);
+
+                $sql[$component] = call_user_func_array([$this, $method], [$query]);
+            }
+        }
+
+        return $sql;
+    }
+
+    /**
+     * Concatenate an array of segments, removing empties.
+     *
+     * @param  array  $segments
      * @return string
      */
-    public function getGroupBy()
+    protected function concatenate($segments)
     {
-        return $this->getBindQueries("groupBy");
+        return implode(' ', array_filter($segments, function ($value) {
+            return (string) $value !== '';
+        }));
     }
 
     /**
-     * @param int|string $limit
+     * @param Builder $query
+     * @param array $columns
      * 
-     * @return static
+     * @return string
      */
-    public function setLimit($limit = "?")
+    public function compilerUpdate($query, $columns)
     {
-        return $this->setBindQueries("limit", $limit);
-    }
-
-    /**
-     * @return int|string
-     */
-    public function getLimit()
-    {
-        return $this->getBindQueries("limit", 1);
-    }
-
-    /**
-     * @param int|string $offset
-     * 
-     * @return static
-     */
-    public function setOffset($offset = "?")
-    {
-        return $this->setBindQueries("offset", $offset);
-    }
-
-    /**
-     * @return int|string
-     */
-    public function getOffset()
-    {
-        return $this->getBindQueries("offset");
-    }
-
-    /**
-     * @param array $data
-     * 
-     * @return static
-     */
-    public function setInsert(array $data)
-    {
-        if (array_key_exists(0, $data)) {
-            $newData = array();
-
-            foreach ($data as $item) {
-                !$this->getBindQueries("insert.columns") && $this->setBindQueries("insert.columns", array_keys($data[0]));
-
-                array_push($newData, ...array_values($item));
+        $columns = array_map(function ($column) {
+            if ($column instanceof Expression) {
+                return $column;
             }
 
-            return $this->setBindQueries("insert.values", $data);
+            return "`{$column}` = ?";
+        }, $columns);
+
+        $columns = join(',', $columns);
+
+        $from = join(', ', $query->getFrom());
+
+        if ($query->getQuery('joins')) {
+            return $this->compilerUpdateWithJoins($query, $from, $columns);
         }
 
-        return $this->setBindQueries("insert.columns", array_keys($data))
-            ->setBindQueries("insert.values.0", array_fill(0, count($data), "?"));
+        return $this->compilerUpdateWithoutJoins($query, $from, $columns);
     }
 
     /**
-     * @return static
-     */
-    public function compilerInsert()
-    {
-        $inserts = $this->getBindQueries("insert");
-
-        $columns = join("`, `", $inserts["columns"]);
-
-        $values = $this->arrayToInsertValuesSql($inserts["values"]);
-
-        $sql = "INSERT INTO `{$this->getTable()}` (`{$columns}`) VALUES ({$values})";
-
-        return $this->setQuery($sql);
-    }
-
-    /**
-     * @param array $array
+     * Compile an update statement without joins into SQL.
+     *
+     * @param  Builder  $query
+     * @param  string  $from
+     * @param  string  $columns
      * 
      * @return string
      */
-    protected function arrayToInsertValuesSql(array $array)
+    protected function compilerUpdateWithoutJoins($query, $from, $columns)
     {
-        return join("), (", array_map(function ($item) {
-            return join(", ", $item);
-        }, $array));
+        return "UPDATE {$from} SET {$columns} {$this->compilerWheres($query)}";
     }
 
     /**
-     * @return static
-     */
-    public function compilerDelete()
-    {
-        $sql = "DELETE FROM `{$this->getTable()}`";
-
-        $where = $this->getOnlyBindQueries(array("where"));
-
-        $where && $sql .= " " . $this->arrayToSql($where);
-
-        return $this->setQuery($sql);
-    }
-
-    /**
-     * @param string $query
+     * Compile an update statement with joins into SQL.
+     *
+     * @param  Builder  $query
+     * @param  string  $from
+     * @param  string  $columns
      * 
-     * @return static
+     * @return string
      */
-    public function setLock($query = "")
+    protected function compilerUpdateWithJoins($query, $from, $columns)
     {
-        return $this->setBindQueries("lock.0", (string) $query);
+        return "UPDATE {$from} {$this->compilerJoins($query)} SET {$columns} {$this->compilerWheres($query)}";
     }
 
     /**
-     * @return static
+     * @param Builder $query
+     * 
+     * @return string
+     */
+    public function compilerUnions($query)
+    {
+        $union = $query->getQuery('unions.queries', []);
+
+        if (empty($union)) {
+            return false;
+        }
+
+        return join(' ', $union);
+    }
+
+    /**
+     * @param Builder $query
+     * @param array|[] $columns
+     * @param string|null $sql
+     * 
+     * @return string
+     */
+    public function compilerInsert($query, $data = [], $sql = null)
+    {
+        if (empty($data)) {
+            return "INSERT INTO {$query->getFrom()} DEFAULT VALUES";
+        }
+
+        if (!is_array(current($data))) {
+            $data = [
+                $data
+            ];
+        }
+
+        $columns = join(',', array_keys(current($data)));
+
+        $from = join(', ', $query->getFrom());
+
+        if (!$sql) {
+            $values = array_map(function ($value) {
+                $value = array_fill(0, count($value), "?");
+
+                return join(', ', $value);
+            }, $data);
+
+            $values = join('), (', $values);
+
+            return $this->compilerInsertWithoutSubQuery($query, $from, $columns, $values);
+        }
+
+        return $this->compilerInsertWithSubQuery($query, $from, $columns, $sql);
+    }
+
+    /**
+     * @param Builder $query
+     * @param string $from
+     * @param string $columns
+     * @param string $values
+     * 
+     * @return string
+     */
+    protected function compilerInsertWithoutSubQuery($query, $from, $columns, $values)
+    {
+        return "INSERT INTO {$from} ({$columns}) VALUES ({$values})";
+    }
+
+    /**
+     * @param Builder $query
+     * @param string $from
+     * @param string $columns
+     * @param string $sql
+     * 
+     * @return string
+     */
+    protected function compilerInsertWithSubQuery($query, $from, $columns, $sql)
+    {
+        return "INSERT INTO {$from} ({$columns}) {$sql}";
+    }
+
+    /**
+     * @param Builder $query
+     * 
+     * @return string
+     */
+    public function compilerDelete($query)
+    {
+        if ($query->getQuery('joins')) {
+            return $this->compilerDeleteWithoutJoins($query);
+        }
+
+        return $this->compilerDeleteWithJoins($query);
+    }
+
+    /**
+     * Compile an update statement without joins into SQL.
+     *
+     * @param  Builder  $query
+     * 
+     * @return string
+     */
+    protected function compilerDeleteWithoutJoins($query)
+    {
+        return "DELETE FROM {$query->getFrom()} {$this->compilerWheres($query)}";
+    }
+
+    /**
+     * Compile an update statement with joins into SQL.
+     *
+     * @param  Builder  $query
+     * 
+     * @return string
+     */
+    protected function compilerDeleteWithJoins($query)
+    {
+        return "DELETE FROM {$query->getFrom()} {$this->compilerJoins($query)} {$this->compilerWheres($query)}";
+    }
+
+    /**
+     * @return string
      */
     abstract function lockForUpdate();
 
     /**
-     * @return static
+     * @return string
      */
     abstract function sharedLock();
 

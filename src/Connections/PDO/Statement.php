@@ -2,21 +2,29 @@
 
 namespace Wilkques\Database\Connections\PDO;
 
+use Wilkques\Database\Connections\Connections;
+
 class Statement
 {
     /** @var \PDOStatement */
     protected $statement;
+
+    /** @var Connections */
+    protected $connections;
+
     /** @var array */
     protected $params = array();
+
     /** @var bool|false */
     protected $debug = false;
 
     /**
      * @param \PDOStatement $statement
+     * @param Connections $connections
      */
-    public function __construct(\PDOStatement $statement)
+    public function __construct(\PDOStatement $statement, Connections $connections)
     {
-        $this->setStatement($statement);
+        $this->setStatement($statement)->setConnections($connections);
     }
 
     /**
@@ -40,11 +48,31 @@ class Statement
     }
 
     /**
+     * @param Connections $connections
+     * 
+     * @return static
+     */
+    public function setConnections(Connections $connections)
+    {
+        $this->connections = $connections;
+
+        return $this;
+    }
+
+    /**
+     * @return Connections
+     */
+    public function getConnections()
+    {
+        return $this->connections;
+    }
+
+    /**
      * @param bool|true $debug
      * 
      * @return static
      */
-    public function setDebug(bool $debug = true)
+    public function debug(bool $debug = true)
     {
         $this->debug = $debug;
 
@@ -182,7 +210,11 @@ class Statement
             $newParams = array();
 
             foreach ($params as $item) {
-                array_push($newParams, ...array_values($item));
+                if (is_array($item)) {
+                    array_push($newParams, ...array_values($item));
+                } else {
+                    array_push($newParams, $item);
+                }
             }
 
             return $newParams;
@@ -200,7 +232,11 @@ class Statement
             $newParams = array();
 
             foreach ($params as $item) {
-                $newParams = array_merge($newParams, $item);
+                if (is_array($item)) {
+                    $newParams = array_merge($newParams, $item);
+                } else {
+                    array_push($newParams, $item);
+                }
             }
 
             return $newParams;
@@ -242,7 +278,7 @@ class Statement
 
         $statement->execute($params);
 
-        return new Result($statement);
+        return new Result($statement, $this->getConnections());
     }
 
     /**

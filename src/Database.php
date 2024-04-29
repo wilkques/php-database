@@ -65,24 +65,24 @@ use Wilkques\Database\Queries\Builder;
 class Database 
 {
     /** @var Builder */
-    protected $builder;
+    protected $query;
 
     /**
-     * @param GrammarInterface $grammar
+     * @param Builder $query
      */
-    public function __construct(Builder $builder = null)
+    public function __construct(Builder $query = null)
     {
-        $this->setBuilder($builder);
+        $this->setBuilder($query);
     }
 
     /**
-     * @param Builder $builder
+     * @param Builder $query
      * 
      * @return static
      */
-    public function setBuilder(Builder $builder = null)
+    public function setBuilder(Builder $query = null)
     {
-        $this->builder = $builder;
+        $this->query = $query;
 
         return $this;
     }
@@ -92,7 +92,7 @@ class Database
      */
     public function getBuilder()
     {
-        return $this->builder;
+        return $this->query;
     }
 
     /**
@@ -127,9 +127,9 @@ class Database
             return call_user_func_array(array($this, $method), $arguments);
         }
 
-        $builder = $this->getBuilder();
+        $query = $this->getBuilder();
 
-        $builder = call_user_func_array(array($builder, $method), $arguments);
+        $builder = call_user_func_array(array($query, $method), $arguments);
 
         return $builder;
     }

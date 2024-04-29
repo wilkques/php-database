@@ -1,10 +1,10 @@
 <?php
 
-namespace Wilkques\Database\Queries\Process;
+namespace Wilkques\Database\Queries\Processors;
 
 use Wilkques\Database\Queries\Builder;
 
-class Process implements ProcessInterface
+class Processor implements ProcessorInterface
 {
     /**
      * Process an  "insert get ID" query.
@@ -18,7 +18,7 @@ class Process implements ProcessInterface
     {
         $query->insert($values);
 
-        $id = $query->getLastInsertId($sequence);
+        $id = $query->getConnection()->getLastInsertId($sequence);
 
         return is_numeric($id) ? (int) $id : $id;
     }

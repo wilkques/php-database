@@ -30,7 +30,7 @@ abstract class PDO extends Connections implements ConnectionInterface
      */
     public function query($sql)
     {
-        return new Result($this->newConnecntion()->query($sql));
+        return new Result($this->newConnecntion()->query($sql), $this);
     }
 
     /**
@@ -40,7 +40,7 @@ abstract class PDO extends Connections implements ConnectionInterface
      */
     public function prepare($sql)
     {
-        return new Statement($this->newConnecntion()->prepare($sql));
+        return new Statement($this->newConnecntion()->prepare($sql), $this);
     }
 
     /**
@@ -94,11 +94,13 @@ abstract class PDO extends Connections implements ConnectionInterface
     }
 
     /**
-     * @return int
+     * @param string|null $sequence
+     * 
+     * @return int|string
      */
-    public function getLastInsertId()
+    public function getLastInsertId($sequence = null)
     {
-        return $this->newConnecntion()->lastInsertId();
+        return $this->newConnecntion()->lastInsertId($sequence);
     }
 
     /**
@@ -120,6 +122,25 @@ abstract class PDO extends Connections implements ConnectionInterface
         !$this->getConnection() && $this->newConnect();
 
         return $this->getConnection();
+    }
+
+    /**
+     * @param string|null $query
+     * @param array $bindings
+     * 
+     * @return Result
+     */
+    public function exec($query, $bindings = [])
+    {
+        $statement = $this->prepare($query);
+
+        if (!empty($bindings)) {
+            $bindings = $statement->bindParams($bindings)->getParams();
+        }
+
+        $this->setQueryLog(compact('query', 'bindings'));
+
+        return $statement->execute();
     }
 
     /**

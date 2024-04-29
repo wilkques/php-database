@@ -12,7 +12,7 @@ class MySql extends PDO
         return sprintf(
             "mysql:host=%s;dbname=%s;port=%s;charset=%s",
             $this->getHost(),
-            $this->getDbname(),
+            $this->getDatabaseName(),
             $this->getPort(),
             $this->getCharacterSet()
         );
