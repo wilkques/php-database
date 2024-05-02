@@ -276,7 +276,11 @@ class Statement
 
         $this->getDebug() && $statement->debugDumpParams();
 
-        $statement->execute($params);
+        if ($params) {
+            $statement->execute($params);
+        } else {
+            $statement->execute();
+        }
 
         return new Result($statement, $this->getConnections());
     }

@@ -7,7 +7,7 @@ interface ConnectionInterface
     /**
      * @return string
      */
-    public function getDatabaseName();
+    public function getDatabase();
 
     /**
      * @param array $queryLog

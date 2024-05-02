@@ -14,22 +14,22 @@ abstract class Connections
     protected $loggingQueries = false;
 
     /** @var array */
-    static $queryLog = array();
+    protected $queryLog = array();
 
     /**
      * @param string $host
      * @param string $username
      * @param string $password
-     * @param string $databaseName
+     * @param string $database
      * @param string|int $port
      * @param string $characterSet
      */
-    public function __construct($host = null, $username = null, $password = null, $databaseName = null, $port = 3306, $characterSet = "utf8mb4")
+    public function __construct($host = null, $username = null, $password = null, $database = null, $port = 3306, $characterSet = "utf8mb4")
     {
         $this->setHost($host)
             ->setUsername($username)
             ->setPassword($password)
-            ->setDatabaseName($databaseName)
+            ->setDatabase($database)
             ->setPort($port)
             ->setCharacterSet($characterSet);
     }
@@ -136,17 +136,17 @@ abstract class Connections
      * 
      * @return static
      */
-    public function setDatabaseName($dbname)
+    public function setDatabase($dbname)
     {
-        return $this->setConfig("databaseName", $dbname);
+        return $this->setConfig("database", $dbname);
     }
 
     /**
      * @return string
      */
-    public function getDatabaseName()
+    public function getDatabase()
     {
-        return $this->getConfig("databaseName");
+        return $this->getConfig("database");
     }
 
     /**
@@ -194,7 +194,7 @@ abstract class Connections
      */
     public function setQueryLog($queryLog)
     {
-        static::$queryLog[] = $queryLog;
+        $this->queryLog[] = $queryLog;
 
         return $this;
     }
@@ -206,7 +206,7 @@ abstract class Connections
      */
     public function getQueryLog()
     {
-        return static::$queryLog;
+        return $this->queryLog;
     }
 
     /**
@@ -216,7 +216,7 @@ abstract class Connections
      */
     public function flushQueryLog()
     {
-        static::$queryLog = [];
+        $this->queryLog = [];
 
         return $this;
     }
@@ -228,7 +228,7 @@ abstract class Connections
      */
     public function getLastQueryLog()
     {
-        return end(static::$queryLog);
+        return end($this->queryLog);
     }
 
     /**
@@ -283,13 +283,11 @@ abstract class Connections
         return array_map(function ($queryLog) {
             $stringSQL = str_replace('?', '"%s"', $queryLog['query']);
 
-            // return sprintf($stringSQL, ...$queryLog['bindings']);
-
             $bindings = $queryLog['bindings'];
 
             array_unshift($bindings, $stringSQL);
 
-            return array_map('sprintf', $bindings);
+            return call_user_func_array('sprintf', $bindings);
         }, $this->getQueryLog());
     }
 
@@ -302,4 +300,11 @@ abstract class Connections
 
         return end($queries);
     }
+
+    /**
+     * @param string|null $dns
+     * 
+     * @return static
+     */
+    abstract public function newConnection(string $dns = null);
 }

@@ -9,10 +9,19 @@ class MySql extends PDO
      */
     public function getDNS()
     {
+        if ($database = $this->getDatabase()) {
+            return sprintf(
+                "mysql:host=%s;dbname=%s;port=%s;charset=%s",
+                $this->getHost(),
+                $database,
+                $this->getPort(),
+                $this->getCharacterSet()
+            );
+        }
+
         return sprintf(
-            "mysql:host=%s;dbname=%s;port=%s;charset=%s",
+            "mysql:host=%s;port=%s;charset=%s",
             $this->getHost(),
-            $this->getDatabaseName(),
             $this->getPort(),
             $this->getCharacterSet()
         );

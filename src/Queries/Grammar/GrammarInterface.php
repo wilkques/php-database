@@ -36,4 +36,14 @@ interface GrammarInterface
      * @return string
      */
     public function compilerDelete($query);
+
+    /**
+     * @return string
+     */
+    public function lockForUpdate();
+
+    /**
+     * @return string
+     */
+    public function sharedLock();
 }

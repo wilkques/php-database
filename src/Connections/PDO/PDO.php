@@ -2,11 +2,15 @@
 
 namespace Wilkques\Database\Connections\PDO;
 
+use Exception;
 use Wilkques\Database\Connections\ConnectionInterface;
 use Wilkques\Database\Connections\Connections;
+use Wilkques\Database\Connections\Traits\DetectsLostConnections;
 
 abstract class PDO extends Connections implements ConnectionInterface
 {
+    use DetectsLostConnections;
+
     /**
      * @param int $attribute
      * @param mixed $value
@@ -16,7 +20,7 @@ abstract class PDO extends Connections implements ConnectionInterface
     public function setAttribute($attribute, $value)
     {
         /** @var \PDO */
-        $pdo = $this->newConnecntion();
+        $pdo = $this->getConnection();
 
         $pdo->setAttribute($attribute, $value);
 
@@ -30,7 +34,7 @@ abstract class PDO extends Connections implements ConnectionInterface
      */
     public function query($sql)
     {
-        return new Result($this->newConnecntion()->query($sql), $this);
+        return new Result($this->getConnection()->query($sql), $this);
     }
 
     /**
@@ -40,25 +44,21 @@ abstract class PDO extends Connections implements ConnectionInterface
      */
     public function prepare($sql)
     {
-        return new Statement($this->newConnecntion()->prepare($sql), $this);
+        return new Statement($this->getConnection()->prepare($sql), $this);
     }
 
     /**
      * @param string|null $dns
      * 
-     * @return static
+     * @return \PDO
      */
-    public function connect(string $dns = null)
+    public function connection(string $dns = null)
     {
-        try {
-            return new \PDO(
-                $dns ?: $this->getDNS(),
-                $this->getUsername(),
-                $this->getPassword()
-            );
-        } catch (\PDOException $e) {
-            throw $e;
-        }
+        return new \PDO(
+            $dns ?: $this->getDNS(),
+            $this->getUsername(),
+            $this->getPassword()
+        );
     }
 
     /**
@@ -66,7 +66,7 @@ abstract class PDO extends Connections implements ConnectionInterface
      */
     public function beginTransaction()
     {
-        return $this->newConnecntion()->beginTransaction();
+        return $this->getConnection()->beginTransaction();
     }
 
     /**
@@ -74,7 +74,7 @@ abstract class PDO extends Connections implements ConnectionInterface
      */
     public function commit()
     {
-        return $this->newConnecntion()->commit();
+        return $this->getConnection()->commit();
     }
 
     /**
@@ -82,7 +82,7 @@ abstract class PDO extends Connections implements ConnectionInterface
      */
     public function rollback()
     {
-        return $this->newConnecntion()->rollBack();
+        return $this->getConnection()->rollBack();
     }
 
     /**
@@ -90,7 +90,7 @@ abstract class PDO extends Connections implements ConnectionInterface
      */
     public function inTransation()
     {
-        return $this->newConnecntion()->inTransaction();
+        return $this->getConnection()->inTransaction();
     }
 
     /**
@@ -100,7 +100,7 @@ abstract class PDO extends Connections implements ConnectionInterface
      */
     public function getLastInsertId($sequence = null)
     {
-        return $this->newConnecntion()->lastInsertId($sequence);
+        return $this->getConnection()->lastInsertId($sequence);
     }
 
     /**
@@ -108,20 +108,43 @@ abstract class PDO extends Connections implements ConnectionInterface
      * 
      * @return static
      */
-    public function newConnect(string $dns = null)
+    public function newConnection(string $dns = null)
     {
-        return $this->setConnection($this->connect($dns))
+        return $this->setConnection($this->connection($dns))
             ->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
     }
 
     /**
-     * @return \PDO
+     * @param string|null $dns
+     * 
+     * @return static
      */
-    public function newConnecntion()
+    public function reConnecntion(string $dns = null)
     {
-        !$this->getConnection() && $this->newConnect();
+        return $this->newConnection($dns);
+    }
 
-        return $this->getConnection();
+    /**
+     * @param string|null $query
+     * @param array $bindings
+     * 
+     * @return Result
+     */
+    protected function run($query, $bindings = [])
+    {
+        $statement = $this->prepare($query);
+
+        $bindings = $bindings ?: array();
+
+        if (!empty($bindings)) {
+            $bindings = $statement->bindParams($bindings)->getParams();
+        }
+
+        if ($this->isLogging()) {
+            $this->setQueryLog(compact('query', 'bindings'));
+        }
+
+        return $statement->execute();
     }
 
     /**
@@ -132,15 +155,67 @@ abstract class PDO extends Connections implements ConnectionInterface
      */
     public function exec($query, $bindings = [])
     {
-        $statement = $this->prepare($query);
+        try {
+            $this->reconnectIfMissingConnection();
 
-        if (!empty($bindings)) {
-            $bindings = $statement->bindParams($bindings)->getParams();
+            return $this->run($query, $bindings);
+        } catch (Exception $e) {
+            $result = $this->tryAgainIfCausedByLostConnection($e, $query, $bindings);
+
+            if ($result instanceof Exception) {
+                throw $result;
+            }
+
+            return $result;
+        }
+    }
+
+    /**
+     * Handle a query exception that occurred during query execution.
+     *
+     * @param  Exception  $e
+     * @param  string  $query
+     * @param  array  $bindings
+     * 
+     * @return Result
+     *
+     * @throws Exception
+     */
+    protected function tryAgainIfCausedByLostConnection(Exception $e, $query, $bindings)
+    {
+        if ($this->causedByLostConnection($e)) {
+            $this->reConnecntion();
+
+            return $this->run($query, $bindings);
         }
 
-        $this->setQueryLog(compact('query', 'bindings'));
+        throw $e;
+    }
 
-        return $statement->execute();
+    /**
+     * Reconnect to the database if a PDO connection is missing.
+     *
+     * @return static
+     */
+    protected function reconnectIfMissingConnection()
+    {
+        if (is_null($this->getConnection())) {
+            $this->reConnecntion();
+        }
+
+        return $this;
+    }
+
+    /**
+     * @param string $database
+     * 
+     * @return static
+     */
+    public function selectDatabase($database)
+    {
+        $this->exec("use `{$database}`;");
+
+        return $this;
     }
 
     /**

@@ -7,6 +7,7 @@ use InvalidArgumentException;
 use Wilkques\Database\Connections\ConnectionInterface;
 use Wilkques\Database\Queries\Grammar\GrammarInterface;
 use Wilkques\Database\Queries\Processors\ProcessorInterface;
+use Wilkques\Helpers\Arrays;
 
 class Builder
 {
@@ -265,17 +266,14 @@ class Builder
      */
     protected function prependDatabaseNameIfCrossDatabaseQuery($query)
     {
-        if (
-            $query->getConnection()->getDatabaseName() !==
-            $this->getConnection()->getDatabaseName()
-        ) {
-            $databaseName = $query->getConnection()->getDatabaseName();
+        if ($query->getConnection()->getDatabase() !== $this->getConnection()->getDatabase()) {
+            Arrays::map($query->getFrom(), function ($from, $index) use ($query) {
+                $database = $query->getConnection()->getDatabase();
 
-            $from = $query->getFrom();
-
-            if (strpos($from, $databaseName) !== 0 && strpos($from, '.') === false) {
-                $query->setFrom($databaseName . '.' . $from);
-            }
+                if (strpos($from, $database) !== 0 && strpos($from, '.') === false) {
+                    $query->setFrom($index, $database . '.' . $from);
+                }
+            });
         }
 
         return $query;
@@ -386,6 +384,19 @@ class Builder
     public function raw($value)
     {
         return new Expression($value);
+    }
+
+    /**
+     * @param int|string $index
+     * @param string $from
+     * 
+     * @return static
+     */
+    public function setFrom($index, $from)
+    {
+        $this->queries['from']['queries'][$index] = $from;
+
+        return $this;
     }
 
     /**
@@ -1541,9 +1552,7 @@ class Builder
         $method = $isWhere ? 'WHERE' : 'ON';
 
         if ($first instanceof Closure) {
-            $first(
-                $join
-            );
+            call_user_func($first, $join);
 
             list('queries'  => $queries, 'bindings' => $bindings) = array_replace([
                 'bindings'  => array(),
@@ -1929,16 +1938,15 @@ class Builder
     {
         if (empty($this->methods)) {
             $methods = array(
-                "set"       => array(
-                    'table', 'username', 'password', 'databaseName', 'host',
-                    'connection', 'grammar',
-                    'processor', 'raw', 'from'
+                'set'       => array(
+                    'table', 'username', 'password', 'database', 'host',
+                    'raw', 'from',
                 ),
-                "process"   => array(
-                    'insertGetId'
+                'process'   => array(
+                    'insertGetId',
                 ),
-                "get"       => array(
-                    "parseQueryLog", "lastParseQuery", "lastInsertId"
+                'get'       => array(
+                    'parseQueryLog', 'lastParseQuery', 'lastInsertId',
                 )
             );
 
@@ -1956,6 +1964,25 @@ class Builder
         $getMethods = array_filter($getMethods);
 
         return current($getMethods) ?: $method;
+    }
+
+    /**
+     * @param string $method
+     * @param mixed $abstract
+     * 
+     * @return string
+     */
+    public function callForce($method, $abstract)
+    {
+        $forceMethods = array(
+            'getQueryLog', 'getParseQueryLog', 'getLastParseQuery',
+        );
+
+        if (in_array($method, $forceMethods)) {
+            return $abstract;
+        }
+
+        return $abstract ?: $this;
     }
 
     /**
@@ -1988,6 +2015,6 @@ class Builder
             }
         }
 
-        return $abstract ?: $this;
+        return $this->callForce($method, $abstract);
     }
 }

@@ -25,16 +25,6 @@
     require_once "path/to/your/folder/wilkques/Database/src/helpers.php";
 
     loadPHP();
-
-    $connection = new \Wilkques\Database\Connections\PDO\MySql('<host>', '<username>', '<password>', '<database name>');
-
-    $builder = new \Wilkques\Database\Queries\Builder(
-        $connection,
-        new \Wilkques\Database\Queries\Grammar\MySql,
-        new \Wilkques\Database\Queries\Processors\Processor,
-    );
-
-    $db = \Wilkques\Database\Database::builder($builder);
     ```
 
 1. Via Composer
@@ -43,14 +33,65 @@
     ```php
 
     require "vendor/autoload.php";
+    ```
 
-    $connection = new \Wilkques\Database\Connections\PDO\MySql('<host>', '<username>', '<password>', '<database name>');
+1. Using
+    ```php
+    $connection = new \Wilkques\Database\Connections\PDO\MySql('<host>', '<username>', '<password>', '<database>', '<port>', '<character>');
+
+    // or
+
+    $connection = (new \Wilkques\Database\Connections\Connectors\PDO\Connections)->connection([
+        'driver'    => '<DB driver>',   // mysql
+        'host'      => '<host>',        // default localhost
+        'username'  => '<username>',
+        'password'  => '<password>',
+        'database'  => '<database>',
+        'port'      => '<port>',        // default 3360
+        'charset'   => '<character>',   // default utf8mb4
+    ]);
 
     $db = new \Wilkques\Database\Queries\Builder(
         $connection,
         new \Wilkques\Database\Queries\Grammar\MySql,
         new \Wilkques\Database\Queries\Processors\Processor,
     );
+    ```
+
+1. connect other connection or database
+    example:
+    ```php
+    $connection1 = new \Wilkques\Database\Connections\PDO\MySql('<host>', '<username>', '<password>', '<database1>');
+
+    // or
+
+    $connection1 = (new \Wilkques\Database\Connections\Connectors\PDO\Connections)->connection([
+        'driver'    => '<DB driver>',   // mysql
+        'host'      => '<host>',        // default localhost
+        'username'  => '<username>',
+        'password'  => '<password>',
+        'database'  => '<database>',
+        'port'      => '<port>',        // default 3360
+        'charset'   => '<character>',   // default utf8mb4
+    ]);
+
+    $db->table('<table name>')->where(function ($query) use ($connection1) {
+        $query->setConnection(
+            $connection1
+        )->table('<table name1>');
+
+        // do something ...
+    });
+
+    // or
+
+    $db1 = new \Wilkques\Database\Queries\Builder(
+        $connection1,
+        new \Wilkques\Database\Queries\Grammar\MySql,
+        new \Wilkques\Database\Queries\Processors\Processor,
+    );
+
+    $db->table('<table name>')->where($db1->table('<table name1>'));
     ```
 
 ## Methods
@@ -1235,26 +1276,6 @@
     $db->select($db->raw("COUNT(*)"));
     ```
 
-1. `selectRaw`
-    ```php
-
-    $db->selectRaw("<sql string in select column>");
-
-    // example
-
-    $db->selectRaw("`first_name`, `last_name`");
-    ```
-
-1. `whereRaw`
-    ```php
-
-    $db->whereRaw("<sql string in select column>");
-
-    // example
-
-    $db->whereRaw("`first_name` = 'Bill' AND `last_name` = 'Whrite'");
-    ```
-
 ### SQL Execute
 
 1. `query` set SQL string
@@ -1273,6 +1294,17 @@
     ```php
 
     $db->prepare("<SQL String>")->execute(['<value1>', '<value2>' ...])->fetch();
+    ```
+
+1. `bindParams` execute SQL string
+
+    ```php
+
+    $stat = $db->prepare("<SQL String>");
+    
+    $stat->bindParams(['<value1>', '<value2>' ...])->execute();
+    
+    $stat->fetch();
     ```
 
 1. `execute` execute SQL string
@@ -1415,20 +1447,38 @@
     $db->password('<DB password>');
     ```
 
-1. `dbname`
+1. `database`
 
     ```php
 
-    $db->dbname('<DB name>');
+    $db->database('<DB name>');
     ```
 
-1. `newConnect`
+1. `newConnection`
 
     ```php
 
-    $db->newConnect();
+    $db->newConnection();
 
     // or
 
-    $db->newConnect("<sql server dns string>");
+    $db->newConnection("<sql server dns string>");
+    ```
+
+1. `reConnection`
+
+    ```php
+
+    $db->reConnection();
+
+    // or
+
+    $db->reConnection("<sql server dns string>");
+    ```
+
+1. `selectDatabase`
+
+    ```php
+
+    $db->selectDatabase('<database>');
     ```
