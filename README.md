@@ -61,7 +61,7 @@
 1. connect other connection or database
     example:
     ```php
-    $connection1 = new \Wilkques\Database\Connections\PDO\MySql('<host>', '<username>', '<password>', '<database1>');
+    $connection1 = new \Wilkques\Database\Connections\PDO\MySql('<host>', '<username>', '<password>', '<database>', '<port>', '<character>');
 
     // or
 
