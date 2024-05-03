@@ -303,6 +303,26 @@ class Builder
     }
 
     /**
+     * @param array $binding
+     * 
+     * @return array
+     */
+    protected function bindingsNested($binding)
+    {
+        $bindings = array_map(function ($value) {
+            if ($value instanceof Expression) {
+                return null;
+            }
+
+            return $value;
+        }, $binding);
+
+        return array_values(
+            array_filter($bindings)
+        );
+    }
+
+    /**
      * @param array|[] $except
      * 
      * @return array
@@ -321,19 +341,13 @@ class Builder
             $binding = $this->getQuery("{$component}.bindings");
 
             if (is_array($binding)) {
-                $bindings = array_merge($bindings, array_map(function ($value) {
-                    if ($value instanceof Expression) {
-                        return null;
-                    }
-
-                    return $value;
-                }, $binding));
+                $bindings = array_merge($bindings, $binding);
             } else if (!is_null($binding)) {
                 $bindings[] = $binding;
             }
         }
 
-        return array_values(array_filter($bindings));
+        return $bindings;
     }
 
     /**
@@ -381,12 +395,14 @@ class Builder
                 $this->queries[$type]['bindings'] = array();
             }
 
-            $this->queries[$type]['bindings'] = array_merge($this->queries[$type]['bindings'], $values);
+            $this->queries[$type]['bindings'] = array_merge($this->queries[$type]['bindings'], $this->bindingsNested($values));
 
             return $this;
         }
 
-        $this->queries[$type]['bindings'][] = $values;
+        if (!$values instanceof Expression) {
+            $this->queries[$type]['bindings'][] = $values;
+        }
 
         return $this;
     }
@@ -1495,7 +1511,11 @@ class Builder
 
                 $values = array_merge($values, $bindings);
             } else if ($value instanceof Expression) {
-                $columns[] = $value;
+                if (is_numeric($column)) {
+                    $columns[] = $this->raw($value);
+                } else {
+                    $columns[] = $this->raw("{$column} = ({$value})");
+                }
             } else {
                 $columns[] = $column;
 
@@ -1521,7 +1541,7 @@ class Builder
     public function increment($column, $amount = 1, $data = array())
     {
         if (!is_numeric($amount)) {
-            throw new \InvalidArgumentException(" second Arguments must be numeric");
+            throw new \InvalidArgumentException("second Arguments must be numeric");
         }
 
         $values = $data;
@@ -1545,7 +1565,7 @@ class Builder
     public function decrement($column, $amount = 1, $data = array())
     {
         if (!is_numeric($amount)) {
-            throw new \InvalidArgumentException(" second Arguments must be numeric");
+            throw new \InvalidArgumentException("second Arguments must be numeric");
         }
 
         $values = $data;
@@ -1575,7 +1595,9 @@ class Builder
                 $carry = array();
             }
 
-            $values = array_values($values);
+            $values = array_values(
+                array_filter($this->bindingsNested($values))
+            );
 
             return array_merge($carry, $values);
         });

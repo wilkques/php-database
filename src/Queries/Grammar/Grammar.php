@@ -89,7 +89,7 @@ abstract class Grammar implements GrammarInterface
      */
     public function compilerFrom($query)
     {
-        $from = $query->getQuery('from.queries', []);
+        $from = $query->getQuery('from.queries', array());
 
         if (empty($from)) {
             return false;
@@ -107,7 +107,7 @@ abstract class Grammar implements GrammarInterface
      */
     public function compilerWheres($query)
     {
-        $wheres = $query->getQuery('wheres.queries', []);
+        $wheres = $query->getQuery('wheres.queries', array());
 
         if (empty($wheres)) {
             return false;
@@ -125,7 +125,7 @@ abstract class Grammar implements GrammarInterface
      */
     public function compilerHavings($query)
     {
-        $havings = $query->getQuery('havings.queries', []);
+        $havings = $query->getQuery('havings.queries', array());
 
         if (empty($havings)) {
             return false;
@@ -143,7 +143,7 @@ abstract class Grammar implements GrammarInterface
      */
     public function compilerLimit($query)
     {
-        $limit = $query->getQuery('limit.queries', []);
+        $limit = $query->getQuery('limit.queries', array());
 
         if (empty($limit)) {
             return false;
@@ -159,7 +159,7 @@ abstract class Grammar implements GrammarInterface
      */
     public function compilerGroups($query)
     {
-        $groups = $query->getQuery('groups.queries', []);
+        $groups = $query->getQuery('groups.queries', array());
 
         if (empty($groups)) {
             return false;
@@ -177,7 +177,7 @@ abstract class Grammar implements GrammarInterface
      */
     public function compilerOrders($query)
     {
-        $orders = $query->getQuery('orders.queries', []);
+        $orders = $query->getQuery('orders.queries', array());
 
         if (empty($orders)) {
             return false;
@@ -231,7 +231,7 @@ abstract class Grammar implements GrammarInterface
      */
     public function compilerJoins($query)
     {
-        $joins = $query->getQuery('joins.queries', []);
+        $joins = $query->getQuery('joins.queries', array());
 
         if (empty($joins)) {
             return false;
@@ -331,7 +331,7 @@ abstract class Grammar implements GrammarInterface
      */
     public function compilerUnions($query)
     {
-        $union = $query->getQuery('unions.queries', []);
+        $union = $query->getQuery('unions.queries', array());
 
         if (empty($union)) {
             return false;

@@ -1291,11 +1291,19 @@
 1. `raw`
     ```php
 
+    // select
+
     $db->select($db->raw("<sql string in select column>"));
     
     // example
 
     $db->select($db->raw("COUNT(*)"));
+
+    // update
+
+    $db->update([
+        $db->raw("<sql string in select column>"),
+    ]);
     ```
 
 ### SQL Execute
