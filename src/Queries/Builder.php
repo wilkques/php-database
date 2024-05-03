@@ -60,6 +60,21 @@ class Builder
     }
 
     /**
+     * @param ConnectionInterface $connection
+     * @param GrammarInterface $grammar
+     * @param ProcessorInterface $processor
+     * 
+     * @return static
+     */
+    public static function make(
+        ConnectionInterface $connection,
+        GrammarInterface $grammar = null,
+        ProcessorInterface $processor = null
+    ) {
+        return new static($connection, $grammar, $processor);
+    }
+
+    /**
      * @param string|object $abstract
      * @param object|null $class
      * 
