@@ -327,19 +327,7 @@ class Builder
             }
         }
 
-        return array_reduce($bindings, function ($carry, $binding) {
-            if (!$carry) {
-                $carry = array();
-            }
-
-            if (is_array($binding)) {
-                return array_merge($carry, $binding);
-            } else {
-                $carry[] = $binding;
-
-                return $carry;
-            }
-        });
+        return $bindings;
     }
 
     /**
@@ -353,11 +341,7 @@ class Builder
      */
     protected function queriesPush($query, $binding, $type = 'wheres')
     {
-        $this->queries[$type]['queries'][] = $query;
-
-        $this->queries[$type]['bindings'][] = $binding;
-
-        return $this;
+        return $this->queryPush($query, $type)->bindingPush($binding, $type);
     }
 
     /**
@@ -386,6 +370,16 @@ class Builder
      */
     protected function bindingPush($values, $type = 'wheres')
     {
+        if (is_array($values)) {
+            if (!isset($this->queries[$type]['bindings'])) {
+                $this->queries[$type]['bindings'] = array();
+            }
+
+            $this->queries[$type]['bindings'] = array_merge($this->queries[$type]['bindings'], $values);
+
+            return $this;
+        }
+
         $this->queries[$type]['bindings'][] = $values;
 
         return $this;
@@ -607,19 +601,19 @@ class Builder
      * 
      * @return static
      */
-    protected function arrayNested($column, $join, $method = 'where', $type = 'wheres')
+    protected function arrayNested($column, $join, $method = 'where')
     {
-        return call_user_func(function ($column, $method, $join, $type) {
-            return call_user_func(array($this, 'nested'), function ($query) use ($column, $method, $join) {
+        return call_user_func(function ($column, $method, $join) {
+            $nestedMethod = "{$method}Nested";
+
+            return call_user_func(array($this, $nestedMethod), function ($query) use ($column, $method, $join) {
                 foreach ($column as $key => $value) {
-                    if (is_numeric($key) && is_array($value)) {
-                        call_user_func_array(array($query, $method), array_values($value));
-                    } else {
-                        call_user_func_array(array($query, $method), array($key, '=', $value, $join));
-                    }
+                    $nestedMethod = 'array' . ucfirst($method) . 'Nested';
+
+                    call_user_func(array($query, $nestedMethod), $query, $key, $value, $join);
                 }
-            }, $join, $type);
-        }, $column, $method, $join, $type);
+            }, $join);
+        }, $column, $method, $join);
     }
 
     /**
@@ -685,6 +679,36 @@ class Builder
     }
 
     /**
+     * Add a nested where statement to the query.
+     *
+     * @param  \Closure|callback  $callback
+     * @param  string  $join
+     * 
+     * @return static
+     */
+    protected function whereNested($callback, $join = 'and')
+    {
+        return $this->nested($callback, $join, 'wheres');
+    }
+
+    /**
+     * @param static $query
+     * @param string|int $key
+     * @param mixed $value
+     * @param string $join
+     * 
+     * @return void
+     */
+    protected function arrayWhereNested($query, $key, $value, $join)
+    {
+        if (is_numeric($key) && is_array($value)) {
+            call_user_func_array(array($query, 'where'), array_values($value));
+        } else {
+            call_user_func_array(array($query, 'where'), array($key, '=', $value, $join));
+        }
+    }
+
+    /**
      * @param string|array|callback $column
      * @param string|null $operator
      * @param mixed|null $value
@@ -709,7 +733,7 @@ class Builder
         );
 
         if ($column instanceof Closure && is_null($operator)) {
-            return $this->nested($column, $andOr);
+            return $this->whereNested($column, $andOr);
         }
 
         if ($column instanceof self && !is_null($operator)) {
@@ -845,7 +869,7 @@ class Builder
     public function whereNull($column, $andOr = 'and', $not = false)
     {
         if ($column instanceof Closure) {
-            return $this->nested($column, $andOr);
+            return $this->whereNested($column, $andOr);
         }
 
         $andOr = strtoupper($andOr);
@@ -1064,6 +1088,36 @@ class Builder
     }
 
     /**
+     * Add a nested where statement to the query.
+     *
+     * @param  \Closure|callback  $callback
+     * @param  string  $join
+     * 
+     * @return static
+     */
+    protected function groupByNested($callback, $join)
+    {
+        return $this->nested($callback, $join, 'groups');
+    }
+
+    /**
+     * @param static $query
+     * @param string|int $key
+     * @param mixed $value
+     * @param string $join
+     * 
+     * @return void
+     */
+    protected function arrayGroupByNested($query, $key, $value, $join)
+    {
+        if (is_numeric($key) && is_array($value)) {
+            call_user_func_array(array($query, 'groupBy'), array_values($value));
+        } else {
+            call_user_func_array(array($query, 'groupBy'), array($value));
+        }
+    }
+
+    /**
      * @param string|array $column
      * @param string $sort
      * 
@@ -1073,7 +1127,7 @@ class Builder
     {
         // 參數若為: array(array($column, $sort), array($column, $sort))
         if (is_array($column)) {
-            return $this->arrayNested($column, '', 'groupBy', 'groups');
+            return $this->arrayNested($column, '', 'groupBy');
         }
 
         if ($column instanceof Closure || $column instanceof self) {
@@ -1137,6 +1191,36 @@ class Builder
     }
 
     /**
+     * Add a nested where statement to the query.
+     *
+     * @param  \Closure|callback  $callback
+     * @param  string  $join
+     * 
+     * @return static
+     */
+    protected function havingNested($callback, $join)
+    {
+        return $this->nested($callback, $join, 'havings');
+    }
+
+    /**
+     * @param static $query
+     * @param string|int $key
+     * @param mixed $value
+     * @param string $join
+     * 
+     * @return void
+     */
+    protected function arrayHavingNested($query, $key, $value, $join)
+    {
+        if (is_numeric($key) && is_array($value)) {
+            call_user_func_array(array($query, 'having'), array_values($value));
+        } else {
+            call_user_func_array(array($query, 'having'), array($key, '=', $value, $join));
+        }
+    }
+
+    /**
      * Add a "having" clause to the query.
      *
      * @param  string  $column
@@ -1150,7 +1234,7 @@ class Builder
     {
         // 參數若為: array(array($column, $operator, $value, $andOr), array($column, $operator, $value, $andOr))
         if (is_array($column)) {
-            return $this->arrayNested($column, $andOr, 'having', 'havings');
+            return $this->arrayNested($column, $andOr, 'having');
         }
 
         // 如果帶入參數只有兩個，則 $value = $operator and $operator = '='
@@ -1163,7 +1247,7 @@ class Builder
         );
 
         if ($column instanceof Closure && is_null($operator)) {
-            return $this->nested($column, $andOr, 'havings');
+            return $this->havingNested($column, $andOr);
         }
 
         if ($column instanceof self && !is_null($operator)) {
@@ -1230,6 +1314,36 @@ class Builder
     }
 
     /**
+     * Add a nested where statement to the query.
+     *
+     * @param  \Closure|callback  $callback
+     * @param  string  $join
+     * 
+     * @return static
+     */
+    protected function orderByNested($callback, $join)
+    {
+        return $this->nested($callback, $join, 'orders');
+    }
+
+    /**
+     * @param static $query
+     * @param string|int $key
+     * @param mixed $value
+     * @param string $join
+     * 
+     * @return void
+     */
+    protected function arrayOrderByNested($query, $key, $value, $join)
+    {
+        if (is_numeric($key) && is_array($value)) {
+            call_user_func_array(array($query, 'orderBy'), array_values($value));
+        } else {
+            call_user_func_array(array($query, 'orderBy'), array($value));
+        }
+    }
+
+    /**
      * @param string|array $column
      * @param string $sort
      * 
@@ -1239,7 +1353,7 @@ class Builder
     {
         // 參數若為: array(array($column, $sort), array($column, $sort))
         if (is_array($column)) {
-            return $this->arrayNested($column, '', 'orderBy', 'orders');
+            return $this->arrayNested($column, '', 'orderBy');
         }
 
         if ($column instanceof Closure || $column instanceof self) {
@@ -1639,7 +1753,7 @@ class Builder
         list($query, $bindings) = $this->createSub($table);
 
         if (!empty($bindings)) {
-            $this->queryPush($bindings, 'joins');
+            $this->bindingPush($bindings, 'joins');
         }
 
         $table = "({$query}) AS `{$as}`";
