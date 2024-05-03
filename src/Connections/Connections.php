@@ -231,7 +231,7 @@ abstract class Connections
      */
     public function flushQueryLog()
     {
-        $this->queryLog = [];
+        $this->queryLog = array();
 
         return $this;
     }

@@ -41,5 +41,5 @@ interface ConnectionInterface
      * 
      * @return Result
      */
-    public function exec($query, $bindings = []);
+    public function exec($query, $bindings = array());
 }

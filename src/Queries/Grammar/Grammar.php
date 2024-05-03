@@ -2,6 +2,7 @@
 
 namespace Wilkques\Database\Queries\Grammar;
 
+use Exception;
 use Wilkques\Database\Queries\Builder;
 use Wilkques\Database\Queries\Expression;
 
@@ -26,15 +27,37 @@ abstract class Grammar implements GrammarInterface
     );
 
     /**
+     * @param array $array
+     * @param bool|true $force
+     * @param callback|\Closure|null $callback
+     * 
+     * @return array
+     */
+    protected function arrayNested($array, $force = true, $callback = null)
+    {
+        return array_map(function ($value) use ($callback, $force) {
+            if ($value instanceof Expression) {
+                return $value;
+            }
+
+            if ($callback) {
+                return call_user_func($callback, $value);
+            }
+
+            return $force ? $value : '?';
+        }, $array);
+    }
+
+    /**
      * @param Builder $query
      * 
      * @return string
      */
     public function compilerColumns($query)
     {
-        $columns = $query->getQuery('columns.queries', ['*']);
+        $columns = $query->getQuery('columns.queries', array('*'));
 
-        return join(',', $columns);
+        return join(',', $this->arrayNested($columns));
     }
 
     /**
@@ -45,7 +68,7 @@ abstract class Grammar implements GrammarInterface
     public function compilerSelect($query)
     {
         if (!$query->getQuery('columns.queries')) {
-            $query->setQuery('columns.queries', ['*']);
+            $query->setQuery('columns.queries', array('*'));
         }
 
         $sql = $this->concatenate(
@@ -72,7 +95,7 @@ abstract class Grammar implements GrammarInterface
             return false;
         }
 
-        $from = join(', ', $from);
+        $from = join(', ', $this->arrayNested($from));
 
         return "FROM {$from}";
     }
@@ -90,7 +113,7 @@ abstract class Grammar implements GrammarInterface
             return false;
         }
 
-        $wheres = join(' ', $wheres);
+        $wheres = join(' ', $this->arrayNested($wheres));
 
         return "WHERE " . ltrim(ltrim($wheres, 'AND '), 'OR ');
     }
@@ -108,7 +131,7 @@ abstract class Grammar implements GrammarInterface
             return false;
         }
 
-        $havings = join(' ', $havings);
+        $havings = join(' ', $this->arrayNested($havings));
 
         return "HAVING " . ltrim(ltrim($havings, 'AND '), 'OR ');
     }
@@ -126,7 +149,7 @@ abstract class Grammar implements GrammarInterface
             return false;
         }
 
-        return "LIMIT " . join(',', $limit);
+        return "LIMIT " . join(',', $this->arrayNested($limit));
     }
 
     /**
@@ -142,7 +165,7 @@ abstract class Grammar implements GrammarInterface
             return false;
         }
 
-        $groups = join(', ', $groups);
+        $groups = join(', ', $this->arrayNested($groups));
 
         return "GROUP BY " . ltrim($groups, ', ');
     }
@@ -160,7 +183,7 @@ abstract class Grammar implements GrammarInterface
             return false;
         }
 
-        $orders = join(', ', $orders);
+        $orders = join(', ', $this->arrayNested($orders));
 
         return "ORDER BY " . ltrim($orders, ', ');
     }
@@ -176,6 +199,10 @@ abstract class Grammar implements GrammarInterface
 
         if (!$offset) {
             return false;
+        }
+
+        if ($offset instanceof Expression) {
+            $offset = $offset->getValue();
         }
 
         return "OFFSET " . $offset;
@@ -210,7 +237,7 @@ abstract class Grammar implements GrammarInterface
             return false;
         }
 
-        return join(' ', $joins);
+        return join(' ', $this->arrayNested($joins));
     }
 
     /**
@@ -220,7 +247,7 @@ abstract class Grammar implements GrammarInterface
      */
     protected function compilerComponent($query)
     {
-        $sql = [];
+        $sql = array();
 
         foreach ($this->selectComponents as $component) {
             if ($query->getQuery($component, false)) {
@@ -254,13 +281,9 @@ abstract class Grammar implements GrammarInterface
      */
     public function compilerUpdate($query, $columns)
     {
-        $columns = array_map(function ($column) {
-            if ($column instanceof Expression) {
-                return $column;
-            }
-
+        $columns = $this->arrayNested($columns, false, function ($column) {
             return "`{$column}` = ?";
-        }, $columns);
+        });
 
         $columns = join(',', $columns);
 
@@ -314,7 +337,7 @@ abstract class Grammar implements GrammarInterface
             return false;
         }
 
-        return join(' ', $union);
+        return join(' ', $this->arrayNested($union));
     }
 
     /**
@@ -324,16 +347,16 @@ abstract class Grammar implements GrammarInterface
      * 
      * @return string
      */
-    public function compilerInsert($query, $data = [], $sql = null)
+    public function compilerInsert($query, $data = array(), $sql = null)
     {
         if (empty($data)) {
             return "INSERT INTO {$query->getFrom()} DEFAULT VALUES";
         }
 
         if (!is_array(current($data))) {
-            $data = [
+            $data = array(
                 $data
-            ];
+            );
         }
 
         $columns = join(',', array_keys(current($data)));
@@ -341,10 +364,8 @@ abstract class Grammar implements GrammarInterface
         $from = join(', ', $query->getFrom());
 
         if (!$sql) {
-            $values = array_map(function ($value) {
-                $value = array_fill(0, count($value), "?");
-
-                return join(', ', $value);
+            $values = array_map(function ($values) {
+                return join(', ', $this->arrayNested($values, false));
             }, $data);
 
             $values = join('), (', $values);

@@ -20,7 +20,7 @@ interface GrammarInterface
      * 
      * @return string
      */
-    public function compilerInsert($query, $data = [], $sql = null);
+    public function compilerInsert($query, $data = array(), $sql = null);
 
     /**
      * @param Builder $query

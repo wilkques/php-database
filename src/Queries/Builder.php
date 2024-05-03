@@ -321,13 +321,19 @@ class Builder
             $binding = $this->getQuery("{$component}.bindings");
 
             if (is_array($binding)) {
-                $bindings = array_merge($bindings, $binding);
+                $bindings = array_merge($bindings, array_map(function ($value) {
+                    if ($value instanceof Expression) {
+                        return null;
+                    }
+
+                    return $value;
+                }, $binding));
             } else if (!is_null($binding)) {
                 $bindings[] = $binding;
             }
         }
 
-        return $bindings;
+        return array_values(array_filter($bindings));
     }
 
     /**
@@ -1558,9 +1564,7 @@ class Builder
      */
     public function insert($data = array())
     {
-        $first = current($data);
-
-        if (!is_array($first)) {
+        if (!is_array(current($data))) {
             $data = array(
                 $data
             );
