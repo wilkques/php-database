@@ -75,12 +75,19 @@
         new \Wilkques\Database\Queries\Grammar\MySql,
         new \Wilkques\Database\Queries\Processors\Processor,
     );
+
+    // or 
+    
+    $db = \Wilkques\Database\Queries\Builder::make(
+        $connection,
+        new \Wilkques\Database\Queries\Grammar\MySql,
+        new \Wilkques\Database\Queries\Processors\Processor,
+    );
     ```
 
 1. connect other connection or database
-    example:
     ```php
-    $connection1 = (new \Wilkques\Database\Connections\Connectors\PDO\Connections)->connection([
+    $connection1 = \Wilkques\Database\Connections\Connectors\PDO\Connections::connect([
         'driver'    => '<DB driver>',   // mysql
         'host'      => '<host>',        // default localhost
         'username'  => '<username>',
@@ -100,7 +107,7 @@
 
     // or
 
-    $db1 = new \Wilkques\Database\Queries\Builder(
+    $db1 = \Wilkques\Database\Queries\Builder::make(
         $connection1,
         new \Wilkques\Database\Queries\Grammar\MySql,
         new \Wilkques\Database\Queries\Processors\Processor,
