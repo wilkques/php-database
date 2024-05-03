@@ -35,6 +35,21 @@ abstract class Connections
     }
 
     /**
+     * @param string $host
+     * @param string $username
+     * @param string $password
+     * @param string $database
+     * @param string|int $port
+     * @param string $characterSet
+     * 
+     * @return static
+     */
+    public static function connect($host = null, $username = null, $password = null, $database = null, $port = 3306, $characterSet = "utf8mb4")
+    {
+        return new static($host, $username, $password, $database, $port, $characterSet);
+    }
+
+    /**
      * @param mixed $connection
      * 
      * @return static

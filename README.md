@@ -35,9 +35,13 @@
     require "vendor/autoload.php";
     ```
 
-1. Using
+1. connect
     ```php
     $connection = new \Wilkques\Database\Connections\PDO\MySql('<host>', '<username>', '<password>', '<database>', '<port>', '<character>');
+
+    // or
+
+    $connection = \Wilkques\Database\Connections\PDO\MySql::connect('<host>', '<username>', '<password>', '<database>', '<port>', '<character>');
 
     // or
 
@@ -51,6 +55,21 @@
         'charset'   => '<character>',   // default utf8mb4
     ]);
 
+    // or
+
+    $connection = \Wilkques\Database\Connections\Connectors\PDO\Connections::connect([
+        'driver'    => '<DB driver>',   // mysql
+        'host'      => '<host>',        // default localhost
+        'username'  => '<username>',
+        'password'  => '<password>',
+        'database'  => '<database>',
+        'port'      => '<port>',        // default 3360
+        'charset'   => '<character>',   // default utf8mb4
+    ]);
+    ```
+
+1. Using
+    ```php
     $db = new \Wilkques\Database\Queries\Builder(
         $connection,
         new \Wilkques\Database\Queries\Grammar\MySql,
@@ -61,10 +80,6 @@
 1. connect other connection or database
     example:
     ```php
-    $connection1 = new \Wilkques\Database\Connections\PDO\MySql('<host>', '<username>', '<password>', '<database>', '<port>', '<character>');
-
-    // or
-
     $connection1 = (new \Wilkques\Database\Connections\Connectors\PDO\Connections)->connection([
         'driver'    => '<DB driver>',   // mysql
         'host'      => '<host>',        // default localhost
