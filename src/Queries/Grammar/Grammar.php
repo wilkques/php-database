@@ -370,34 +370,32 @@ abstract class Grammar implements GrammarInterface
 
             $values = join('), (', $values);
 
-            return $this->compilerInsertWithoutSubQuery($query, $from, $columns, $values);
+            return $this->compilerInsertWithoutSubQuery($from, $columns, $values);
         }
 
-        return $this->compilerInsertWithSubQuery($query, $from, $columns, $sql);
+        return $this->compilerInsertWithSubQuery($from, $columns, $sql);
     }
 
     /**
-     * @param Builder $query
      * @param string $from
      * @param string $columns
      * @param string $values
      * 
      * @return string
      */
-    protected function compilerInsertWithoutSubQuery($query, $from, $columns, $values)
+    protected function compilerInsertWithoutSubQuery($from, $columns, $values)
     {
         return "INSERT INTO {$from} ({$columns}) VALUES ({$values})";
     }
 
     /**
-     * @param Builder $query
      * @param string $from
      * @param string $columns
      * @param string $sql
      * 
      * @return string
      */
-    protected function compilerInsertWithSubQuery($query, $from, $columns, $sql)
+    protected function compilerInsertWithSubQuery($from, $columns, $sql)
     {
         return "INSERT INTO {$from} ({$columns}) {$sql}";
     }
