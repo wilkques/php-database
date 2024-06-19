@@ -76,19 +76,19 @@ class Builder
 
     /**
      * @param string|object $abstract
-     * @param object|null $class
+     * @param object|null $resolver
      * 
      * @return static
      */
-    public function resolverRegister($abstract, $class = null)
+    public function resolverRegister($abstract, $resolver = null)
     {
         if (is_object($abstract)) {
-            $class = $abstract;
+            $resolver = $abstract;
 
             $abstract = get_class($abstract);
         }
 
-        data_set($this->resolvers, $abstract, $class);
+        data_set($this->resolvers, $abstract, $resolver);
 
         return $this;
     }
@@ -361,7 +361,13 @@ class Builder
      */
     protected function queriesPush($query, $binding, $type = 'wheres')
     {
-        return $this->queryPush($query, $type)->bindingPush($binding, $type);
+        $this->queryPush($query, $type);
+        
+        if (!empty($binding)) {
+            $this->bindingPush($binding, $type);
+        }
+
+        return $this;
     }
 
     /**
@@ -384,6 +390,7 @@ class Builder
      *
      * @param  mixed  $value
      * @param  string  $type
+     * 
      * @return static
      *
      * @throws \InvalidArgumentException
@@ -415,6 +422,19 @@ class Builder
     public function raw($value)
     {
         return new Expression($value);
+    }
+
+    /**
+     * Add a new "raw" select expression to the query.
+     *
+     * @param  string  $expression
+     * @param  array  $bindings
+     * 
+     * @return static
+     */
+    public function fromRaw($expression, array $bindings = [])
+    {
+        return $this->queriesPush($this->raw($expression), $bindings, 'from');
     }
 
     /**
@@ -456,7 +476,7 @@ class Builder
             } else {
                 $from = is_string($as) ? "{$from} AS `{$as}`" : $from;
 
-                $this->queryPush($from, 'from');
+                $this->fromRaw($from);
             }
         }
 
@@ -481,13 +501,7 @@ class Builder
 
         $query = $as ? "{$query} AS `{$as}`" : $query;
 
-        if (!empty($bindings)) {
-            $this->bindingPush($bindings, 'from');
-        }
-
-        $this->queryPush($query, 'from');
-
-        return $this;
+        return $this->fromRaw($query, $bindings);
     }
 
     /**
@@ -515,6 +529,19 @@ class Builder
     public function getTable()
     {
         return $this->getFrom();
+    }
+
+    /**
+     * Add a new "raw" select expression to the query.
+     *
+     * @param  string  $expression
+     * @param  array  $bindings
+     * 
+     * @return static
+     */
+    public function selectRaw($expression, array $bindings = [])
+    {
+        return $this->queriesPush($this->raw($expression), $bindings, 'columns');
     }
 
     /**
@@ -557,13 +584,7 @@ class Builder
 
         $queries = $as ? "{$queries} AS `{$as}`" : $queries;
 
-        $this->queryPush($queries, 'columns');
-
-        if (!empty($bindings)) {
-            $this->bindingPush($bindings, 'columns');
-        }
-
-        return $this;
+        return $this->selectRaw($queries, $bindings);
     }
 
     /**
@@ -572,6 +593,7 @@ class Builder
      * @param  string  $value
      * @param  string  $operator
      * @param  bool  $useDefault
+     * 
      * @return array
      *
      * @throws \InvalidArgumentException
@@ -731,6 +753,33 @@ class Builder
     }
 
     /**
+     * Add a raw where clause to the query.
+     *
+     * @param  string  $sql
+     * @param  mixed  $bindings
+     * @param  string  $andOr
+     * 
+     * @return static
+     */
+    public function whereRaw($sql, $bindings = [], $andOr = 'and')
+    {
+        return $this->queriesPush($this->raw("{$andOr} {$sql}"), $bindings);
+    }
+
+    /**
+     * Add a raw or where clause to the query.
+     *
+     * @param  string  $sql
+     * @param  mixed  $bindings
+     * 
+     * @return static
+     */
+    public function orWhereRaw($sql, $bindings = [])
+    {
+        return $this->whereRaw($sql, $bindings, 'or');
+    }
+
+    /**
      * @param string|array|callback $column
      * @param string|null $operator
      * @param mixed|null $value
@@ -789,7 +838,7 @@ class Builder
 
             $operator = strtoupper($operator);
 
-            return $this->queryPush("{$andOr} {$column} {$operator} {$value}");
+            return $this->whereRaw("{$column} {$operator} {$value}", [], $andOr);
         }
 
         if (is_null($value)) {
@@ -814,7 +863,7 @@ class Builder
 
         $operator = strtoupper($operator);
 
-        return $this->queriesPush("{$andOr} {$column} {$operator} {$varValue}", $value);
+        return $this->whereRaw("{$column} {$operator} {$varValue}", $value, $andOr);
     }
 
     /**
@@ -846,13 +895,7 @@ class Builder
 
         list($sql, $bindings) = $this->createSub($callback);
 
-        $this->queryPush("{$andOr} {$column} {$operator} ({$sql})");
-
-        if (!empty($bindings)) {
-            $this->bindingPush($bindings);
-        }
-
-        return $this;
+        return $this->whereRaw("{$column} {$operator} ({$sql})", $bindings, $andOr);
     }
 
     /**
@@ -898,9 +941,7 @@ class Builder
 
         $type = $not ? 'NOT NULL' : 'NULL';
 
-        $this->queryPush("{$andOr} {$column} IS {$type}");
-
-        return $this;
+        return $this->whereRaw("{$column} IS {$type}", [], $andOr);
     }
 
     /**
@@ -1023,13 +1064,7 @@ class Builder
 
         $type = $not ? 'NOT ' : '';
 
-        $this->queryPush(sprintf("%s %sEXISTS (%s)", $andOr, $type, $sql));
-
-        if (!empty($bindings)) {
-            $this->bindingPush($bindings);
-        }
-
-        return $this;
+        return $this->whereRaw(sprintf("%sEXISTS (%s)", $type, $sql), $bindings, $andOr);
     }
 
     /**
@@ -1110,6 +1145,102 @@ class Builder
     }
 
     /**
+     * @param string|array|callback $column
+     * @param string|null $operator
+     * @param mixed|null $value
+     * 
+     * @return static
+     */
+    public function whereAny($column, $operator = null, $value = null)
+    {
+        if ($value instanceof Closure) {
+            return $this->whereSub($column, "{$operator} ANY", $value);
+        }
+
+        return $this->where($column, "{$operator} ANY", $value);
+    }
+
+    /**
+     * @param string|array|callback $column
+     * @param string|null $operator
+     * @param mixed|null $value
+     * 
+     * @return static
+     */
+    public function orWhereAny($column, $operator = null, $value = null)
+    {
+        if ($value instanceof Closure) {
+            return $this->whereSub($column, "{$operator} ANY", $value, 'or');
+        }
+
+        return $this->orWhere($column, "{$operator} ANY", $value);
+    }
+
+    /**
+     * @param string|array|callback $column
+     * @param string|null $operator
+     * @param mixed|null $value
+     * 
+     * @return static
+     */
+    public function whereAll($column, $operator = null, $value = null)
+    {
+        if ($value instanceof Closure) {
+            return $this->whereSub($column, "{$operator} ALL", $value);
+        }
+
+        return $this->where($column, "{$operator} ALL", $value);
+    }
+
+    /**
+     * @param string|array|callback $column
+     * @param string|null $operator
+     * @param mixed|null $value
+     * 
+     * @return static
+     */
+    public function orWhereAll($column, $operator = null, $value = null)
+    {
+        if ($value instanceof Closure) {
+            return $this->whereSub($column, "{$operator} ALL", $value, 'or');
+        }
+
+        return $this->orWhere($column, "{$operator} ALL", $value);
+    }
+
+    /**
+     * @param string|array|callback $column
+     * @param string|null $operator
+     * @param mixed|null $value
+     * 
+     * @return static
+     */
+    public function whereSome($column, $operator = null, $value = null)
+    {
+        if ($value instanceof Closure) {
+            return $this->whereSub($column, "{$operator} SOME", $value);
+        }
+
+        return $this->where($column, "{$operator} SOME", $value);
+    }
+
+    /**
+     * @param string|array|callback $column
+     * @param string|null $operator
+     * @param mixed|null $value
+     * 
+     * @return static
+     */
+    public function orWhereSome($column, $operator = null, $value = null)
+    {
+        if ($value instanceof Closure) {
+            return $this->whereSub($column, "{$operator} SOME", $value, 'or');
+        }
+
+        return $this->orWhere($column, "{$operator} SOME", $value);
+    }
+
+    /**
      * Add a nested where statement to the query.
      *
      * @param  \Closure|callback  $callback
@@ -1140,6 +1271,19 @@ class Builder
     }
 
     /**
+     * Add a raw groupBy clause to the query.
+     *
+     * @param  string  $sql
+     * @param  array  $bindings
+     * 
+     * @return static
+     */
+    public function groupByRaw($sql, array $bindings = [])
+    {
+        return $this->queriesPush($this->raw($sql), $bindings, 'groups');
+    }
+
+    /**
      * @param string|array $column
      * @param string $sort
      * 
@@ -1156,7 +1300,7 @@ class Builder
             return $this->groupBySub($column, $sort);
         }
 
-        return $this->queryPush("{$column} {$sort}", 'groups');
+        return $this->groupByRaw("{$column} {$sort}");
     }
 
     /**
@@ -1169,11 +1313,7 @@ class Builder
     {
         list($sub, $bindings) = $this->createSub($column);
 
-        if (!empty($bindings)) {
-            $this->bindingPush($bindings, 'groups');
-        }
-
-        return $this->queryPush("({$sub}) {$sort}", 'groups');
+        return $this->groupByRaw("({$sub}) {$sort}", $bindings);
     }
 
     /**
@@ -1243,6 +1383,31 @@ class Builder
     }
 
     /**
+     * Add a raw where clause to the query.
+     *
+     * @param  string  $sql
+     * @param  mixed  $bindings
+     * @param  string  $andOr
+     * @return static
+     */
+    public function havingRaw($sql, $bindings = [], $andOr = 'and')
+    {
+        return $this->queriesPush($this->raw("{$andOr} {$sql}"), $bindings, 'havings');
+    }
+
+    /**
+     * Add a raw or where clause to the query.
+     *
+     * @param  string  $sql
+     * @param  mixed  $bindings
+     * @return static
+     */
+    public function orHavingRaw($sql, $bindings = [])
+    {
+        return $this->havingRaw($sql, $bindings, 'or');
+    }
+
+    /**
      * Add a "having" clause to the query.
      *
      * @param  string  $column
@@ -1301,7 +1466,7 @@ class Builder
 
             $operator = strtoupper($operator);
 
-            return $this->queryPush("{$andOr} {$column} {$operator} {$value}", 'havings');
+            return $this->havingRaw("{$column} {$operator} {$value}", [], $andOr);
         }
 
         if (is_null($value)) {
@@ -1318,9 +1483,7 @@ class Builder
 
         $andOr = strtoupper($andOr);
 
-        $this->queriesPush("{$andOr} {$column} {$operator} {$varValue}", $value, 'havings');
-
-        return $this;
+        return $this->havingRaw("{$column} {$operator} {$varValue}", $value, $andOr);
     }
 
     /**
@@ -1366,6 +1529,19 @@ class Builder
     }
 
     /**
+     * Add a raw groupBy clause to the query.
+     *
+     * @param  string  $sql
+     * @param  array  $bindings
+     * 
+     * @return static
+     */
+    public function orderByRaw($sql, array $bindings = [])
+    {
+        return $this->queriesPush($this->raw($sql), $bindings, 'orderBy');
+    }
+
+    /**
      * @param string|array $column
      * @param string $sort
      * 
@@ -1382,7 +1558,7 @@ class Builder
             return $this->orderBySub($column, $sort);
         }
 
-        return $this->queryPush("{$column} {$sort}", 'orders');
+        return $this->orderByRaw("{$column} {$sort}");
     }
 
     /**
@@ -1395,11 +1571,7 @@ class Builder
     {
         list($sub, $bindings) = $this->createSub($column);
 
-        if (!empty($bindings)) {
-            $this->bindingPush($bindings, 'orders');
-        }
-
-        return $this->queryPush("({$sub}) {$sort}", 'orders');
+        return $this->orderByRaw("({$sub}) {$sort}", $bindings);
     }
 
     /**
@@ -1724,7 +1896,7 @@ class Builder
 
             $type = strtoupper($type);
 
-            return $this->queryPush("{$type} JOIN {$table} {$method} {$sql}", 'joins');
+            return $this->queryPush($this->raw("{$type} JOIN {$table} {$method} {$sql}"), 'joins');
         }
 
         // 如果帶入參數只有兩個，則 $second = $operator and $operator = '='
@@ -1742,7 +1914,7 @@ class Builder
 
         $type = strtoupper($type);
 
-        return $this->queryPush("{$type} JOIN {$table} {$method} {$first} {$operator} {$second}", 'joins');
+        return $this->queryPush($this->raw("{$type} JOIN {$table} {$method} {$first} {$operator} {$second}"), 'joins');
     }
 
     /**
@@ -1782,9 +1954,7 @@ class Builder
             $this->bindingPush($bindings, 'joins');
         }
 
-        $table = "({$query}) AS `{$as}`";
-
-        return $this->join($table, $first, $operator, $second, $type, $isWhere);
+        return $this->join($this->raw("({$query}) AS `{$as}`"), $first, $operator, $second, $type, $isWhere);
     }
 
     /**
@@ -1976,6 +2146,66 @@ class Builder
     }
 
     /**
+     * Add a "cross join" clause to the query.
+     *
+     * @param  string  $table
+     * @param  \Closure|string|null  $first
+     * @param  string|null  $operator
+     * @param  string|null  $second
+     * 
+     * @return static
+     */
+    public function fullOuterJoin($table, $first = null, $operator = null, $second = null)
+    {
+        return $this->join($table, $first, $operator, $second, 'full outer');
+    }
+
+    /**
+     * @param  string  $table
+     * @param  string  $as
+     * @param  \Closure|string  $first
+     * @param  string|null  $operator
+     * @param  string|null  $second
+     * @param  string  $type
+     * 
+     * @return static
+     */
+    public function fullOuterJoinSub($table, $as, $first, $operator = null, $second = null)
+    {
+        return $this->joinSub($table, $as, $first, $operator, $second, 'full outer');
+    }
+
+    /**
+     * Add a "cross join" clause to the query.
+     *
+     * @param  string  $table
+     * @param  \Closure|string|null  $first
+     * @param  string|null  $operator
+     * @param  string|null  $second
+     * 
+     * @return static
+     */
+    public function fullOuterJoinWhere($table, $first = null, $operator = null, $second = null)
+    {
+        return $this->join($table, $first, $operator, $second, 'full outer', true);
+    }
+
+    /**
+     * @param  string  $table
+     * @param  string  $as
+     * @param  \Closure|string  $first
+     * @param  string|null  $operator
+     * @param  string|null  $second
+     * @param  string  $type
+     * 
+     * @return static
+     */
+    public function fullOuterJoinSubWhere($table, $as, $first, $operator = null, $second = null)
+    {
+        return $this->joinSub($table, $as, $first, $operator, $second, 'full outer', true);
+    }
+
+    /**
      * @param int|string $limit
      * @param int|string|null $offset
      * 
@@ -2054,7 +2284,7 @@ class Builder
 
         $type = $all ? 'UNION ALL' : 'UNION';
 
-        return $this->queriesPush("{$type} {$queries}", $bindings, 'unions');
+        return $this->queriesPush($this->raw("{$type} {$queries}"), $bindings, 'unions');
     }
 
     /**
@@ -2108,17 +2338,13 @@ class Builder
             $this->methods = $methods;
         }
 
-        $getMethods = array_map(function ($bindMethods, $bindMethod) use ($method) {
+        foreach ($this->methods as $bindMethod => $bindMethods) {
             if (in_array($method, $bindMethods)) {
                 return $bindMethod . ucfirst($method);
             }
+        }
 
-            return false;
-        }, $this->methods, array_keys($this->methods));
-
-        $getMethods = array_filter($getMethods);
-
-        return current($getMethods) ?: $method;
+        return $method;
     }
 
     /**

@@ -2,7 +2,6 @@
 
 namespace Wilkques\Database\Queries\Grammar;
 
-use Exception;
 use Wilkques\Database\Queries\Builder;
 use Wilkques\Database\Queries\Expression;
 
@@ -447,35 +446,4 @@ abstract class Grammar implements GrammarInterface
      * @return string
      */
     abstract function sharedLock();
-
-    /**
-     * @param string $method
-     * 
-     * @return string
-     */
-    protected function method($method)
-    {
-        $methods = array(
-            'table', "select", "orderBy", "groupBy", "limit", "offset",  "where",
-        );
-
-        if (in_array($method, $methods)) {
-            $method = "set" . ucfirst($method);
-        }
-
-        return $method;
-    }
-
-    /**
-     * @param string $method
-     * @param array $arguments
-     * 
-     * @return static
-     */
-    public function __call($method, $arguments)
-    {
-        $method = $this->method($method);
-
-        return call_user_func_array(array($this, $method), $arguments);
-    }
 }
