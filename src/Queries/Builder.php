@@ -114,7 +114,7 @@ class Builder
         }
 
         if (interface_exists($abstract)) {
-            $abstract = array_filter($this->getResolvers(), function ($resolver) use ($abstract) {
+            $abstract = Arrays::filter($this->getResolvers(), function ($resolver) use ($abstract) {
                 return in_array($abstract, class_implements($resolver));
             });
 
@@ -331,7 +331,7 @@ class Builder
     {
         $components = $this->bindingComponents;
 
-        $components = array_filter($components, function ($component) use ($except) {
+        $components = Arrays::filter($components, function ($component) use ($except) {
             return !in_array($component, $except);
         });
 

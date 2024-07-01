@@ -268,7 +268,7 @@ abstract class Grammar implements GrammarInterface
      */
     protected function concatenate($segments)
     {
-        return implode(' ', array_filter($segments, function ($value) {
+        return implode(' ', Arrays::filter($segments, function ($value) {
             return (string) $value !== '';
         }));
     }
@@ -285,7 +285,7 @@ abstract class Grammar implements GrammarInterface
             return "`{$column}` = ?";
         });
 
-        $columns = join(',', $columns);
+        $columns = join(', ', $columns);
 
         $from = join(', ', $query->getFrom());
 
@@ -359,7 +359,7 @@ abstract class Grammar implements GrammarInterface
             );
         }
 
-        $columns = join(',', array_keys(current($data)));
+        $columns = join(', ', array_keys(current($data)));
 
         $from = join(', ', $query->getFrom());
 
