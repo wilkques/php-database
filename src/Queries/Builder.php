@@ -309,13 +309,13 @@ class Builder
      */
     protected function bindingsNested($binding)
     {
-        $bindings = array_map(function ($value) {
+        $bindings = Arrays::map($binding, function ($value) {
             if ($value instanceof Expression) {
                 return null;
             }
 
             return $value;
-        }, $binding);
+        });
 
         return array_values(
             array_filter($bindings)
@@ -1317,6 +1317,30 @@ class Builder
     }
 
     /**
+     * @param array $column
+     * 
+     * @return array
+     */
+    protected function sortByAsc($columns)
+    {
+        return Arrays::map($columns, function ($column) {
+            return array($column, 'ASC');
+        });
+    }
+
+    /**
+     * @param array $column
+     * 
+     * @return array
+     */
+    protected function sortByDesc($columns)
+    {
+        return Arrays::map($columns, function ($column) {
+            return array($column, 'DESC');
+        });
+    }
+
+    /**
      * @param string|array $column
      * 
      * @return static
@@ -1328,9 +1352,7 @@ class Builder
         }
 
         return $this->groupBy(
-            array_map(function ($column) {
-                return array($column, 'ASC');
-            }, $column)
+            $this->sortByAsc($column)
         );
     }
 
@@ -1346,9 +1368,7 @@ class Builder
         }
 
         return $this->groupBy(
-            array_map(function ($column) {
-                return array($column, 'DESC');
-            }, $column)
+            $this->sortByDesc($column)
         );
     }
 
@@ -1586,9 +1606,7 @@ class Builder
         }
 
         return $this->orderBy(
-            array_map(function ($column) {
-                return array($column, 'ASC');
-            }, $column)
+            $this->sortByAsc($column)
         );
     }
 
@@ -1604,9 +1622,7 @@ class Builder
         }
 
         return $this->orderBy(
-            array_map(function ($column) {
-                return array($column, 'DESC');
-            }, $column)
+            $this->sortByDesc($column)
         );
     }
 

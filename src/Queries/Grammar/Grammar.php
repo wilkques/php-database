@@ -4,6 +4,7 @@ namespace Wilkques\Database\Queries\Grammar;
 
 use Wilkques\Database\Queries\Builder;
 use Wilkques\Database\Queries\Expression;
+use Wilkques\Helpers\Arrays;
 
 abstract class Grammar implements GrammarInterface
 {
@@ -34,7 +35,7 @@ abstract class Grammar implements GrammarInterface
      */
     protected function arrayNested($array, $force = true, $callback = null)
     {
-        return array_map(function ($value) use ($callback, $force) {
+        return Arrays::map($array, function ($value) use ($callback, $force) {
             if ($value instanceof Expression) {
                 return $value;
             }
@@ -44,7 +45,7 @@ abstract class Grammar implements GrammarInterface
             }
 
             return $force ? $value : '?';
-        }, $array);
+        });
     }
 
     /**
@@ -363,9 +364,9 @@ abstract class Grammar implements GrammarInterface
         $from = join(', ', $query->getFrom());
 
         if (!$sql) {
-            $values = array_map(function ($values) {
+            $values = Arrays::map($data, function ($values) {
                 return join(', ', $this->arrayNested($values, false));
-            }, $data);
+            });
 
             $values = join('), (', $values);
 
