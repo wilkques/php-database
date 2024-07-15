@@ -2,8 +2,6 @@
 
 namespace Wilkques\Database\Queries\Grammar;
 
-use Wilkques\Database\Queries\Expression;
-
 class MySql extends Grammar
 {
     /**

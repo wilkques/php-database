@@ -4,12 +4,20 @@ namespace Wilkques\Database\Queries;
 
 class JoinClause extends Builder
 {
+    /** @var string */
     protected $type;
+
+    /**
+     * The class name of the parent query builder.
+     *
+     * @var string
+     */
+    protected $parentClass;
 
     /**
      * Create a new join clause instance.
      *
-     * @param  \Wilkques\Database\Queries\Builder  $parentQuery
+     * @param  Builder  $parentQuery
      * @param  string  $type
      * @param  string  $table
      * @return void
@@ -22,7 +30,7 @@ class JoinClause extends Builder
             $parentQuery->getProcessor()
         );
 
-        $this->table($table)->type($type);
+        $this->setTable($table)->setType($type)->setParentClass(get_class($parentQuery));
     }
 
     /**
@@ -30,7 +38,7 @@ class JoinClause extends Builder
      * 
      * @return static
      */
-    public function type($type)
+    public function setType($type)
     {
         $this->type = $type;
 
@@ -43,6 +51,26 @@ class JoinClause extends Builder
     public function getType()
     {
         return $this->type;
+    }
+
+    /**
+     * @param string $parentClass
+     * 
+     * @return static
+     */
+    public function setParentClass($parentClass)
+    {
+        $this->parentClass = $parentClass;
+
+        return $this;
+    }
+
+    /**
+     * @return string
+     */
+    public function getParentClass()
+    {
+        return $this->parentClass;
     }
 
     /**
@@ -59,26 +87,26 @@ class JoinClause extends Builder
      *
      * @param  \Closure|string  $first
      * @param  string|null  $operator
-     * @param  \Illuminate\Database\Query\Expression|string|null  $second
+     * @param  Expression|string|null  $second
      * @param  string  $boolean
      * 
      * @return static
      */
     public function on($first, $operator = null, $second = null, $andOr = 'and')
     {
+        if (is_callable($first) || $first instanceof \Closure) {
+            return $this->nested($first, $andOr, 'joins');
+        }
+
         if (is_null($second)) {
             $second = $operator;
 
             $operator = '=';
         }
 
-        if (is_callable($first)) {
-            $first($this);
-        }
-
         $andOr = strtoupper($andOr);
 
-        $this->queries['joins']['queries'][] = "{$andOr} {$first} {$operator} {$second}";
+        $this->queryPush("{$andOr} {$this->contactBacktick($first)} {$operator} {$this->contactBacktick($second)}", 'joins');
 
         return $this;
     }
@@ -88,12 +116,44 @@ class JoinClause extends Builder
      *
      * @param  \Closure|string  $first
      * @param  string|null  $operator
-     * @param  \Illuminate\Database\Query\Expression|string|null  $second
+     * @param  Expression|string|null  $second
      * 
      * @return static
      */
     public function orOn($first, $operator = null, $second = null)
     {
         return $this->on($first, $operator, $second, 'or');
+    }
+
+    /**
+     * Get a new instance of the join clause builder.
+     *
+     * @return JoinClause
+     */
+    public function newQuery()
+    {
+        return new static($this->newParentQuery(), $this->getType(), $this->getTable());
+    }
+
+    /**
+     * Create a new query instance for sub-query.
+     *
+     * @return Builder
+     */
+    protected function forSubQuery()
+    {
+        return $this->newParentQuery()->newQuery();
+    }
+
+    /**
+     * Create a new parent query instance.
+     *
+     * @return Builder
+     */
+    protected function newParentQuery()
+    {
+        $parentClass = $this->getParentClass();
+
+        return new $parentClass($this->getConnection(), $this->getGrammar(), $this->getProcessor());
     }
 }

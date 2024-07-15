@@ -17,8 +17,21 @@ class Builder
     /** @var array */
     protected $queries = array();
 
-    /** @var array */
-    protected $methods = array();
+    /** 
+     * @var array
+     */
+    protected $methods = array(
+        'set'       => array(
+            'table', 'username', 'password', 'database', 'host',
+            'raw', 'from',
+        ),
+        'process'   => array(
+            'insertGetId',
+        ),
+        'get'       => array(
+            'parseQueryLog', 'lastParseQuery', 'lastInsertId', 'queryLog', 'lastQueryLog'
+        )
+    );
 
     /**
      * All of the available clause operators.
@@ -45,8 +58,8 @@ class Builder
 
     /**
      * @param ConnectionInterface $connection
-     * @param GrammarInterface $grammar
-     * @param ProcessorInterface $processor
+     * @param GrammarInterface|null $grammar
+     * @param ProcessorInterface|null $processor
      */
     public function __construct(
         ConnectionInterface $connection,
@@ -61,8 +74,8 @@ class Builder
 
     /**
      * @param ConnectionInterface $connection
-     * @param GrammarInterface $grammar
-     * @param ProcessorInterface $processor
+     * @param GrammarInterface|null $grammar
+     * @param ProcessorInterface|null $processor
      * 
      * @return static
      */
@@ -88,7 +101,7 @@ class Builder
             $abstract = get_class($abstract);
         }
 
-        data_set($this->resolvers, $abstract, $resolver);
+        Arrays::set($this->resolvers, $abstract, $resolver);
 
         return $this;
     }
@@ -102,26 +115,17 @@ class Builder
     }
 
     /**
-     * @param string|object $abstract
-     * @param mixed|null $default
+     * @param string $abstract
      * 
      * @return mixed
      */
-    public function getResolver($abstract, $default = null)
+    public function getResolver($abstract)
     {
-        if (is_object($abstract)) {
-            $abstract = array_search($abstract, $this->getResolvers());
-        }
+        $abstract = Arrays::filter($this->getResolvers(), function ($resolver) use ($abstract) {
+            return in_array($abstract, class_implements($resolver));
+        });
 
-        if (interface_exists($abstract)) {
-            $abstract = Arrays::filter($this->getResolvers(), function ($resolver) use ($abstract) {
-                return in_array($abstract, class_implements($resolver));
-            });
-
-            return current($abstract);
-        }
-
-        return data_get($this->getResolvers(), $abstract, $default);
+        return Arrays::first($abstract);
     }
 
     /**
@@ -200,7 +204,7 @@ class Builder
      */
     public function setQuery(string $key, $value = null)
     {
-        array_set($this->queries, $key, $value);
+        Arrays::set($this->queries, $key, $value);
 
         return $this;
     }
@@ -221,7 +225,7 @@ class Builder
      */
     public function getQuery($key, $default = null)
     {
-        return array_get($this->getQueries(), $key, $default);
+        return Arrays::get($this->getQueries(), $key, $default);
     }
 
     /**
@@ -276,8 +280,8 @@ class Builder
     /**
      * Prepend the database name if the given query is on another database.
      *
-     * @param  mixed  $query
-     * @return mixed
+     * @param  static  $query
+     * @return static
      */
     protected function prependDatabaseNameIfCrossDatabaseQuery($query)
     {
@@ -286,7 +290,7 @@ class Builder
                 $database = $query->getConnection()->getDatabase();
 
                 if (strpos($from, $database) !== 0 && strpos($from, '.') === false) {
-                    $query->setFrom($index, $database . '.' . $from);
+                    $query->setFrom($index, $this->contactBacktick($database, $from));
                 }
             });
         }
@@ -303,23 +307,19 @@ class Builder
     }
 
     /**
-     * @param array $binding
+     * @param array $bindings
      * 
      * @return array
      */
-    protected function bindingsNested($binding)
+    protected function bindingsNested($bindings)
     {
-        $bindings = Arrays::map($binding, function ($value) {
-            if ($value instanceof Expression) {
-                return null;
+        $bindings = Arrays::filter($bindings, function ($value) {
+            if (!$value instanceof Expression) {
+                return $value;
             }
-
-            return $value;
         });
 
-        return array_values(
-            array_filter($bindings)
-        );
+        return array_values($bindings);
     }
 
     /**
@@ -371,16 +371,16 @@ class Builder
     }
 
     /**
-     * @param  mixed  $value
+     * @param  mixed  $query
      * @param  string  $type
      * 
      * @return static
      *
      * @throws \InvalidArgumentException
      */
-    protected function queryPush($values, $type = 'wheres')
+    protected function queryPush($query, $type = 'wheres')
     {
-        $this->queries[$type]['queries'][] = $values;
+        $this->queries[$type]['queries'][] = $query;
 
         return $this;
     }
@@ -432,7 +432,7 @@ class Builder
      * 
      * @return static
      */
-    public function fromRaw($expression, array $bindings = [])
+    public function fromRaw($expression, array $bindings = array())
     {
         return $this->queriesPush($this->raw($expression), $bindings, 'from');
     }
@@ -451,7 +451,7 @@ class Builder
     }
 
     /**
-     * @param string|callback $froms
+     * @param string|callback|Closure $froms
      * @param string|null $as
      * 
      * @return static
@@ -474,7 +474,9 @@ class Builder
             if ($from instanceof Closure || $from instanceof self) {
                 $this->fromSub($from, (is_string($as) ? $as : null));
             } else {
-                $from = is_string($as) ? "{$from} AS `{$as}`" : $from;
+                $from = $this->contactBacktick($from);
+
+                $from = is_string($as) ? "{$from} AS {$this->contactBacktick($as)}" : $from;
 
                 $this->fromRaw($from);
             }
@@ -484,7 +486,7 @@ class Builder
     }
 
     /**
-     * @param string|callback $from
+     * @param string|callback|Closure $from
      * @param string|null $as
      * 
      * @return static
@@ -499,7 +501,7 @@ class Builder
 
         $query = "({$query})";
 
-        $query = $as ? "{$query} AS `{$as}`" : $query;
+        $query = $as ? "{$query} AS {$this->contactBacktick($as)}" : $query;
 
         return $this->fromRaw($query, $bindings);
     }
@@ -513,7 +515,7 @@ class Builder
     }
 
     /**
-     * @param string|callback $table
+     * @param string|callback|Closure $table
      * @param string|null $as
      * 
      * @return static
@@ -539,7 +541,7 @@ class Builder
      * 
      * @return static
      */
-    public function selectRaw($expression, array $bindings = [])
+    public function selectRaw($expression, array $bindings = array())
     {
         return $this->queriesPush($this->raw($expression), $bindings, 'columns');
     }
@@ -582,7 +584,7 @@ class Builder
 
         $queries = "({$queries})";
 
-        $queries = $as ? "{$queries} AS `{$as}`" : $queries;
+        $queries = $as ? "{$queries} AS {$this->contactBacktick($as)}" : $queries;
 
         return $this->selectRaw($queries, $bindings);
     }
@@ -663,7 +665,7 @@ class Builder
     /**
      * Add a nested where statement to the query.
      *
-     * @param  \Closure|callback  $callback
+     * @param  Closure|callback  $callback
      * @param  string  $join
      * @param  string  $type
      * 
@@ -706,7 +708,7 @@ class Builder
         } else {
             $sql = join(' ', $queries);
 
-            $sql = ltrim(ltrim($sql, 'AND '), 'OR ');
+            $sql = preg_replace('/^(AND |OR )/i', '', $sql);
 
             $join = strtoupper($join);
 
@@ -725,7 +727,7 @@ class Builder
     /**
      * Add a nested where statement to the query.
      *
-     * @param  \Closure|callback  $callback
+     * @param  Closure|callback  $callback
      * @param  string  $join
      * 
      * @return static
@@ -761,7 +763,7 @@ class Builder
      * 
      * @return static
      */
-    public function whereRaw($sql, $bindings = [], $andOr = 'and')
+    public function whereRaw($sql, $bindings = array(), $andOr = 'and')
     {
         return $this->queriesPush($this->raw("{$andOr} {$sql}"), $bindings);
     }
@@ -774,13 +776,13 @@ class Builder
      * 
      * @return static
      */
-    public function orWhereRaw($sql, $bindings = [])
+    public function orWhereRaw($sql, $bindings = array())
     {
         return $this->whereRaw($sql, $bindings, 'or');
     }
 
     /**
-     * @param string|array|callback $column
+     * @param string|array|callback|Closure $column
      * @param string|null $operator
      * @param mixed|null $value
      * @param string $andOr
@@ -838,7 +840,7 @@ class Builder
 
             $operator = strtoupper($operator);
 
-            return $this->whereRaw("{$column} {$operator} {$value}", [], $andOr);
+            return $this->whereRaw("{$this->contactBacktick($column)} {$operator} {$value}", array(), $andOr);
         }
 
         if (is_null($value)) {
@@ -854,7 +856,7 @@ class Builder
         $andOr = strtoupper($andOr);
 
         if (is_array($value)) {
-            if (in_array($operator, ['between', 'not between'])) {
+            if (in_array($operator, array('between', 'not between'))) {
                 $varValue = join(" {$andOr} ", array_fill(0, count($value), "?"));
             } else {
                 $varValue = "(" . join(',', array_fill(0, count($value), "?")) . ")";
@@ -863,7 +865,7 @@ class Builder
 
         $operator = strtoupper($operator);
 
-        return $this->whereRaw("{$column} {$operator} {$varValue}", $value, $andOr);
+        return $this->whereRaw("{$this->contactBacktick($column)} {$operator} {$varValue}", $value, $andOr);
     }
 
     /**
@@ -871,7 +873,7 @@ class Builder
      *
      * @param  string|array  $column
      * @param  string  $operator
-     * @param  \Closure  $callback
+     * @param  Closure|callback  $callback
      * @param  string  $andOr
      * 
      * @return static
@@ -895,7 +897,7 @@ class Builder
 
         list($sql, $bindings) = $this->createSub($callback);
 
-        return $this->whereRaw("{$column} {$operator} ({$sql})", $bindings, $andOr);
+        return $this->whereRaw("{$this->contactBacktick($column)} {$operator} ({$sql})", $bindings, $andOr);
     }
 
     /**
@@ -903,7 +905,7 @@ class Builder
      *
      * @param  string  $column
      * @param  string  $operator
-     * @param  \Closure  $callback
+     * @param  Closure|callback  $callback
      * 
      * @return static
      */
@@ -941,7 +943,7 @@ class Builder
 
         $type = $not ? 'NOT NULL' : 'NULL';
 
-        return $this->whereRaw("{$column} IS {$type}", [], $andOr);
+        return $this->whereRaw("{$this->contactBacktick($column)} IS {$type}", array(), $andOr);
     }
 
     /**
@@ -977,7 +979,7 @@ class Builder
 
     /**
      * @param string $column
-     * @param array|callback $in
+     * @param array|callback|Closure $in
      * 
      * @return static
      */
@@ -1050,7 +1052,7 @@ class Builder
     }
 
     /**
-     * @param callback|static $callback
+     * @param callback|Closure|static $callback
      * @param string $andOr
      * @param bool|false $not
      * 
@@ -1068,7 +1070,7 @@ class Builder
     }
 
     /**
-     * @param callback|static $callback
+     * @param callback|Closure|static $callback
      * 
      * @return static
      */
@@ -1078,7 +1080,7 @@ class Builder
     }
 
     /**
-     * @param callback|static $callback
+     * @param callback|Closure|static $callback
      * @param bool|false $not
      * 
      * @return static
@@ -1089,7 +1091,7 @@ class Builder
     }
 
     /**
-     * @param callback|static $callback
+     * @param callback|Closure|static $callback
      * 
      * @return static
      */
@@ -1145,7 +1147,7 @@ class Builder
     }
 
     /**
-     * @param string|array|callback $column
+     * @param string|array|callback|Closure $column
      * @param string|null $operator
      * @param mixed|null $value
      * 
@@ -1161,7 +1163,7 @@ class Builder
     }
 
     /**
-     * @param string|array|callback $column
+     * @param string|array|callback|Closure $column
      * @param string|null $operator
      * @param mixed|null $value
      * 
@@ -1177,7 +1179,7 @@ class Builder
     }
 
     /**
-     * @param string|array|callback $column
+     * @param string|array|callback|Closure $column
      * @param string|null $operator
      * @param mixed|null $value
      * 
@@ -1193,7 +1195,7 @@ class Builder
     }
 
     /**
-     * @param string|array|callback $column
+     * @param string|array|callback|Closure $column
      * @param string|null $operator
      * @param mixed|null $value
      * 
@@ -1209,7 +1211,7 @@ class Builder
     }
 
     /**
-     * @param string|array|callback $column
+     * @param string|array|callback|Closure $column
      * @param string|null $operator
      * @param mixed|null $value
      * 
@@ -1225,7 +1227,7 @@ class Builder
     }
 
     /**
-     * @param string|array|callback $column
+     * @param string|array|callback|Closure $column
      * @param string|null $operator
      * @param mixed|null $value
      * 
@@ -1243,7 +1245,7 @@ class Builder
     /**
      * Add a nested where statement to the query.
      *
-     * @param  \Closure|callback  $callback
+     * @param  Closure|callback  $callback
      * @param  string  $join
      * 
      * @return static
@@ -1278,7 +1280,7 @@ class Builder
      * 
      * @return static
      */
-    public function groupByRaw($sql, array $bindings = [])
+    public function groupByRaw($sql, array $bindings = array())
     {
         return $this->queriesPush($this->raw($sql), $bindings, 'groups');
     }
@@ -1304,7 +1306,7 @@ class Builder
     }
 
     /**
-     * @param string|array|callback|static $column
+     * @param string|array|callback|Closure|static $column
      * @param string $sort
      * 
      * @return static
@@ -1375,7 +1377,7 @@ class Builder
     /**
      * Add a nested where statement to the query.
      *
-     * @param  \Closure|callback  $callback
+     * @param  Closure|callback  $callback
      * @param  string  $join
      * 
      * @return static
@@ -1410,7 +1412,7 @@ class Builder
      * @param  string  $andOr
      * @return static
      */
-    public function havingRaw($sql, $bindings = [], $andOr = 'and')
+    public function havingRaw($sql, $bindings = array(), $andOr = 'and')
     {
         return $this->queriesPush($this->raw("{$andOr} {$sql}"), $bindings, 'havings');
     }
@@ -1422,7 +1424,7 @@ class Builder
      * @param  mixed  $bindings
      * @return static
      */
-    public function orHavingRaw($sql, $bindings = [])
+    public function orHavingRaw($sql, $bindings = array())
     {
         return $this->havingRaw($sql, $bindings, 'or');
     }
@@ -1486,7 +1488,7 @@ class Builder
 
             $operator = strtoupper($operator);
 
-            return $this->havingRaw("{$column} {$operator} {$value}", [], $andOr);
+            return $this->havingRaw("{$this->contactBacktick($column)} {$operator} {$value}", array(), $andOr);
         }
 
         if (is_null($value)) {
@@ -1503,7 +1505,7 @@ class Builder
 
         $andOr = strtoupper($andOr);
 
-        return $this->havingRaw("{$column} {$operator} {$varValue}", $value, $andOr);
+        return $this->havingRaw("{$this->contactBacktick($column)} {$operator} {$varValue}", $value, $andOr);
     }
 
     /**
@@ -1521,7 +1523,7 @@ class Builder
     /**
      * Add a nested where statement to the query.
      *
-     * @param  \Closure|callback  $callback
+     * @param  Closure|callback  $callback
      * @param  string  $join
      * 
      * @return static
@@ -1556,7 +1558,7 @@ class Builder
      * 
      * @return static
      */
-    public function orderByRaw($sql, array $bindings = [])
+    public function orderByRaw($sql, array $bindings = array())
     {
         return $this->queriesPush($this->raw($sql), $bindings, 'orderBy');
     }
@@ -1578,7 +1580,7 @@ class Builder
             return $this->orderBySub($column, $sort);
         }
 
-        return $this->orderByRaw("{$column} {$sort}");
+        return $this->orderByRaw("{$this->contactBacktick($column)} {$sort}");
     }
 
     /**
@@ -1683,7 +1685,7 @@ class Builder
     /**
      * @param array $data
      * 
-     * @return mixed
+     * @return int
      */
     public function update($data)
     {
@@ -1695,17 +1697,17 @@ class Builder
             if ($value instanceof Closure || $value instanceof self) {
                 list($sql, $bindings) = $this->createSub($value);
 
-                $columns[] = $this->raw("{$column} = ({$sql})");
+                $columns[] = $this->raw("{$this->contactBacktick($column)} = ({$sql})");
 
                 $values = array_merge($values, $bindings);
             } else if ($value instanceof Expression) {
                 if (is_numeric($column)) {
                     $columns[] = $this->raw($value);
                 } else {
-                    $columns[] = $this->raw("{$column} = ({$value})");
+                    $columns[] = $this->raw("{$this->contactBacktick($column)} = ({$value})");
                 }
             } else {
-                $columns[] = $column;
+                $columns[] = $this->contactBacktick($column);
 
                 $values[] = $value;
             }
@@ -1722,7 +1724,7 @@ class Builder
      * @param int|string|float $amount
      * @param array $data
      * 
-     * @return static
+     * @return int
      * 
      * @throws \InvalidArgumentException
      */
@@ -1737,7 +1739,7 @@ class Builder
         array_push($values, $amount);
 
         return $this->bindingPush($values, 'update')->update(array_merge($data, [
-            $this->raw("`{$column}` = `{$column}` + ?")
+            $this->raw("{$this->contactBacktick($column)} = {$this->contactBacktick($column)} + ?")
         ]));
     }
 
@@ -1746,7 +1748,7 @@ class Builder
      * @param int|string|float $amount
      * @param array $data
      * 
-     * @return static
+     * @return int
      * 
      * @throws \InvalidArgumentException
      */
@@ -1761,14 +1763,14 @@ class Builder
         array_push($values, $amount);
 
         return $this->bindingPush($values, 'update')->update(array_merge($data, [
-            $this->raw("`{$column}` = `{$column}` - ?")
+            $this->raw("{$this->contactBacktick($column)} = {$this->contactBacktick($column)} - ?")
         ]));
     }
 
     /**
      * @param array|[] $data
      * 
-     * @return mixed
+     * @return int
      */
     public function insert($data = array())
     {
@@ -1798,9 +1800,9 @@ class Builder
 
     /**
      * @param array $columns
-     * @param callback|static $query
+     * @param callback|Closure|static $query
      * 
-     * @return mixed
+     * @return int
      */
     public function insertSub($columns, $query)
     {
@@ -1813,7 +1815,7 @@ class Builder
     }
 
     /**
-     * @return mixed
+     * @return int
      */
     public function delete()
     {
@@ -1827,7 +1829,7 @@ class Builder
      * @param string $column
      * @param string $dateTimeFormat
      * 
-     * @return static
+     * @return int
      * 
      * @throws \InvalidArgumentException
      */
@@ -1847,7 +1849,7 @@ class Builder
     /**
      * @param string $column
      * 
-     * @return static
+     * @return int
      * 
      * @throws \InvalidArgumentException
      */
@@ -1880,7 +1882,7 @@ class Builder
 
     /**
      * @param  string  $table
-     * @param  \Closure|string  $first
+     * @param  Closure|string  $first
      * @param  string|null  $operator
      * @param  string|null  $second
      * @param  string  $type
@@ -1890,11 +1892,11 @@ class Builder
      */
     public function join($table, $first, $operator = null, $second = null, $type = 'inner', $isWhere = false)
     {
-        $join = $this->newJoinClause($this, $type, $table);
-
         $method = $isWhere ? 'WHERE' : 'ON';
-
-        if ($first instanceof Closure) {
+        
+        if ($first instanceof Closure || is_callable($first)) {
+            $join = $this->newJoinClause($this, $type, $table);
+            
             call_user_func($first, $join);
 
             list('queries'  => $queries, 'bindings' => $bindings) = array_replace([
@@ -1935,7 +1937,7 @@ class Builder
 
     /**
      * @param  string  $table
-     * @param  \Closure|string  $first
+     * @param  Closure|string  $first
      * @param  string|null  $operator
      * @param  string|null  $second
      * @param  string  $type
@@ -1950,9 +1952,9 @@ class Builder
     /**
      * Add a subquery join clause to the query.
      *
-     * @param  \Closure|static|string  $query
+     * @param  Closure|static|string  $table
      * @param  string  $as
-     * @param  \Closure|string  $first
+     * @param  Closure|string  $first
      * @param  string|null  $operator
      * @param  string|null  $second
      * @param  string  $type
@@ -1970,12 +1972,12 @@ class Builder
             $this->bindingPush($bindings, 'joins');
         }
 
-        return $this->join($this->raw("({$query}) AS `{$as}`"), $first, $operator, $second, $type, $isWhere);
+        return $this->join($this->raw("({$query}) AS {$this->contactBacktick($as)}"), $first, $operator, $second, $type, $isWhere);
     }
 
     /**
      * @param  string  $table
-     * @param  \Closure|string  $first
+     * @param  Closure|string  $first
      * @param  string|null  $operator
      * @param  string|null  $second
      * @param  string  $type
@@ -1989,7 +1991,7 @@ class Builder
 
     /**
      * @param  string  $table
-     * @param  \Closure|string  $first
+     * @param  Closure|string  $first
      * @param  string|null  $operator
      * @param  string|null  $second
      * @param  string  $type
@@ -2004,7 +2006,7 @@ class Builder
     /**
      * @param  string  $table
      * @param  string  $as
-     * @param  \Closure|string  $first
+     * @param  Closure|string  $first
      * @param  string|null  $operator
      * @param  string|null  $second
      * @param  string  $type
@@ -2018,7 +2020,7 @@ class Builder
 
     /**
      * @param  string  $table
-     * @param  \Closure|string  $first
+     * @param  Closure|string  $first
      * @param  string|null  $operator
      * @param  string|null  $second
      * @param  string  $type
@@ -2033,7 +2035,7 @@ class Builder
     /**
      * @param  string  $table
      * @param  string  $as
-     * @param  \Closure|string  $first
+     * @param  Closure|string  $first
      * @param  string|null  $operator
      * @param  string|null  $second
      * @param  string  $type
@@ -2047,7 +2049,7 @@ class Builder
 
     /**
      * @param  string  $table
-     * @param  \Closure|string  $first
+     * @param  Closure|string  $first
      * @param  string|null  $operator
      * @param  string|null  $second
      * @param  string  $type
@@ -2062,7 +2064,7 @@ class Builder
     /**
      * @param  string  $table
      * @param  string  $as
-     * @param  \Closure|string  $first
+     * @param  Closure|string  $first
      * @param  string|null  $operator
      * @param  string|null  $second
      * @param  string  $type
@@ -2076,7 +2078,7 @@ class Builder
 
     /**
      * @param  string  $table
-     * @param  \Closure|string  $first
+     * @param  Closure|string  $first
      * @param  string|null  $operator
      * @param  string|null  $second
      * @param  string  $type
@@ -2091,7 +2093,7 @@ class Builder
     /**
      * @param  string  $table
      * @param  string  $as
-     * @param  \Closure|string  $first
+     * @param  Closure|string  $first
      * @param  string|null  $operator
      * @param  string|null  $second
      * @param  string  $type
@@ -2107,7 +2109,7 @@ class Builder
      * Add a "cross join" clause to the query.
      *
      * @param  string  $table
-     * @param  \Closure|string|null  $first
+     * @param  Closure|string|null  $first
      * @param  string|null  $operator
      * @param  string|null  $second
      * @return $this
@@ -2120,7 +2122,7 @@ class Builder
     /**
      * @param  string  $table
      * @param  string  $as
-     * @param  \Closure|string  $first
+     * @param  Closure|string  $first
      * @param  string|null  $operator
      * @param  string|null  $second
      * @param  string  $type
@@ -2136,7 +2138,7 @@ class Builder
      * Add a "cross join" clause to the query.
      *
      * @param  string  $table
-     * @param  \Closure|string|null  $first
+     * @param  Closure|string|null  $first
      * @param  string|null  $operator
      * @param  string|null  $second
      * @return $this
@@ -2149,7 +2151,7 @@ class Builder
     /**
      * @param  string  $table
      * @param  string  $as
-     * @param  \Closure|string  $first
+     * @param  Closure|string  $first
      * @param  string|null  $operator
      * @param  string|null  $second
      * @param  string  $type
@@ -2165,7 +2167,7 @@ class Builder
      * Add a "cross join" clause to the query.
      *
      * @param  string  $table
-     * @param  \Closure|string|null  $first
+     * @param  Closure|string|null  $first
      * @param  string|null  $operator
      * @param  string|null  $second
      * 
@@ -2179,7 +2181,7 @@ class Builder
     /**
      * @param  string  $table
      * @param  string  $as
-     * @param  \Closure|string  $first
+     * @param  Closure|string  $first
      * @param  string|null  $operator
      * @param  string|null  $second
      * @param  string  $type
@@ -2195,7 +2197,7 @@ class Builder
      * Add a "cross join" clause to the query.
      *
      * @param  string  $table
-     * @param  \Closure|string|null  $first
+     * @param  Closure|string|null  $first
      * @param  string|null  $operator
      * @param  string|null  $second
      * 
@@ -2209,7 +2211,7 @@ class Builder
     /**
      * @param  string  $table
      * @param  string  $as
-     * @param  \Closure|string  $first
+     * @param  Closure|string  $first
      * @param  string|null  $operator
      * @param  string|null  $second
      * @param  string  $type
@@ -2282,15 +2284,30 @@ class Builder
     {
         $prePage = $this->getQuery('limit.bindings', $prePage);
 
+        if (is_array($prePage)) {
+            $prePage = array_shift($prePage);
+        }
+
         $currentPage = $this->getQuery('offset.bindings', $currentPage);
 
         return $this->prePage($prePage)->currentPage(((int) $currentPage - 1) * $prePage)->get();
     }
 
     /**
+     * @return int
+     */
+    public function count()
+    {
+        return $this->getConnection()->exec(
+            $this->getGrammar()->compilerCount($this),
+            $this->getBindings(array('insert', 'update'))
+        )->fetch()['aggregate'];
+    }
+
+    /**
      * Add a union statement to the query.
      *
-     * @param  static|callback|\Closure  $query
+     * @param  static|callback|Closure  $query
      * @param  bool  $all
      * @return static
      */
@@ -2306,7 +2323,7 @@ class Builder
     /**
      * Add a union all statement to the query.
      *
-     * @param  static|callback|\Closure  $query
+     * @param  static|callback|Closure  $query
      * @return static
      */
     public function unionAll($query)
@@ -2331,29 +2348,40 @@ class Builder
     }
 
     /**
+     * @param string|Expression|...string ...$value
+     * 
+     * @return string
+     */
+    public function contactBacktick($value)
+    {
+        if ($value instanceof Expression) {
+            return $value;
+        }
+
+        if (func_num_args() > 1) {
+            $value = func_get_args();
+        } else if (is_string($value)) {
+            preg_match_all('/(\w+)/', $value, $matches);
+
+            $value = array_pop($matches);
+        }
+
+        $value = Arrays::map($value, function ($value) {
+            $value = trim($value, '`');
+
+            return "`{$value}`";
+        });
+
+        return join(".", $value);
+    }
+
+    /**
      * @param string $method
      * 
      * @return string
      */
     protected function method($method)
     {
-        if (empty($this->methods)) {
-            $methods = array(
-                'set'       => array(
-                    'table', 'username', 'password', 'database', 'host',
-                    'raw', 'from',
-                ),
-                'process'   => array(
-                    'insertGetId',
-                ),
-                'get'       => array(
-                    'parseQueryLog', 'lastParseQuery', 'lastInsertId',
-                )
-            );
-
-            $this->methods = $methods;
-        }
-
         foreach ($this->methods as $bindMethod => $bindMethods) {
             if (in_array($method, $bindMethods)) {
                 return $bindMethod . ucfirst($method);
@@ -2365,28 +2393,9 @@ class Builder
 
     /**
      * @param string $method
-     * @param mixed $abstract
-     * 
-     * @return string
-     */
-    public function callForce($method, $abstract)
-    {
-        $forceMethods = array(
-            'getQueryLog', 'getParseQueryLog', 'getLastParseQuery',
-        );
-
-        if (in_array($method, $forceMethods)) {
-            return $abstract;
-        }
-
-        return $abstract ?: $this;
-    }
-
-    /**
-     * @param string $method
      * @param array $arguments
      * 
-     * @return static
+     * @return static|mixed
      */
     public function __call($method, $arguments)
     {
@@ -2394,10 +2403,14 @@ class Builder
 
         $abstract = null;
 
+        $pass = false;
+
         foreach ($this->getResolvers() as $resolver) {
             if (!method_exists($resolver, $method)) {
                 continue;
             }
+
+            $pass = true;
 
             if ($resolver instanceof ProcessorInterface) {
                 array_unshift($arguments, $this);
@@ -2412,6 +2425,10 @@ class Builder
             }
         }
 
-        return $this->callForce($method, $abstract);
+        if (!$pass) {
+            throw new \BadMethodCallException("Method: `{$method}` Not Exists");
+        }
+
+        return $abstract;
     }
 }

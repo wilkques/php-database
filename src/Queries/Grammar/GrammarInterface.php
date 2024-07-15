@@ -38,6 +38,13 @@ interface GrammarInterface
     public function compilerDelete($query);
 
     /**
+     * @param Builder $query
+     * 
+     * @return string
+     */
+    public function compilerCount($query);
+
+    /**
      * @return string
      */
     public function lockForUpdate();

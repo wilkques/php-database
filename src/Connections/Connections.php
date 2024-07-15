@@ -2,6 +2,8 @@
 
 namespace Wilkques\Database\Connections;
 
+use Wilkques\Helpers\Arrays;
+
 abstract class Connections
 {
     /** @var array */
@@ -296,13 +298,19 @@ abstract class Connections
     public function getParseQueryLog()
     {
         return array_map(function ($queryLog) {
-            $stringSQL = str_replace('?', '"%s"', $queryLog['query']);
+            $index = 0;
 
-            $bindings = $queryLog['bindings'];
+            return preg_replace_callback('/\?/', function ($match) use (&$index, $queryLog) {
+                $index++;
 
-            array_unshift($bindings, $stringSQL);
+                $binding = Arrays::get($queryLog, "bindings.{$index}");
 
-            return call_user_func_array('sprintf', $bindings);
+                if (is_numeric($binding)) {
+                    return $binding;
+                }
+
+                return "\"{$binding}\"";
+            }, $queryLog['query']);
         }, $this->getQueryLog());
     }
 

@@ -130,17 +130,19 @@ abstract class PDO extends Connections implements ConnectionInterface
      * 
      * @return Result
      */
-    protected function run($query, $bindings = [])
+    protected function run($query, $bindings = array())
     {
         $statement = $this->prepare($query);
 
         $bindings = $bindings ?: array();
 
         if (!empty($bindings)) {
-            $bindings = $statement->bindParams($bindings)->getParams();
+            $statement->bindParams($bindings);
         }
 
         if ($this->isLogging()) {
+            $bindings = $statement->getParams();
+
             $this->setQueryLog(compact('query', 'bindings'));
         }
 
@@ -153,7 +155,7 @@ abstract class PDO extends Connections implements ConnectionInterface
      * 
      * @return Result
      */
-    public function exec($query, $bindings = [])
+    public function exec($query, $bindings = array())
     {
         try {
             $this->reconnectIfMissingConnection();

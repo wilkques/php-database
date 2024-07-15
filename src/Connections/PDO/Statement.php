@@ -211,7 +211,7 @@ class Statement
 
             foreach ($params as $item) {
                 if (is_array($item)) {
-                    array_push($newParams, ...array_values($item));
+                    call_user_func('array_push', $newParams, array_values($item));
                 } else {
                     array_push($newParams, $item);
                 }
@@ -233,7 +233,7 @@ class Statement
 
             foreach ($params as $item) {
                 if (is_array($item)) {
-                    $newParams = array_merge($newParams, $item);
+                    call_user_func('array_push', $newParams, array_values($item));
                 } else {
                     array_push($newParams, $item);
                 }

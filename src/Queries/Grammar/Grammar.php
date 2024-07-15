@@ -28,23 +28,26 @@ abstract class Grammar implements GrammarInterface
 
     /**
      * @param array $array
-     * @param bool|true $force
-     * @param callback|\Closure|null $callback
+     * @param callback|\Closure|null $forceValue
      * 
      * @return array
      */
-    protected function arrayNested($array, $force = true, $callback = null)
+    protected function arrayNested($array, $forceValue = null)
     {
-        return Arrays::map($array, function ($value) use ($callback, $force) {
+        return Arrays::map($array, function ($value) use ($forceValue) {
             if ($value instanceof Expression) {
                 return $value;
             }
 
-            if ($callback) {
-                return call_user_func($callback, $value);
+            if (is_callable($forceValue) || $forceValue instanceof \Closure) {
+                return call_user_func($forceValue, $value);
             }
 
-            return $force ? $value : '?';
+            if ($forceValue) {
+                return $forceValue;
+            }
+
+            return $value;
         });
     }
 
@@ -115,7 +118,9 @@ abstract class Grammar implements GrammarInterface
 
         $wheres = join(' ', $this->arrayNested($wheres));
 
-        return "WHERE " . ltrim(ltrim($wheres, 'AND '), 'OR ');
+        $wheres = preg_replace('/^(AND |OR )/i', '', $wheres);
+
+        return "WHERE {$wheres}";
     }
 
     /**
@@ -133,7 +138,9 @@ abstract class Grammar implements GrammarInterface
 
         $havings = join(' ', $this->arrayNested($havings));
 
-        return "HAVING " . ltrim(ltrim($havings, 'AND '), 'OR ');
+        $havings = preg_replace('/^(AND |OR )/i', '', $havings);
+
+        return "HAVING {$havings}";
     }
 
     /**
@@ -253,7 +260,7 @@ abstract class Grammar implements GrammarInterface
             if ($query->getQuery($component, false)) {
                 $method = 'compiler' . ucfirst($component);
 
-                $sql[$component] = call_user_func_array([$this, $method], [$query]);
+                $sql[$component] = call_user_func_array(array($this, $method), array($query));
             }
         }
 
@@ -268,9 +275,7 @@ abstract class Grammar implements GrammarInterface
      */
     protected function concatenate($segments)
     {
-        return implode(' ', Arrays::filter($segments, function ($value) {
-            return (string) $value !== '';
-        }));
+        return implode(' ', array_filter($segments));
     }
 
     /**
@@ -281,8 +286,8 @@ abstract class Grammar implements GrammarInterface
      */
     public function compilerUpdate($query, $columns)
     {
-        $columns = $this->arrayNested($columns, false, function ($column) {
-            return "`{$column}` = ?";
+        $columns = $this->arrayNested($columns, function ($column) use ($query) {
+            return "{$query->contactBacktick($column)} = ?";
         });
 
         $columns = join(', ', $columns);
@@ -359,13 +364,17 @@ abstract class Grammar implements GrammarInterface
             );
         }
 
-        $columns = join(', ', array_keys(current($data)));
+        $columns = Arrays::map(array_keys(current($data)), function ($column) use ($query) {
+            return $query->contactBacktick($column);
+        });
+
+        $columns = join(', ', $columns);
 
         $from = join(', ', $query->getFrom());
 
         if (!$sql) {
             $values = Arrays::map($data, function ($values) {
-                return join(', ', $this->arrayNested($values, false));
+                return join(', ', $this->arrayNested($values, "?"));
             });
 
             $values = join('), (', $values);
@@ -436,6 +445,20 @@ abstract class Grammar implements GrammarInterface
     protected function compilerDeleteWithJoins($query)
     {
         return "DELETE FROM {$query->getFrom()} {$this->compilerJoins($query)} {$this->compilerWheres($query)}";
+    }
+
+    /**
+     * Compile an count statement with joins into SQL.
+     *
+     * @param  Builder  $query
+     * 
+     * @return string
+     */
+    public function compilerCount($query)
+    {
+        $sql = $this->compilerSelect($query);
+
+        return "SELECT COUNT(*) AS `aggregate` FROM ({$sql}) AS `aggregate_table`";
     }
 
     /**
