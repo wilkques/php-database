@@ -18,7 +18,7 @@ class Connections
 
         switch ($driver) {
             case 'mysql':
-                return \Wilkques\Database\Connections\Connectors\PDO\MySqlConnector::connect($config);
+                return \Wilkques\Database\Connections\Connectors\PDO\Drivers\MySqlConnector::connect($config);
                 break;
         }
 

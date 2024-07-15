@@ -1,6 +1,6 @@
 <?php
 
-namespace Wilkques\Database\Connections\Connectors\PDO;
+namespace Wilkques\Database\Connections\Connectors\PDO\Drivers;
 
 use Wilkques\Database\Connections\Connectors\Connector;
 
@@ -23,9 +23,9 @@ class MySqlConnector extends Connector
         ) = $this->config($config);
 
         /** 
-         * @var \Wilkques\Database\Connections\Connections|\Wilkques\Database\Connections\PDO\MySql
+         * @var \Wilkques\Database\Connections\Connections|\Wilkques\Database\Connections\PDO\Drivers\MySql
          */
-        $connection = new \Wilkques\Database\Connections\PDO\MySql;
+        $connection = new \Wilkques\Database\Connections\PDO\Drivers\MySql;
 
         $connection->setHost($host)
             ->setUsername($username)

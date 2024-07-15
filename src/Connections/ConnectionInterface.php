@@ -22,7 +22,7 @@ interface ConnectionInterface
      * @return static
      */
     public function setConnection($connection = null);
-    
+
     /**
      * @return array
      */
@@ -34,7 +34,7 @@ interface ConnectionInterface
      * @return \Wilkques\Database\Connections\PDO\Statement
      */
     public function prepare($sql);
-    
+
     /**
      * @param string|null $query
      * @param array $bindings
@@ -42,4 +42,11 @@ interface ConnectionInterface
      * @return Result
      */
     public function exec($query, $bindings = array());
+
+    /**
+     * @param string $database
+     * 
+     * @return static
+     */
+    public function selectDatabase($database);
 }

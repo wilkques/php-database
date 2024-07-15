@@ -3,8 +3,8 @@
     "type": "library",
     "license": "MIT",
     "require": {
-        "php": ">=5.6",
-        "wilkques/php-helper": "^5.0.0"
+        "php": ">=5.3",
+        "wilkques/php-helper": "^5.12.5"
     },
     "autoload": {
         "files": [

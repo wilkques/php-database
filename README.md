@@ -37,11 +37,11 @@
 
 1. connect
     ```php
-    $connection = new \Wilkques\Database\Connections\PDO\MySql('<host>', '<username>', '<password>', '<database>', '<port>', '<character>');
+    $connection = new \Wilkques\Database\Connections\PDO\Drivers\MySql('<host>', '<username>', '<password>', '<database>', '<port>', '<character>');
 
     // or
 
-    $connection = \Wilkques\Database\Connections\PDO\MySql::connect('<host>', '<username>', '<password>', '<database>', '<port>', '<character>');
+    $connection = \Wilkques\Database\Connections\PDO\Drivers\MySql::connect('<host>', '<username>', '<password>', '<database>', '<port>', '<character>');
 
     // or
 

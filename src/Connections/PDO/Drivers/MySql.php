@@ -1,6 +1,8 @@
 <?php
 
-namespace Wilkques\Database\Connections\PDO;
+namespace Wilkques\Database\Connections\PDO\Drivers;
+
+use Wilkques\Database\Connections\PDO\PDO;
 
 class MySql extends PDO
 {
