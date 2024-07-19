@@ -2,19 +2,17 @@
 
 namespace Wilkques\Database\Queries\Grammar;
 
-use Wilkques\Database\Queries\Builder;
-
 interface GrammarInterface
 {
     /**
-     * @param Builder $builder
+     * @param \Wilkques\Database\Queries\Builder $builder
      * 
      * @return string
      */
     public function compilerSelect($builder);
     
     /**
-     * @param Builder $query
+     * @param \Wilkques\Database\Queries\Builder $query
      * @param array|[] $columns
      * @param string|null $sql
      * 
@@ -23,7 +21,7 @@ interface GrammarInterface
     public function compilerInsert($query, $data = array(), $sql = null);
 
     /**
-     * @param Builder $query
+     * @param \Wilkques\Database\Queries\Builder $query
      * @param array $columns
      * 
      * @return string
@@ -31,14 +29,14 @@ interface GrammarInterface
     public function compilerUpdate($query, $columns);
 
     /**
-     * @param Builder $query
+     * @param \Wilkques\Database\Queries\Builder $query
      * 
      * @return string
      */
     public function compilerDelete($query);
 
     /**
-     * @param Builder $query
+     * @param \Wilkques\Database\Queries\Builder $query
      * 
      * @return string
      */

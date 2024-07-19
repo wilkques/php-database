@@ -5,6 +5,13 @@ namespace Wilkques\Database\Connections;
 interface ConnectionInterface
 {
     /**
+     * @param string $dbname
+     * 
+     * @return static
+     */
+    public function setDatabase($dbname);
+
+    /**
      * @return string
      */
     public function getDatabase();

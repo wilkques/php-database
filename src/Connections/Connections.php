@@ -4,7 +4,7 @@ namespace Wilkques\Database\Connections;
 
 use Wilkques\Helpers\Arrays;
 
-abstract class Connections
+abstract class Connections implements ConnectionInterface
 {
     /** @var array */
     protected $config = array();
@@ -79,19 +79,20 @@ abstract class Connections
      */
     public function setConfig(string $key, $value)
     {
-        $this->config[$key] = $value;
+        Arrays::set($this->config, $key, $value);
 
         return $this;
     }
 
     /**
      * @param string $key
+     * @param mixed|null $default
      * 
-     * @return static
+     * @return mixed
      */
-    public function getConfig(string $key = null)
+    public function getConfig(string $key, $default = null)
     {
-        return $key ? ($this->config[$key] ?? null) : $this->config;
+        return Arrays::get($this->config, $key, $default);
     }
 
     /**

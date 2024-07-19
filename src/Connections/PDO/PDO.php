@@ -7,7 +7,7 @@ use Wilkques\Database\Connections\ConnectionInterface;
 use Wilkques\Database\Connections\Connections;
 use Wilkques\Database\Connections\Traits\DetectsLostConnections;
 
-abstract class PDO extends Connections implements ConnectionInterface
+abstract class PDO extends Connections
 {
     use DetectsLostConnections;
 
@@ -215,7 +215,7 @@ abstract class PDO extends Connections implements ConnectionInterface
      */
     public function selectDatabase($database)
     {
-        $this->exec("use `{$database}`;");
+        $this->setDatabase($database)->exec("use `{$database}`;");
 
         return $this;
     }

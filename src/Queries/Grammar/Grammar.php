@@ -15,13 +15,13 @@ abstract class Grammar implements GrammarInterface
      */
     protected $selectComponents = array(
         'columns',
-        'from',
+        'froms',
         'joins',
         'wheres',
         'groups',
         'havings',
         'orders',
-        'limit',
+        'limits',
         'offset',
         'lock',
     );
@@ -36,7 +36,7 @@ abstract class Grammar implements GrammarInterface
     {
         return Arrays::map($array, function ($value) use ($forceValue) {
             if ($value instanceof Expression) {
-                return $value;
+                return (string) $value;
             }
 
             if (is_callable($forceValue) || $forceValue instanceof \Closure) {
@@ -60,7 +60,7 @@ abstract class Grammar implements GrammarInterface
     {
         $columns = $query->getQuery('columns.queries', array('*'));
 
-        return join(',', $this->arrayNested($columns));
+        return join(', ', $this->arrayNested($columns));
     }
 
     /**
@@ -90,9 +90,9 @@ abstract class Grammar implements GrammarInterface
      * 
      * @return string
      */
-    public function compilerFrom($query)
+    public function compilerFroms($query)
     {
-        $from = $query->getQuery('from.queries', array());
+        $from = $query->getQuery('froms.queries', array());
 
         if (empty($from)) {
             return false;
@@ -148,15 +148,15 @@ abstract class Grammar implements GrammarInterface
      * 
      * @return string|false
      */
-    public function compilerLimit($query)
+    public function compilerLimits($query)
     {
-        $limit = $query->getQuery('limit.queries', array());
+        $limit = $query->getQuery('limits.queries', array());
 
         if (empty($limit)) {
             return false;
         }
 
-        return "LIMIT " . join(',', $this->arrayNested($limit));
+        return "LIMIT " . join(', ', $this->arrayNested($limit));
     }
 
     /**
@@ -260,7 +260,7 @@ abstract class Grammar implements GrammarInterface
             if ($query->getQuery($component, false)) {
                 $method = 'compiler' . ucfirst($component);
 
-                $sql[$component] = call_user_func_array(array($this, $method), array($query));
+                $sql[$component] = call_user_func(array($this, $method), $query);
             }
         }
 
@@ -286,8 +286,8 @@ abstract class Grammar implements GrammarInterface
      */
     public function compilerUpdate($query, $columns)
     {
-        $columns = $this->arrayNested($columns, function ($column) use ($query) {
-            return "{$query->contactBacktick($column)} = ?";
+        $columns = $this->arrayNested($columns, function ($column) {
+            return "{$column} = ?";
         });
 
         $columns = join(', ', $columns);
@@ -367,7 +367,7 @@ abstract class Grammar implements GrammarInterface
         $columns = Arrays::map(array_keys(current($data)), function ($column) use ($query) {
             return $query->contactBacktick($column);
         });
-
+        
         $columns = join(', ', $columns);
 
         $from = join(', ', $query->getFrom());
@@ -417,10 +417,10 @@ abstract class Grammar implements GrammarInterface
     public function compilerDelete($query)
     {
         if ($query->getQuery('joins')) {
-            return $this->compilerDeleteWithoutJoins($query);
+            return $this->compilerDeleteWithJoins($query);
         }
-
-        return $this->compilerDeleteWithJoins($query);
+        
+        return $this->compilerDeleteWithoutJoins($query);
     }
 
     /**
@@ -432,7 +432,7 @@ abstract class Grammar implements GrammarInterface
      */
     protected function compilerDeleteWithoutJoins($query)
     {
-        return "DELETE FROM {$query->getFrom()} {$this->compilerWheres($query)}";
+        return "DELETE {$this->compilerFroms($query)} {$this->compilerWheres($query)}";
     }
 
     /**
@@ -444,7 +444,7 @@ abstract class Grammar implements GrammarInterface
      */
     protected function compilerDeleteWithJoins($query)
     {
-        return "DELETE FROM {$query->getFrom()} {$this->compilerJoins($query)} {$this->compilerWheres($query)}";
+        return "DELETE {$this->compilerFroms($query)} {$this->compilerJoins($query)} {$this->compilerWheres($query)}";
     }
 
     /**
@@ -464,10 +464,10 @@ abstract class Grammar implements GrammarInterface
     /**
      * @return string
      */
-    abstract function lockForUpdate();
+    abstract public function lockForUpdate();
 
     /**
      * @return string
      */
-    abstract function sharedLock();
+    abstract public function sharedLock();
 }

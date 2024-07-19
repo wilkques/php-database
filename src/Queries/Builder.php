@@ -51,8 +51,8 @@ class Builder
 
     /** @var array */
     protected $bindingComponents = array(
-        'columns', 'from', 'joins', 'insert', 'update',
-        'wheres', 'groups', 'havings', 'orders', 'limit',
+        'columns', 'froms', 'joins', 'insert', 'update',
+        'wheres', 'groups', 'havings', 'orders', 'limits',
         'offset', 'unions',
     );
 
@@ -66,8 +66,7 @@ class Builder
         GrammarInterface $grammar = null,
         ProcessorInterface $processor = null
     ) {
-        $this->resolverRegister(static::class, $this)
-            ->setConnection($connection)
+        $this->setConnection($connection)
             ->setGrammar($grammar)
             ->setProcessor($processor);
     }
@@ -93,7 +92,7 @@ class Builder
      * 
      * @return static
      */
-    public function resolverRegister($abstract, $resolver = null)
+    protected function resolverRegister($abstract, $resolver = null)
     {
         if (is_object($abstract)) {
             $resolver = $abstract;
@@ -109,7 +108,7 @@ class Builder
     /**
      * @return array
      */
-    public function getResolvers()
+    protected function getResolvers()
     {
         return $this->resolvers;
     }
@@ -119,7 +118,7 @@ class Builder
      * 
      * @return mixed
      */
-    public function getResolver($abstract)
+    protected function getResolver($abstract)
     {
         $abstract = Arrays::filter($this->getResolvers(), function ($resolver) use ($abstract) {
             return in_array($abstract, class_implements($resolver));
@@ -189,11 +188,19 @@ class Builder
      * 
      * @return static
      */
-    public function withQueries(array $queries)
+    public function setQueries(array $queries)
     {
         $this->queries = $queries;
 
         return $this;
+    }
+
+    /**
+     * @return array
+     */
+    public function getQueries()
+    {
+        return $this->queries;
     }
 
     /**
@@ -207,14 +214,6 @@ class Builder
         Arrays::set($this->queries, $key, $value);
 
         return $this;
-    }
-
-    /**
-     * @return array
-     */
-    public function getQueries()
-    {
-        return $this->queries;
     }
 
     /**
@@ -237,25 +236,30 @@ class Builder
     }
 
     /**
-     * @param callback|static|Closure $callback
-     * 
-     * @return array
-     * 
-     * @throws InvalidArgumentException
+     * Prepend the database name if the given query is on another database.
+     *
+     * @param  static  $query
+     * @return static
      */
-    protected function createSub($callback)
+    protected function prependDatabaseNameIfCrossDatabaseQuery($query)
     {
-        if ($callback instanceof Closure) {
-            call_user_func($callback, $callback = $this->forSubQuery());
+        if ($query->getConnection()->getDatabase() !== $this->getConnection()->getDatabase()) {
+            Arrays::map($query->getFrom(), function ($from, $index) use ($query) {
+                $database = $query->getConnection()->getDatabase();
+
+                if (strpos($from, $database) !== 0 && strpos($from, '.') === false) {
+                    $query->setFrom($this->contactBacktick($database, $from), $index);
+                }
+            });
         }
 
-        return $this->parseSub($callback);
+        return $query;
     }
 
     /**
      * Parse the subquery into SQL and bindings.
      *
-     * @param  mixed  $query
+     * @param  static|string|Expression  $query
      * @return array
      *
      * @throws \InvalidArgumentException
@@ -278,24 +282,19 @@ class Builder
     }
 
     /**
-     * Prepend the database name if the given query is on another database.
-     *
-     * @param  static  $query
-     * @return static
+     * @param callback|static|Closure $callback
+     * 
+     * @return array
+     * 
+     * @throws InvalidArgumentException
      */
-    protected function prependDatabaseNameIfCrossDatabaseQuery($query)
+    protected function createSub($callback)
     {
-        if ($query->getConnection()->getDatabase() !== $this->getConnection()->getDatabase()) {
-            Arrays::map($query->getFrom(), function ($from, $index) use ($query) {
-                $database = $query->getConnection()->getDatabase();
-
-                if (strpos($from, $database) !== 0 && strpos($from, '.') === false) {
-                    $query->setFrom($index, $this->contactBacktick($database, $from));
-                }
-            });
+        if ($callback instanceof Closure) {
+            call_user_func($callback, $callback = $this->forSubQuery());
         }
 
-        return $query;
+        return $this->parseSub($callback);
     }
 
     /**
@@ -329,9 +328,7 @@ class Builder
      */
     protected function getBindings($except = array())
     {
-        $components = $this->bindingComponents;
-
-        $components = Arrays::filter($components, function ($component) use ($except) {
+        $components = Arrays::filter($this->bindingComponents, function ($component) use ($except) {
             return !in_array($component, $except);
         });
 
@@ -425,6 +422,36 @@ class Builder
     }
 
     /**
+     * @param string $query
+     * @param string|null $as
+     * 
+     * @return string
+     */
+    protected function queryRawAsContactBacktick($query, $as = null)
+    {
+        $query = "({$query})";
+
+        $query = is_string($as) ? "{$query} AS {$this->contactBacktick($as)}" : $query;
+
+        return $query;
+    }
+
+    /**
+     * @param string $query
+     * @param string|null $as
+     * 
+     * @return string
+     */
+    protected function queryAsContactBacktick($query, $as = null)
+    {
+        $query = $this->contactBacktick($query);
+
+        $query = is_string($as) ? "{$query} AS {$this->contactBacktick($as)}" : $query;
+
+        return $query;
+    }
+
+    /**
      * Add a new "raw" select expression to the query.
      *
      * @param  string  $expression
@@ -434,24 +461,24 @@ class Builder
      */
     public function fromRaw($expression, array $bindings = array())
     {
-        return $this->queriesPush($this->raw($expression), $bindings, 'from');
+        return $this->queriesPush($this->raw($expression), $bindings, 'froms');
     }
 
     /**
-     * @param int|string $index
      * @param string $from
+     * @param int|string $index
      * 
      * @return static
      */
-    public function setFrom($index, $from)
+    public function setFrom($from, $index = 0)
     {
-        $this->queries['from']['queries'][$index] = $from;
+        $this->queries['froms']['queries'][$index] = $from;
 
         return $this;
     }
 
     /**
-     * @param string|callback|Closure $froms
+     * @param string|callback|Closure|static|array $froms
      * @param string|null $as
      * 
      * @return static
@@ -474,11 +501,7 @@ class Builder
             if ($from instanceof Closure || $from instanceof self) {
                 $this->fromSub($from, (is_string($as) ? $as : null));
             } else {
-                $from = $this->contactBacktick($from);
-
-                $from = is_string($as) ? "{$from} AS {$this->contactBacktick($as)}" : $from;
-
-                $this->fromRaw($from);
+                $this->fromRaw($this->queryAsContactBacktick($from, $as));
             }
         }
 
@@ -486,7 +509,7 @@ class Builder
     }
 
     /**
-     * @param string|callback|Closure $from
+     * @param callback|Closure|static|array $from
      * @param string|null $as
      * 
      * @return static
@@ -499,11 +522,7 @@ class Builder
 
         list($query, $bindings) = $this->createSub($from);
 
-        $query = "({$query})";
-
-        $query = $as ? "{$query} AS {$this->contactBacktick($as)}" : $query;
-
-        return $this->fromRaw($query, $bindings);
+        return $this->fromRaw($this->queryRawAsContactBacktick($query, $as), $bindings);
     }
 
     /**
@@ -511,7 +530,7 @@ class Builder
      */
     public function getFrom()
     {
-        return $this->getQuery("from.queries");
+        return $this->getQuery("froms.queries");
     }
 
     /**
@@ -547,7 +566,7 @@ class Builder
     }
 
     /**
-     * @param array|string <$column|...$column>
+     * @param array<string|Closure|static>|string
      * 
      * @return static
      */
@@ -561,6 +580,8 @@ class Builder
             if ($column instanceof Closure || $column instanceof self) {
                 $this->selectSub($column, (is_string($as) ? $as : null));
             } else {
+                $column = $column == '*' ? $column : $this->queryAsContactBacktick($column, $as);
+
                 $this->queryPush($column, 'columns');
             }
         }
@@ -569,7 +590,7 @@ class Builder
     }
 
     /**
-     * @param string $column
+     * @param string|callback|Closure|static $column
      * @param string|null $as
      * 
      * @return static
@@ -582,11 +603,7 @@ class Builder
 
         list($queries, $bindings) = $this->createSub($column);
 
-        $queries = "({$queries})";
-
-        $queries = $as ? "{$queries} AS {$this->contactBacktick($as)}" : $queries;
-
-        return $this->selectRaw($queries, $bindings);
+        return $this->selectRaw($this->queryRawAsContactBacktick($queries, $as), $bindings);
     }
 
     /**
@@ -685,7 +702,7 @@ class Builder
      */
     public function forNested()
     {
-        return $this->newQuery()->from($this->getQuery('from.queries'));
+        return $this->newQuery()->from($this->getQuery('froms.queries'));
     }
 
     /**
@@ -1551,7 +1568,7 @@ class Builder
     }
 
     /**
-     * Add a raw groupBy clause to the query.
+     * Add a raw orderBy clause to the query.
      *
      * @param  string  $sql
      * @param  array  $bindings
@@ -1560,7 +1577,7 @@ class Builder
      */
     public function orderByRaw($sql, array $bindings = array())
     {
-        return $this->queriesPush($this->raw($sql), $bindings, 'orderBy');
+        return $this->queriesPush($this->raw($sql), $bindings, 'orders');
     }
 
     /**
@@ -2241,7 +2258,7 @@ class Builder
             $queries[] = "?";
         }
 
-        return $this->setQuery('limit', compact('queries', 'bindings'));
+        return $this->setQuery('limits', compact('queries', 'bindings'));
     }
 
     /**
@@ -2282,7 +2299,7 @@ class Builder
      */
     public function getForPage($prePage = 10, $currentPage = 1)
     {
-        $prePage = $this->getQuery('limit.bindings', $prePage);
+        $prePage = $this->getQuery('limits.bindings', $prePage);
 
         if (is_array($prePage)) {
             $prePage = array_shift($prePage);
