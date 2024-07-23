@@ -188,7 +188,7 @@ class Builder
      * 
      * @return static
      */
-    public function setQueries(array $queries)
+    public function setQueries($queries)
     {
         $this->queries = $queries;
 
@@ -209,7 +209,7 @@ class Builder
      * 
      * @return static
      */
-    public function setQuery(string $key, $value = null)
+    public function setQuery($key, $value = null)
     {
         Arrays::set($this->queries, $key, $value);
 
@@ -463,7 +463,7 @@ class Builder
      * 
      * @return static
      */
-    public function fromRaw($expression, array $bindings = array())
+    public function fromRaw($expression, $bindings = array())
     {
         return $this->queriesPush($this->raw($expression), $bindings, 'froms');
     }
@@ -564,7 +564,7 @@ class Builder
      * 
      * @return static
      */
-    public function selectRaw($expression, array $bindings = array())
+    public function selectRaw($expression, $bindings = array())
     {
         return $this->queriesPush($this->raw($expression), $bindings, 'columns');
     }
@@ -1344,7 +1344,7 @@ class Builder
      * 
      * @return static
      */
-    public function groupByRaw($sql, array $bindings = array())
+    public function groupByRaw($sql, $bindings = array())
     {
         return $this->queriesPush($this->raw($sql), $bindings, 'groups');
     }
@@ -1628,7 +1628,7 @@ class Builder
      * 
      * @return static
      */
-    public function orderByRaw($sql, array $bindings = array())
+    public function orderByRaw($sql, $bindings = array())
     {
         return $this->queriesPush($this->raw($sql), $bindings, 'orders');
     }
@@ -1903,7 +1903,7 @@ class Builder
      * 
      * @throws \InvalidArgumentException
      */
-    public function softDelete(string $column = 'deleted_at', string $dateTimeFormat = "Y-m-d H:i:s")
+    public function softDelete($column = 'deleted_at', $dateTimeFormat = "Y-m-d H:i:s")
     {
         if (!is_string($column)) {
             throw new \InvalidArgumentException(" first Arguments must be string");
@@ -1923,7 +1923,7 @@ class Builder
      * 
      * @throws \InvalidArgumentException
      */
-    public function reStore(string $column = 'deleted_at')
+    public function reStore($column = 'deleted_at')
     {
         if (!is_string($column)) {
             throw new \InvalidArgumentException(" first Arguments must be string");
@@ -1969,10 +1969,14 @@ class Builder
 
             call_user_func($first, $join);
 
-            list('queries'  => $queries, 'bindings' => $bindings) = array_replace([
-                'bindings'  => array(),
+            $queriesArguments = array_replace([
                 'queries'   => array(),
+                'bindings'  => array(),
             ], $join->getQuery('joins'));
+
+            $bindings = Arrays::get($queriesArguments, 'bindings');
+
+            $queries = Arrays::get($queriesArguments, 'queries');
 
             if (!empty($bindings)) {
                 $this->bindingPush($bindings, 'joins');

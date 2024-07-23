@@ -77,7 +77,7 @@ abstract class Connections implements ConnectionInterface
      * 
      * @return static
      */
-    public function setConfig(string $key, $value)
+    public function setConfig($key, $value)
     {
         Arrays::set($this->config, $key, $value);
 
@@ -90,7 +90,7 @@ abstract class Connections implements ConnectionInterface
      * 
      * @return mixed
      */
-    public function getConfig(string $key, $default = null)
+    public function getConfig($key, $default = null)
     {
         return Arrays::get($this->config, $key, $default);
     }
@@ -254,7 +254,7 @@ abstract class Connections implements ConnectionInterface
      * 
      * @return static
      */
-    public function setLoggingQueries(bool $status = false)
+    public function setLoggingQueries($status = false)
     {
         $this->loggingQueries = $status;
 
@@ -330,5 +330,5 @@ abstract class Connections implements ConnectionInterface
      * 
      * @return static
      */
-    abstract public function newConnection(string $dns = null);
+    abstract public function newConnection($dns = null);
 }

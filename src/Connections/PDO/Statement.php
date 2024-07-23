@@ -72,7 +72,7 @@ class Statement
      * 
      * @return static
      */
-    public function debug(bool $debug = true)
+    public function debug($debug = true)
     {
         $this->debug = $debug;
 
@@ -115,7 +115,7 @@ class Statement
      * 
      * @return static
      */
-    public function setParams(array $params)
+    public function setParams($params)
     {
         $this->params = $params;
 
@@ -204,7 +204,7 @@ class Statement
      * 
      * @return static
      */
-    public function bindParams(array $params = array())
+    public function bindParams($params = array())
     {
         return $this->binding("bindParam", $params, function ($params) {
             $newParams = array();
@@ -226,7 +226,7 @@ class Statement
      * 
      * @return static
      */
-    public function bindValues(array $params = array())
+    public function bindValues($params = array())
     {
         return $this->binding("bindValue", $params, function ($params) {
             $newParams = array();
@@ -250,7 +250,7 @@ class Statement
      * 
      * @return static
      */
-    public function binding(string $bindMethod, array $params = array(), \Closure $callback = null)
+    public function binding($bindMethod, $params = array(), \Closure $callback = null)
     {
         $params = $params ?: $this->getParams();
 

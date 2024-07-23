@@ -22,7 +22,12 @@ class BuilderTest extends TestCase
 
         // return $this->getMockForAbstractClass('Wilkques\Database\Queries\Grammar\GrammarInterface');
 
-        return $this->getMockForAbstractClass('Wilkques\Database\Queries\Grammar\Grammar');
+        return $this->getMockForAbstractClass(
+            'Wilkques\Database\Queries\Grammar\Grammar', 
+            [], 
+            '', 
+            false
+        );
     }
 
     private function connection()
@@ -35,12 +40,17 @@ class BuilderTest extends TestCase
 
         // return $this->getMockForAbstractClass('Wilkques\Database\Connections\ConnectionInterface');
 
-        return $this->getMockForAbstractClass('Wilkques\Database\Connections\Connections');
+        return $this->getMockForAbstractClass(
+            'Wilkques\Database\Connections\Connections',
+            [],
+            '',
+            false
+        );
     }
 
     private function process()
     {
-        // $createMock = method_exists($this, 'createMock') ? 'createMock' : 'getMock';
+        $createMock = method_exists($this, 'createMock') ? 'createMock' : 'getMock';
 
         // $process = call_user_func(array($this, $createMock), 'Wilkques\Database\Queries\Processors\ProcessorInterface');
 
@@ -48,7 +58,7 @@ class BuilderTest extends TestCase
 
         // return $this->getMockForAbstractClass('Wilkques\Database\Queries\Processors\ProcessorInterface');
 
-        return $this->getMockForAbstractClass('Wilkques\Database\Queries\Processors\Processor');
+        return call_user_func(array($this, $createMock), 'Wilkques\Database\Queries\Processors\Processor');
     }
 
     private function builder()
@@ -2539,7 +2549,7 @@ class BuilderTest extends TestCase
             ),
             $builder->getQuery('wheres.queries')
         );
-        
+
         // $builder = $this->builder();
 
         // $builder->whereNull(function ($query) {

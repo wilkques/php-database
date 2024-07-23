@@ -145,7 +145,7 @@ class Result
      *
      * @throws \Exception
      */
-    public function fetch(int $mode = \PDO::FETCH_ASSOC)
+    public function fetch($mode = \PDO::FETCH_ASSOC)
     {
         $result = $this->getStatement()->fetch($mode);
 
@@ -159,7 +159,7 @@ class Result
      *
      * @throws \Exception
      */
-    public function fetchAll(int $mode = \PDO::FETCH_ASSOC)
+    public function fetchAll($mode = \PDO::FETCH_ASSOC)
     {
         $result = $this->getStatement()->fetchAll($mode);
 

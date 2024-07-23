@@ -495,7 +495,7 @@ class MySqlGrammarTest extends TestCase
                         10,
                     ),
                 ),
-            ),
+            )
         );
 
         $result = $reflectionMethod->invoke($abstract, $mock);
@@ -567,7 +567,7 @@ class MySqlGrammarTest extends TestCase
                         444,
                     ),
                 )
-            ),
+            )
         );
 
         $this->assertEquals(
@@ -671,7 +671,7 @@ class MySqlGrammarTest extends TestCase
                         ),
                     ),
                 )
-            ),
+            )
         );
 
         $result = $reflectionMethod->invoke($abstract, $mock, '`dns_record`', 'abc = ?');
@@ -705,7 +705,7 @@ class MySqlGrammarTest extends TestCase
                         new \Wilkques\Database\Queries\Expression('`dns_record`'),
                     ),
                 )
-            ),
+            )
         );
 
         $this->assertEquals(
@@ -983,7 +983,7 @@ class MySqlGrammarTest extends TestCase
                         10,
                     ),
                 ),
-            ),
+            )
         );
 
         $this->assertEquals(

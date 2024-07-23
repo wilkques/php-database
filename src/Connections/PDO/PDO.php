@@ -52,7 +52,7 @@ abstract class PDO extends Connections
      * 
      * @return \PDO
      */
-    public function connection(string $dns = null)
+    public function connection($dns = null)
     {
         return new \PDO(
             $dns ?: $this->getDNS(),
@@ -108,7 +108,7 @@ abstract class PDO extends Connections
      * 
      * @return static
      */
-    public function newConnection(string $dns = null)
+    public function newConnection($dns = null)
     {
         return $this->setConnection($this->connection($dns))
             ->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
@@ -119,7 +119,7 @@ abstract class PDO extends Connections
      * 
      * @return static
      */
-    public function reConnecntion(string $dns = null)
+    public function reConnecntion($dns = null)
     {
         return $this->newConnection($dns);
     }
