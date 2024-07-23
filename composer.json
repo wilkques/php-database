@@ -6,12 +6,20 @@
         "php": ">=5.3",
         "wilkques/php-helper": "^5.12.5"
     },
+    "require-dev": {
+        "phpunit/phpunit": "*"
+    },
     "autoload": {
         "files": [
             "src/helpers.php"
         ],
         "psr-4": {
             "Wilkques\\Database\\": "src"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Wilkques\\Helpers\\Tests\\": "tests/"
         }
     },
     "suggest": {
