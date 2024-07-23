@@ -1923,9 +1923,9 @@ class Builder
 
         $value = date($dateTimeFormat);
 
-        return $this->update([
+        return $this->update(array(
             $column => $value
-        ]);
+        ));
     }
 
     /**
@@ -1943,9 +1943,9 @@ class Builder
 
         $value = null;
 
-        return $this->update([
+        return $this->update(array(
             $column => $value
-        ]);
+        ));
     }
 
     /**
