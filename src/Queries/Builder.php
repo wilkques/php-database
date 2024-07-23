@@ -248,7 +248,7 @@ class Builder
                 $database = $query->getConnection()->getDatabase();
 
                 if (strpos($from, $database) !== 0 && strpos($from, '.') === false) {
-                    $query->setFrom($this->contactBacktick($database, $from), $index);
+                    $query->setFrom($query->contactBacktick($database, $from), $index);
                 }
             });
         }
@@ -1862,13 +1862,15 @@ class Builder
             );
         }
 
-        $bindings = array_reduce($data, function ($carry, $values) {
+        $self = $this;
+
+        $bindings = array_reduce($data, function ($carry, $values) use ($self) {
             if (!$carry) {
                 $carry = array();
             }
 
             $values = array_values(
-                array_filter($this->bindingsNested($values))
+                array_filter($self->bindingsNested($values))
             );
 
             return array_merge($carry, $values);
