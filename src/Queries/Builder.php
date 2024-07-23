@@ -622,7 +622,7 @@ class Builder
     protected function invalidOperatorAndValue($operator, $value)
     {
         return is_null($value) && in_array($operator, $this->operators) &&
-            !in_array($operator, array('=', '<>', '!='));
+            !in_array($operator, array('=', '<>', '!=', 'is not', 'is'));
     }
 
     /**
@@ -772,6 +772,27 @@ class Builder
     }
 
     /**
+     * @param array $columns
+     * @param string $operator
+     * 
+     * @return array
+     */
+    protected function columnArguments($columns, $operator)
+    {
+        return Arrays::map($columns, function ($column) use ($operator) {
+            if (count($column) == 1) {
+                return array($column[0], $operator, null);
+            }
+
+            if (count($column) == 2) {
+                return array($column[0], $operator, $column[1]);
+            }
+
+            return array($column[0], $operator, $column[2]);
+        });
+    }
+
+    /**
      * Add a nested where statement to the query.
      *
      * @param  Closure|callback  $callback
@@ -894,11 +915,7 @@ class Builder
         }
 
         if (is_null($value)) {
-            if ('and' == $andOr) {
-                return $this->whereNull($column);
-            }
-
-            return $this->orWhereNull($column);
+            return $this->whereNull($column, $operator, $andOr, $operator === 'is not');
         }
 
         $varValue = '?';
@@ -909,7 +926,7 @@ class Builder
             if (in_array($operator, array('between', 'not between'))) {
                 $varValue = join(" {$andOr} ", array_fill(0, count($value), "?"));
             } else {
-                $varValue = "(" . join(',', array_fill(0, count($value), "?")) . ")";
+                $varValue = "(" . join(', ', array_fill(0, count($value), "?")) . ")";
             }
         }
 
@@ -988,14 +1005,21 @@ class Builder
     }
 
     /**
-     * @param string $column
+     * @param string|array $column
+     * @param string $operator
      * @param string $andOr
      * @param bool|false $not
      * 
      * @return static
      */
-    public function whereNull($column, $andOr = 'and', $not = false)
+    public function whereNull($column, $operator = 'is', $andOr = 'and', $not = false)
     {
+        if (is_array($column)) {
+            $column = $this->columnArguments($column, $operator);
+
+            return $this->where($column, null, null, $andOr);
+        }
+
         if ($column instanceof Closure) {
             return $this->whereNested($column, $andOr);
         }
@@ -1009,13 +1033,14 @@ class Builder
 
     /**
      * @param string $column
+     * @param string $operator
      * @param bool|false $not
      * 
      * @return static
      */
-    public function orWhereNull($column, $not = false)
+    public function orWhereNull($column, $operator = 'is', $not = false)
     {
-        return $this->whereNull($column, 'or', $not);
+        return $this->whereNull($column, $operator, 'or', $not);
     }
 
     /**
@@ -1025,7 +1050,7 @@ class Builder
      */
     public function whereNotNull($column)
     {
-        return $this->whereNull($column, 'and', true);
+        return $this->whereNull($column, 'is not', 'and', true);
     }
 
     /**
@@ -1035,59 +1060,101 @@ class Builder
      */
     public function orWhereNotNull($column)
     {
-        return $this->orWhereNull($column, true);
+        return $this->orWhereNull($column, 'is not', true);
     }
 
     /**
-     * @param string $column
+     * @param string|array $column
      * @param array|callback|Closure $in
+     * @param string $operator
      * 
      * @return static
      */
-    public function whereIn($column, $in)
+    public function whereIn($column, $in = null, $operator = 'in')
     {
-        if ($in instanceof Closure || $in instanceof self) {
-            return $this->whereSub($column, 'in', $in);
+        if (is_array($column)) {
+            $column = $this->columnArguments($column, $operator);
+
+            return $this->where($column);
         }
 
-        return $this->where($column, 'in', $in);
-    }
-
-    /**
-     * @param string $column
-     * @param array $in
-     * 
-     * @return static
-     */
-    public function orWhereIn($column, $in)
-    {
         if ($in instanceof Closure || $in instanceof self) {
-            return $this->orWhereSub($column, 'in', $in);
+            return $this->whereSub($column, $operator, $in);
         }
 
-        return $this->orWhere($column, 'in', $in);
+        return $this->where($column, $operator, $in);
     }
 
     /**
-     * @param string $column
+     * @param string|array $column
+     * @param array $in
+     * @param string $operator
+     * 
+     * @return static
+     */
+    public function orWhereIn($column, $in = null, $operator = 'in')
+    {
+        if (is_array($column)) {
+            $column = $this->columnArguments($column, $operator);
+
+            return $this->orWhere($column);
+        }
+
+        if ($in instanceof Closure || $in instanceof self) {
+            return $this->orWhereSub($column, $operator, $in);
+        }
+
+        return $this->orWhere($column, $operator, $in);
+    }
+
+    /**
+     * @param string|array $column
      * @param array $in
      * 
      * @return static
      */
-    public function whereNotIn($column, $in)
+    public function whereNotIn($column, $in = null)
     {
-        return $this->where($column, 'not in', $in);
+        return $this->whereIn($column, $in, 'not in');
     }
 
     /**
-     * @param string $column
+     * @param string|array $column
      * @param array $in
      * 
      * @return static
      */
-    public function orWhereNotIn($column, $in)
+    public function orWhereNotIn($column, $in = null)
     {
-        return $this->orWhere($column, 'not in', $in);
+        return $this->orWhereIn($column, $in, 'not in');
+    }
+
+    /**
+     * @param string|array $column
+     * @param string $value
+     * @param string $andOr
+     * 
+     * @return static
+     */
+    public function whereLike($column, $value = null, $andOr = 'and')
+    {
+        if (is_array($column)) {
+            $column = $this->columnArguments($column, 'like');
+
+            return $this->where($column, null, null, $andOr);
+        }
+
+        if ($column instanceof Closure) {
+            list($query, $bindings) = $this->createSub($column);
+
+            array_push($bindings, $value);
+
+            $andOr = strtoupper($andOr);
+
+            return $this->whereRaw("({$query}) LIKE ?", $bindings, $andOr);
+        }
+
+        return $this->where($column, 'like', $value, $andOr);
     }
 
     /**
@@ -1096,20 +1163,9 @@ class Builder
      * 
      * @return static
      */
-    public function whereLike($column, $value)
+    public function orWhereLike($column, $value = null)
     {
-        return $this->where($column, 'like', $value);
-    }
-
-    /**
-     * @param string|array $column
-     * @param string $value
-     * 
-     * @return static
-     */
-    public function orWhereLike($column, $value)
-    {
-        return $this->orWhere($column, 'like', $value);
+        return $this->whereLike($column, $value, 'or');
     }
 
     /**

@@ -2528,17 +2528,888 @@ class BuilderTest extends TestCase
             $builder->getQuery('wheres.queries')
         );
 
-        // $builder = $this->builder();
+        $builder = $this->builder();
 
-        // $builder->whereNull(function ($query) {
-        //     $query->where('abc');
-        // });
+        $builder->from('efg');
 
-        // $this->assertEquals(
-        //     array(
-        //         new Expression('AND `abc` IS NULL')
-        //     ),
-        //     $builder->getQuery('wheres.queries')
-        // );
+        $builder->whereNull(function ($query) {
+            $query->whereNull('abc');
+        });
+
+        $this->assertEquals(
+            array(
+                'AND (`abc` IS NULL)'
+            ),
+            $builder->getQuery('wheres.queries')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('efg');
+
+        $builder->whereNull(
+            array(
+                array(
+                    function ($query) {
+                        $query->whereNull('abc');
+                    }
+                ),
+                array(
+                    function ($query) {
+                        $query->whereNull('abc');
+                    }
+                )
+            )
+        );
+
+        $this->assertEquals(
+            array(
+                'AND ((`abc` IS NULL) AND (`abc` IS NULL))'
+            ),
+            $builder->getQuery('wheres.queries')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('efg');
+
+        $builder->whereNull(
+            array(
+                array('abc')
+            )
+        );
+
+        $this->assertEquals(
+            array(
+                'AND (`abc` IS NULL)'
+            ),
+            $builder->getQuery('wheres.queries')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('efg');
+
+        $builder->whereNull(
+            array(
+                array('abc'),
+                array('abce')
+            )
+        );
+
+        $this->assertEquals(
+            array(
+                'AND (`abc` IS NULL AND `abce` IS NULL)'
+            ),
+            $builder->getQuery('wheres.queries')
+        );
+    }
+
+    public function testOrWhereNull()
+    {
+        $builder = $this->builder();
+
+        $builder->orWhereNull('abc');
+
+        $this->assertEquals(
+            array(
+                new Expression('OR `abc` IS NULL')
+            ),
+            $builder->getQuery('wheres.queries')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('efg');
+
+        $builder->orWhereNull(function ($query) {
+            $query->orWhereNull('abc');
+        });
+
+        $this->assertEquals(
+            array(
+                'OR (`abc` IS NULL)'
+            ),
+            $builder->getQuery('wheres.queries')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('efg');
+
+        $builder->orWhereNull(
+            array(
+                array(
+                    function ($query) {
+                        $query->orWhereNull('abc');
+                    }
+                ),
+                array(
+                    function ($query) {
+                        $query->orWhereNull('abc');
+                    }
+                )
+            )
+        );
+
+        $this->assertEquals(
+            array(
+                'OR ((`abc` IS NULL) OR (`abc` IS NULL))'
+            ),
+            $builder->getQuery('wheres.queries')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('efg');
+
+        $builder->orWhereNull(
+            array(
+                array('abc')
+            )
+        );
+
+        $this->assertEquals(
+            array(
+                'OR (`abc` IS NULL)'
+            ),
+            $builder->getQuery('wheres.queries')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('efg');
+
+        $builder->orWhereNull(
+            array(
+                array('abc'),
+                array('abce')
+            )
+        );
+
+        $this->assertEquals(
+            array(
+                'OR (`abc` IS NULL OR `abce` IS NULL)'
+            ),
+            $builder->getQuery('wheres.queries')
+        );
+    }
+
+    public function testWhereNotNull()
+    {
+        $builder = $this->builder();
+
+        $builder->whereNotNull('abc');
+
+        $this->assertEquals(
+            array(
+                new Expression('AND `abc` IS NOT NULL')
+            ),
+            $builder->getQuery('wheres.queries')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('efg');
+
+        $builder->whereNotNull(function ($query) {
+            $query->whereNotNull('abc');
+        });
+
+        $this->assertEquals(
+            array(
+                'AND (`abc` IS NOT NULL)'
+            ),
+            $builder->getQuery('wheres.queries')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('efg');
+
+        $builder->whereNotNull(
+            array(
+                array(
+                    function ($query) {
+                        $query->whereNotNull('abc');
+                    }
+                ),
+                array(
+                    function ($query) {
+                        $query->whereNotNull('abc');
+                    }
+                )
+            )
+        );
+
+        $this->assertEquals(
+            array(
+                'AND ((`abc` IS NOT NULL) AND (`abc` IS NOT NULL))'
+            ),
+            $builder->getQuery('wheres.queries')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('efg');
+
+        $builder->whereNotNull(
+            array(
+                array('abc')
+            )
+        );
+
+        $this->assertEquals(
+            array(
+                'AND (`abc` IS NOT NULL)'
+            ),
+            $builder->getQuery('wheres.queries')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('efg');
+
+        $builder->whereNotNull(
+            array(
+                array('abc'),
+                array('abce')
+            )
+        );
+
+        $this->assertEquals(
+            array(
+                'AND (`abc` IS NOT NULL AND `abce` IS NOT NULL)'
+            ),
+            $builder->getQuery('wheres.queries')
+        );
+    }
+
+    public function testOrWhereNotNull()
+    {
+        $builder = $this->builder();
+
+        $builder->orWhereNotNull('abc');
+
+        $this->assertEquals(
+            array(
+                new Expression('OR `abc` IS NOT NULL')
+            ),
+            $builder->getQuery('wheres.queries')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('efg');
+
+        $builder->orWhereNotNull(function ($query) {
+            $query->orWhereNotNull('abc');
+        });
+
+        $this->assertEquals(
+            array(
+                'OR (`abc` IS NOT NULL)'
+            ),
+            $builder->getQuery('wheres.queries')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('efg');
+
+        $builder->orWhereNotNull(
+            array(
+                array(
+                    function ($query) {
+                        $query->orWhereNotNull('abc');
+                    }
+                ),
+                array(
+                    function ($query) {
+                        $query->orWhereNotNull('abc');
+                    }
+                )
+            )
+        );
+
+        $this->assertEquals(
+            array(
+                'OR ((`abc` IS NOT NULL) OR (`abc` IS NOT NULL))'
+            ),
+            $builder->getQuery('wheres.queries')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('efg');
+
+        $builder->orWhereNotNull(
+            array(
+                array('abc')
+            )
+        );
+
+        $this->assertEquals(
+            array(
+                'OR (`abc` IS NOT NULL)'
+            ),
+            $builder->getQuery('wheres.queries')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('efg');
+
+        $builder->orWhereNotNull(
+            array(
+                array('abc'),
+                array('abce')
+            )
+        );
+
+        $this->assertEquals(
+            array(
+                'OR (`abc` IS NOT NULL OR `abce` IS NOT NULL)'
+            ),
+            $builder->getQuery('wheres.queries')
+        );
+    }
+
+    public function testWhereIn()
+    {
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $builder->whereIn('efg', array(123, 456));
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    new Expression('AND `efg` IN (?, ?)')
+                ),
+                'bindings' => array(123, 456)
+            ),
+            $builder->getQuery('wheres')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $builder->whereIn(
+            array(
+                array('efg', array(123, 456)),
+                array('efg', array(123, 456))
+            )
+        );
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    'AND (`efg` IN (?, ?) AND `efg` IN (?, ?))'
+                ),
+                'bindings' => array(123, 456, 123, 456)
+            ),
+            $builder->getQuery('wheres')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $builder->whereIn('abc', function ($query) {
+            $query->whereIn('abc', array(123, 456));
+        });
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    new Expression('AND `abc` IN (SELECT * WHERE `abc` IN (?, ?))')
+                ),
+                'bindings' => array(123, 456)
+            ),
+            $builder->getQuery('wheres')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $newBuilder = $this->builder();
+
+        $newBuilder->whereIn('abc', array(123, 456));
+
+        $builder->whereIn('abc', $newBuilder);
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    new Expression('AND `abc` IN (SELECT * WHERE `abc` IN (?, ?))')
+                ),
+                'bindings' => array(123, 456)
+            ),
+            $builder->getQuery('wheres')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $newBuilder = $this->builder();
+
+        $newBuilder->whereIn('abc', array(123, 456));
+
+        $builder->whereIn(array(
+            array('abc', function ($query) {
+                $query->whereIn('abc', array(123, 456));
+            }),
+            array('abc', 'in', function ($query) {
+                $query->whereIn('abc', array(123, 456));
+            }),
+            array('abc', $newBuilder)
+        ));
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    'AND (`abc` IN (SELECT * WHERE `abc` IN (?, ?)) AND `abc` IN (SELECT * WHERE `abc` IN (?, ?)) AND `abc` IN (SELECT * WHERE `abc` IN (?, ?)))'
+                ),
+                'bindings' => array(123, 456, 123, 456, 123, 456)
+            ),
+            $builder->getQuery('wheres')
+        );
+    }
+
+    public function testOrWhereIn()
+    {
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $builder->orWhereIn('efg', array(123, 456));
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    new Expression('OR `efg` IN (?, ?)')
+                ),
+                'bindings' => array(123, 456)
+            ),
+            $builder->getQuery('wheres')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $builder->orWhereIn(
+            array(
+                array('efg', array(123, 456)),
+                array('efg', array(123, 456))
+            )
+        );
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    'OR (`efg` IN (?, ?) OR `efg` IN (?, ?))'
+                ),
+                'bindings' => array(123, 456, 123, 456)
+            ),
+            $builder->getQuery('wheres')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $builder->orWhereIn('abc', function ($query) {
+            $query->orWhereIn('abc', array(123, 456));
+        });
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    new Expression('OR `abc` IN (SELECT * WHERE `abc` IN (?, ?))')
+                ),
+                'bindings' => array(123, 456)
+            ),
+            $builder->getQuery('wheres')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $newBuilder = $this->builder();
+
+        $newBuilder->orWhereIn('abc', array(123, 456));
+
+        $builder->orWhereIn('abc', $newBuilder);
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    new Expression('OR `abc` IN (SELECT * WHERE `abc` IN (?, ?))')
+                ),
+                'bindings' => array(123, 456)
+            ),
+            $builder->getQuery('wheres')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $newBuilder = $this->builder();
+
+        $newBuilder->whereIn('abc', array(123, 456));
+
+        $builder->orWhereIn(array(
+            array('abc', 'in', function ($query) {
+                $query->orWhereIn('abc', array(123, 456));
+            }),
+            array('abc', 'in', function ($query) {
+                $query->orWhereIn('abc', array(123, 456));
+            }),
+            array('abc', $newBuilder)
+        ));
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    'OR (`abc` IN (SELECT * WHERE `abc` IN (?, ?)) OR `abc` IN (SELECT * WHERE `abc` IN (?, ?)) OR `abc` IN (SELECT * WHERE `abc` IN (?, ?)))'
+                ),
+                'bindings' => array(123, 456, 123, 456, 123, 456)
+            ),
+            $builder->getQuery('wheres')
+        );
+    }
+
+    public function testWhereNotIn()
+    {
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $builder->whereNotIn('efg', array(123, 456));
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    new Expression('AND `efg` NOT IN (?, ?)')
+                ),
+                'bindings' => array(123, 456)
+            ),
+            $builder->getQuery('wheres')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $builder->whereNotIn(
+            array(
+                array('efg', array(123, 456)),
+                array('efg', array(123, 456))
+            )
+        );
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    'AND (`efg` NOT IN (?, ?) AND `efg` NOT IN (?, ?))'
+                ),
+                'bindings' => array(123, 456, 123, 456)
+            ),
+            $builder->getQuery('wheres')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $builder->whereNotIn('abc', function ($query) {
+            $query->whereNotIn('abc', array(123, 456));
+        });
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    new Expression('AND `abc` NOT IN (SELECT * WHERE `abc` NOT IN (?, ?))')
+                ),
+                'bindings' => array(123, 456)
+            ),
+            $builder->getQuery('wheres')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $newBuilder = $this->builder();
+
+        $newBuilder->whereNotIn('abc', array(123, 456));
+
+        $builder->whereNotIn('abc', $newBuilder);
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    new Expression('AND `abc` NOT IN (SELECT * WHERE `abc` NOT IN (?, ?))')
+                ),
+                'bindings' => array(123, 456)
+            ),
+            $builder->getQuery('wheres')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $newBuilder = $this->builder();
+
+        $newBuilder->whereNotIn('abc', array(123, 456));
+
+        $builder->whereNotIn(array(
+            array('abc', function ($query) {
+                $query->whereNotIn('abc', array(123, 456));
+            }),
+            array('abc', 'in', function ($query) {
+                $query->whereNotIn('abc', array(123, 456));
+            }),
+            array('abc', $newBuilder)
+        ));
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    'AND (`abc` NOT IN (SELECT * WHERE `abc` NOT IN (?, ?)) AND `abc` NOT IN (SELECT * WHERE `abc` NOT IN (?, ?)) AND `abc` NOT IN (SELECT * WHERE `abc` NOT IN (?, ?)))'
+                ),
+                'bindings' => array(123, 456, 123, 456, 123, 456)
+            ),
+            $builder->getQuery('wheres')
+        );
+    }
+
+    public function testOrWhereNotIn()
+    {
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $builder->orWhereNotIn('efg', array(123, 456));
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    new Expression('OR `efg` NOT IN (?, ?)')
+                ),
+                'bindings' => array(123, 456)
+            ),
+            $builder->getQuery('wheres')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $builder->orWhereNotIn(
+            array(
+                array('efg', array(123, 456)),
+                array('efg', array(123, 456))
+            )
+        );
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    'OR (`efg` NOT IN (?, ?) OR `efg` NOT IN (?, ?))'
+                ),
+                'bindings' => array(123, 456, 123, 456)
+            ),
+            $builder->getQuery('wheres')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $builder->orWhereNotIn('abc', function ($query) {
+            $query->orWhereNotIn('abc', array(123, 456));
+        });
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    new Expression('OR `abc` NOT IN (SELECT * WHERE `abc` NOT IN (?, ?))')
+                ),
+                'bindings' => array(123, 456)
+            ),
+            $builder->getQuery('wheres')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $newBuilder = $this->builder();
+
+        $newBuilder->orWhereNotIn('abc', array(123, 456));
+
+        $builder->orWhereNotIn('abc', $newBuilder);
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    new Expression('OR `abc` NOT IN (SELECT * WHERE `abc` NOT IN (?, ?))')
+                ),
+                'bindings' => array(123, 456)
+            ),
+            $builder->getQuery('wheres')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $newBuilder = $this->builder();
+
+        $newBuilder->orWhereNotIn('abc', array(123, 456));
+
+        $builder->orWhereNotIn(array(
+            array('abc', 'in', function ($query) {
+                $query->orWhereNotIn('abc', array(123, 456));
+            }),
+            array('abc', 'in', function ($query) {
+                $query->orWhereNotIn('abc', array(123, 456));
+            }),
+            array('abc', $newBuilder)
+        ));
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    'OR (`abc` NOT IN (SELECT * WHERE `abc` NOT IN (?, ?)) OR `abc` NOT IN (SELECT * WHERE `abc` NOT IN (?, ?)) OR `abc` NOT IN (SELECT * WHERE `abc` NOT IN (?, ?)))'
+                ),
+                'bindings' => array(123, 456, 123, 456, 123, 456)
+            ),
+            $builder->getQuery('wheres')
+        );
+    }
+
+    public function testWhereLike()
+    {
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $builder->whereLike('abc', 123);
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    new Expression('AND `abc` LIKE ?')
+                ),
+                'bindings' => array(123)
+            ),
+            $builder->getQuery('wheres')
+        );
+        
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $builder->whereLike(function ($query) {
+            $query->from('abc')->where('abc', 123);
+        }, 123);
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    new Expression('AND (SELECT * FROM `abc` WHERE `abc` = ?) LIKE ?')
+                ),
+                'bindings' => array(123, 123)
+            ),
+            $builder->getQuery('wheres')
+        );
+        
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $newBuilder = $this->builder();
+
+        $newBuilder->whereLike('abc', 123);
+
+        $builder->whereLike($newBuilder, 123);
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    new Expression('AND (SELECT * WHERE `abc` LIKE ?) LIKE ?')
+                ),
+                'bindings' => array(123, 123)
+            ),
+            $builder->getQuery('wheres')
+        );
+    }
+
+    public function testOrWhereLike()
+    {
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $builder->orWhereLike('abc', 123);
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    new Expression('OR `abc` LIKE ?')
+                ),
+                'bindings' => array(123)
+            ),
+            $builder->getQuery('wheres')
+        );
+        
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $builder->orWhereLike(function ($query) {
+            $query->from('abc')->where('abc', 123);
+        }, 123);
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    new Expression('OR (SELECT * FROM `abc` WHERE `abc` = ?) LIKE ?')
+                ),
+                'bindings' => array(123, 123)
+            ),
+            $builder->getQuery('wheres')
+        );
+        
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $newBuilder = $this->builder();
+
+        $newBuilder->orWhereLike('abc', 123);
+
+        $builder->orWhereLike($newBuilder, 123);
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    new Expression('OR (SELECT * WHERE `abc` LIKE ?) LIKE ?')
+                ),
+                'bindings' => array(123, 123)
+            ),
+            $builder->getQuery('wheres')
+        );
     }
 }
