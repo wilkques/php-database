@@ -5,7 +5,7 @@ namespace Wilkques\Helpers\Tests\Grammar;
 use PHPUnit\Framework\TestCase;
 use Wilkques\Helpers\Arrays;
 
-class MySqlGrammarTest extends TestCase
+class GrammarTest extends TestCase
 {
     private function builder($queries = array())
     {
