@@ -21,23 +21,14 @@ class GrammarTest extends TestCase
 
     private function grammar()
     {
-        return $this->getMockForAbstractClass(
-            'Wilkques\Database\Queries\Grammar\Grammar', 
-            array(), 
-            '', 
-            false
-        );
+        return $this->getMockForAbstractClass('Wilkques\Database\Queries\Grammar\Grammar');
     }
 
     public function testArrayNested()
     {
-        $abstract = $this->grammar();
+        $grammar = $this->grammar();
 
-        $reflectionMethod = new \ReflectionMethod($abstract, 'arrayNested');
-
-        $reflectionMethod->setAccessible(true);
-
-        $result = $reflectionMethod->invoke($abstract, array(
+        $result = $grammar->arrayNested(array(
             'abc',
             new \Wilkques\Database\Queries\Expression('efg'),
         ));
@@ -50,7 +41,9 @@ class GrammarTest extends TestCase
             $result
         );
 
-        $result = $reflectionMethod->invoke($abstract, array(
+        $grammar = $this->grammar();
+
+        $result = $grammar->arrayNested(array(
             'abc',
             new \Wilkques\Database\Queries\Expression('efg'),
         ), function ($column) {
@@ -65,7 +58,9 @@ class GrammarTest extends TestCase
             $result
         );
 
-        $result = $reflectionMethod->invoke($abstract, array(
+        $grammar = $this->grammar();
+
+        $result = $grammar->arrayNested(array(
             'abc',
             new \Wilkques\Database\Queries\Expression('efg'),
         ), '?');

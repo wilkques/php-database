@@ -32,7 +32,7 @@ abstract class Grammar implements GrammarInterface
      * 
      * @return array
      */
-    protected function arrayNested($array, $forceValue = null)
+    public function arrayNested($array, $forceValue = null)
     {
         return Arrays::map($array, function ($value) use ($forceValue) {
             if ($value instanceof Expression) {
