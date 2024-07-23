@@ -14,32 +14,16 @@ class BuilderTest extends TestCase
 {
     private function grammar()
     {
-        // $createMock = method_exists($this, 'createMock') ? 'createMock' : 'getMock';
-
-        // $grammar = call_user_func(array($this, $createMock), 'Wilkques\Database\Queries\Grammar\GrammarInterface');
-
-        // return $grammar;
-
-        // return $this->getMockForAbstractClass('Wilkques\Database\Queries\Grammar\GrammarInterface');
-
         return $this->getMockForAbstractClass(
-            'Wilkques\Database\Queries\Grammar\Grammar', 
-            array(), 
-            '', 
+            'Wilkques\Database\Queries\Grammar\Grammar',
+            array(),
+            '',
             false
         );
     }
 
     private function connection()
     {
-        // $createMock = method_exists($this, 'createMock') ? 'createMock' : 'getMock';
-
-        // $connection = call_user_func(array($this, $createMock), 'Wilkques\Database\Connections\ConnectionInterface');
-
-        // return $connection;
-
-        // return $this->getMockForAbstractClass('Wilkques\Database\Connections\ConnectionInterface');
-
         return $this->getMockForAbstractClass(
             'Wilkques\Database\Connections\Connections',
             array(),
@@ -51,12 +35,6 @@ class BuilderTest extends TestCase
     private function process()
     {
         $createMock = method_exists($this, 'createMock') ? 'createMock' : 'getMock';
-
-        // $process = call_user_func(array($this, $createMock), 'Wilkques\Database\Queries\Processors\ProcessorInterface');
-
-        // return $process;
-
-        // return $this->getMockForAbstractClass('Wilkques\Database\Queries\Processors\ProcessorInterface');
 
         return call_user_func(array($this, $createMock), 'Wilkques\Database\Queries\Processors\Processor');
     }

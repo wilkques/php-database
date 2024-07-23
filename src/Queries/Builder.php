@@ -673,7 +673,7 @@ class Builder
         return call_user_func(function ($column, $method, $join) {
             $nestedMethod = "{$method}Nested";
 
-            return call_user_func(array($this, $nestedMethod), function ($query) use ($column, $method, $join) {
+            return call_user_func(array('Wilkques\Database\Queries\Builder', $nestedMethod), function ($query) use ($column, $method, $join) {
                 foreach ($column as $key => $value) {
                     $nestedMethod = 'array' . ucfirst($method) . 'Nested';
 
