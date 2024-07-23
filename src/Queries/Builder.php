@@ -670,17 +670,17 @@ class Builder
      */
     protected function arrayNested($column, $join, $method = 'where')
     {
-        return call_user_func(function ($column, $method, $join) {
+        return call_user_func(function ($column, $method, $join, $query) {
             $nestedMethod = "{$method}Nested";
 
-            return call_user_func(array('Wilkques\Database\Queries\Builder', $nestedMethod), function ($query) use ($column, $method, $join) {
+            return call_user_func(array($query, $nestedMethod), function ($query) use ($column, $method, $join) {
                 foreach ($column as $key => $value) {
                     $nestedMethod = 'array' . ucfirst($method) . 'Nested';
 
                     call_user_func(array($query, $nestedMethod), $query, $key, $value, $join);
                 }
-            }, $join);
-        }, $column, $method, $join);
+            }, $join, $query);
+        }, $column, $method, $join, $this);
     }
 
     /**
