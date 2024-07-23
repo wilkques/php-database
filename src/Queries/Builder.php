@@ -779,7 +779,7 @@ class Builder
      * 
      * @return static
      */
-    protected function whereNested($callback, $join = 'and')
+    public function whereNested($callback, $join = 'and')
     {
         return $this->nested($callback, $join, 'wheres');
     }
@@ -792,7 +792,7 @@ class Builder
      * 
      * @return void
      */
-    protected function arrayWhereNested($query, $key, $value, $join)
+    public function arrayWhereNested($query, $key, $value, $join)
     {
         if (is_numeric($key) && is_array($value)) {
             call_user_func_array(
@@ -1311,7 +1311,7 @@ class Builder
      * 
      * @return static
      */
-    protected function groupByNested($callback, $join)
+    public function groupByNested($callback, $join)
     {
         return $this->nested($callback, $join, 'groups');
     }
@@ -1324,7 +1324,7 @@ class Builder
      * 
      * @return void
      */
-    protected function arrayGroupByNested($query, $key, $value, $join)
+    public function arrayGroupByNested($query, $key, $value, $join)
     {
         if (is_numeric($key) && is_array($value)) {
             call_user_func_array(
@@ -1446,7 +1446,7 @@ class Builder
      * 
      * @return static
      */
-    protected function havingNested($callback, $join)
+    public function havingNested($callback, $join)
     {
         return $this->nested($callback, $join, 'havings');
     }
@@ -1459,7 +1459,7 @@ class Builder
      * 
      * @return void
      */
-    protected function arrayHavingNested($query, $key, $value, $join)
+    public function arrayHavingNested($query, $key, $value, $join)
     {
         if (is_numeric($key) && is_array($value)) {
             call_user_func_array(
@@ -1595,7 +1595,7 @@ class Builder
      * 
      * @return static
      */
-    protected function orderByNested($callback, $join)
+    public function orderByNested($callback, $join)
     {
         return $this->nested($callback, $join, 'orders');
     }
@@ -1608,7 +1608,7 @@ class Builder
      * 
      * @return void
      */
-    protected function arrayOrderByNested($query, $key, $value, $join)
+    public function arrayOrderByNested($query, $key, $value, $join)
     {
         if (is_numeric($key) && is_array($value)) {
             call_user_func_array(
