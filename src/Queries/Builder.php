@@ -1808,9 +1808,15 @@ class Builder
 
         array_push($values, $amount);
 
-        return $this->bindingPush($values, 'update')->update(array_merge($data, [
-            $this->raw("{$this->contactBacktick($column)} = {$this->contactBacktick($column)} + ?")
-        ]));
+        return $this->bindingPush($values, 'update')
+            ->update(
+                array_merge(
+                    $data,
+                    array(
+                        $this->raw("{$this->contactBacktick($column)} = {$this->contactBacktick($column)} + ?")
+                    )
+                )
+            );
     }
 
     /**
@@ -1832,9 +1838,15 @@ class Builder
 
         array_push($values, $amount);
 
-        return $this->bindingPush($values, 'update')->update(array_merge($data, [
-            $this->raw("{$this->contactBacktick($column)} = {$this->contactBacktick($column)} - ?")
-        ]));
+        return $this->bindingPush($values, 'update')
+            ->update(
+                array_merge(
+                    $data,
+                    array(
+                        $this->raw("{$this->contactBacktick($column)} = {$this->contactBacktick($column)} - ?")
+                    )
+                )
+            );
     }
 
     /**
