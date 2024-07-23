@@ -10,9 +10,6 @@
         "phpunit/phpunit": "*"
     },
     "autoload": {
-        "files": [
-            "src/helpers.php"
-        ],
         "psr-4": {
             "Wilkques\\Database\\": "src"
         }
