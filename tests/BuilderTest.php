@@ -139,10 +139,11 @@ class BuilderTest extends TestCase
     {
         $builder = $this->builder();
 
-        $builder = $builder->getConnection();
+        $connection = $builder->getConnection();
 
-        $this->assertTrue(
-            $builder instanceof ConnectionInterface
+        $this->assertInstanceOf(
+            'Wilkques\Database\Connections\ConnectionInterface',
+            $connection
         );
     }
 
@@ -161,10 +162,11 @@ class BuilderTest extends TestCase
     {
         $builder = $this->builder();
 
-        $builder = $builder->getGrammar();
+        $grammar = $builder->getGrammar();
 
-        $this->assertTrue(
-            $builder instanceof GrammarInterface
+        $this->assertInstanceOf(
+            'Wilkques\Database\Queries\Grammar\GrammarInterface',
+            $grammar
         );
     }
 
