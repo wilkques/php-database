@@ -24,7 +24,7 @@ class BuilderTest extends TestCase
 
         return $this->getMockForAbstractClass(
             'Wilkques\Database\Queries\Grammar\Grammar', 
-            [], 
+            array(), 
             '', 
             false
         );
@@ -42,7 +42,7 @@ class BuilderTest extends TestCase
 
         return $this->getMockForAbstractClass(
             'Wilkques\Database\Connections\Connections',
-            [],
+            array(),
             '',
             false
         );
