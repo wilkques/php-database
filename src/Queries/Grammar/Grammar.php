@@ -373,8 +373,10 @@ abstract class Grammar implements GrammarInterface
         $from = join(', ', $query->getFrom());
 
         if (!$sql) {
-            $values = Arrays::map($data, function ($values) {
-                return join(', ', $this->arrayNested($values, "?"));
+            $self = $this;
+
+            $values = Arrays::map($data, function ($values) use ($self) {
+                return join(', ', $self->arrayNested($values, "?"));
             });
 
             $values = join('), (', $values);
