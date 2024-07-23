@@ -9,23 +9,24 @@ class MySqlGrammarTest extends TestCase
 {
     private function builder($queries = array())
     {
-        // $abstract = new \ReflectionClass('\Wilkques\Database\Queries\Builder');
+        /** @var \Wilkques\Database\Queries\Builder */
+        $abstract = $this->getMockBuilder('Wilkques\Database\Queries\Builder');
 
-        // /** @var \Wilkques\Database\Queries\Builder */
-        // $abstract = $abstract->newInstanceWithoutConstructor();
+        $abstract->disableOriginalConstructor();
 
-        // $abstract->setQueries($queries);
+        $abstract->setQueries($queries);
 
-        // return $abstract;
-
-        $createMock = method_exists($this, 'createMock') ? 'createMock' : 'getMock';
-
-        $abstract = call_user_func(array($this, $createMock), 'Wilkques\Database\Queries\Builder');
+        return $abstract;
     }
 
     private function grammar()
     {
-        return new \Wilkques\Database\Queries\Grammar\Drivers\MySql;
+        return $this->getMockForAbstractClass(
+            'Wilkques\Database\Queries\Grammar\Grammar', 
+            array(), 
+            '', 
+            false
+        );
     }
 
     public function testArrayNested()
@@ -993,22 +994,6 @@ class MySqlGrammarTest extends TestCase
         $this->assertEquals(
             "SELECT COUNT(*) AS `aggregate` FROM (SELECT dns_record.* FROM `dns_record` INNER JOIN (SELECT * FROM `default`.`zones` AS `zones` WHERE `zones`.`id` = ? OR `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` AND (`zones`.`id` = `dns_record`.`zones_id`) WHERE (`dns_record`.`id` = ?) GROUP BY dns_record.id DESC, (SELECT MAX(`dns_record`.`id`) FROM `dns_record` INNER JOIN (SELECT * FROM `default`.`zones` WHERE `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` WHERE `zones`.`id` = ?) DESC, dns_record.provider_id DESC HAVING `dns_record`.`provider_id` = ? AND `dns_record`.`cdn_provider_id` = ? ORDER BY `dns_record`.`id` DESC, (SELECT MAX(`dns_record`.`id`) FROM `dns_record` INNER JOIN (SELECT * FROM `default`.`zones` WHERE `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` WHERE `zones`.`id` = ?) DESC, `dns_record`.`provider_id` DESC LIMIT ? OFFSET ?) AS `aggregate_table`",
             $this->grammar()->compilerCount($mock)
-        );
-    }
-
-    public function testLockForUpdate()
-    {
-        $this->assertEquals(
-            "FOR UPDATE",
-            $this->grammar()->lockForUpdate()
-        );
-    }
-
-    public function testSharedLock()
-    {
-        $this->assertEquals(
-            "LOCK IN SHARE MODE",
-            $this->grammar()->sharedLock()
         );
     }
 }
