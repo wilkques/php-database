@@ -1981,10 +1981,10 @@ class Builder
 
             call_user_func($first, $join);
 
-            $queriesArguments = array_replace([
+            $queriesArguments = array_replace(array(
                 'queries'   => array(),
                 'bindings'  => array(),
-            ], $join->getQuery('joins'));
+            ), $join->getQuery('joins'));
 
             $bindings = Arrays::get($queriesArguments, 'bindings');
 
