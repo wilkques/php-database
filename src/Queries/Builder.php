@@ -2384,10 +2384,12 @@ class Builder
      */
     public function count()
     {
-        return $this->getConnection()->exec(
+        $result = $this->getConnection()->exec(
             $this->getGrammar()->compilerCount($this),
             $this->getBindings(array('insert', 'update'))
-        )->fetch()['aggregate'];
+        )->fetch();
+
+        return Arrays::get($result, 'aggregate');
     }
 
     /**
