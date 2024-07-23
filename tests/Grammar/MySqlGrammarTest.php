@@ -9,14 +9,14 @@ class MySqlGrammarTest extends TestCase
 {
     private function builder($queries = array())
     {
-        $abstract = new \ReflectionClass('\Wilkques\Database\Queries\Builder');
+        $abstract = $this->getMockBuilder('Wilkques\Database\Queries\Builder');
+
+        $abstract->disableOriginalConstructor();
 
         /** @var \Wilkques\Database\Queries\Builder */
-        $abstract = $abstract->newInstanceWithoutConstructor();
+        $abstract = $abstract->getMockForAbstractClass();
 
-        $abstract->setQueries($queries);
-
-        return $abstract;
+        return $abstract->setQueries($queries);
     }
 
     private function grammar()

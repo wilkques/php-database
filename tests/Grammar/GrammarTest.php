@@ -9,14 +9,14 @@ class GrammarTest extends TestCase
 {
     private function builder($queries = array())
     {
-        /** @var \Wilkques\Database\Queries\Builder */
         $abstract = $this->getMockBuilder('Wilkques\Database\Queries\Builder');
 
         $abstract->disableOriginalConstructor();
 
-        $abstract->setQueries($queries);
+        /** @var \Wilkques\Database\Queries\Builder */
+        $abstract = $abstract->getMockForAbstractClass();
 
-        return $abstract;
+        return $abstract->setQueries($queries);
     }
 
     private function grammar()
