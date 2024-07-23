@@ -164,7 +164,7 @@ class MySqlGrammarTest extends TestCase
                         10,
                     ),
                 ),
-            ),
+            )
         );
 
         $this->assertEquals(
