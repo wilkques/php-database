@@ -359,7 +359,7 @@ class Builder
     protected function queriesPush($query, $binding, $type = 'wheres')
     {
         $this->queryPush($query, $type);
-        
+
         if (!empty($binding)) {
             $this->bindingPush($binding, $type);
         }
@@ -412,33 +412,25 @@ class Builder
     }
 
     /**
-     * @param string|int $value
-     * 
-     * @return Expression
-     */
-    public function raw($value)
-    {
-        return new Expression($value);
-    }
-
-    /**
      * @param string $query
-     * @param string|null $as
+     * @param string|Expression|null $as
      * 
      * @return string
      */
-    protected function queryRawAsContactBacktick($query, $as = null)
+    protected function subQueryAsContactBacktick($query, $as = null)
     {
         $query = "({$query})";
 
-        $query = is_string($as) ? "{$query} AS {$this->contactBacktick($as)}" : $query;
+        if (is_string($as) || $as instanceof Expression) {
+            $query = "{$query} AS {$this->contactBacktick($as)}";
+        }
 
         return $query;
     }
 
     /**
      * @param string $query
-     * @param string|null $as
+     * @param string|Expression|null $as
      * 
      * @return string
      */
@@ -446,9 +438,21 @@ class Builder
     {
         $query = $this->contactBacktick($query);
 
-        $query = is_string($as) ? "{$query} AS {$this->contactBacktick($as)}" : $query;
+        if (is_string($as) || $as instanceof Expression) {
+            $query = "{$query} AS {$this->contactBacktick($as)}";
+        }
 
         return $query;
+    }
+
+    /**
+     * @param string|int $value
+     * 
+     * @return Expression
+     */
+    public function raw($value)
+    {
+        return new Expression($value);
     }
 
     /**
@@ -522,7 +526,7 @@ class Builder
 
         list($query, $bindings) = $this->createSub($from);
 
-        return $this->fromRaw($this->queryRawAsContactBacktick($query, $as), $bindings);
+        return $this->fromRaw($this->subQueryAsContactBacktick($query, $as), $bindings);
     }
 
     /**
@@ -603,29 +607,7 @@ class Builder
 
         list($queries, $bindings) = $this->createSub($column);
 
-        return $this->selectRaw($this->queryRawAsContactBacktick($queries, $as), $bindings);
-    }
-
-    /**
-     * Prepare the value and operator for a where clause.
-     *
-     * @param  string  $value
-     * @param  string  $operator
-     * @param  bool  $useDefault
-     * 
-     * @return array
-     *
-     * @throws \InvalidArgumentException
-     */
-    public function prepareValueAndOperator($value, $operator, $useDefault = false)
-    {
-        if ($useDefault) {
-            return array($operator, '=');
-        } elseif ($this->invalidOperatorAndValue($operator, $value)) {
-            throw new InvalidArgumentException('Illegal operator and value combination.');
-        }
-
-        return array($value, $operator);
+        return $this->selectRaw($this->subQueryAsContactBacktick($queries, $as), $bindings);
     }
 
     /**
@@ -641,6 +623,28 @@ class Builder
     {
         return is_null($value) && in_array($operator, $this->operators) &&
             !in_array($operator, array('=', '<>', '!='));
+    }
+
+    /**
+     * Prepare the value and operator for a where clause.
+     *
+     * @param  string  $value
+     * @param  string  $operator
+     * @param  bool  $useDefault
+     * 
+     * @return array
+     *
+     * @throws \InvalidArgumentException
+     */
+    protected function prepareValueAndOperator($value, $operator, $useDefault = false)
+    {
+        if ($useDefault) {
+            return array($operator, '=');
+        } elseif ($this->invalidOperatorAndValue($operator, $value)) {
+            throw new InvalidArgumentException('Illegal operator and value combination.');
+        }
+
+        return array($value, $operator);
     }
 
     /**
@@ -688,7 +692,7 @@ class Builder
      * 
      * @return static
      */
-    public function nested($callback, $join = 'and', $type = 'wheres')
+    protected function nested($callback, $join = 'and', $type = 'wheres')
     {
         call_user_func($callback, $query = $this->forNested());
 
@@ -700,7 +704,7 @@ class Builder
      *
      * @return Builder
      */
-    public function forNested()
+    protected function forNested()
     {
         return $this->newQuery()->from($this->getQuery('froms.queries'));
     }
@@ -714,7 +718,7 @@ class Builder
      * 
      * @return static
      */
-    public function addNestedQuery($query, $join = 'and', $type = 'wheres')
+    protected function addNestedQuery($query, $join = 'and', $type = 'wheres')
     {
         $queries = $query->getQuery("{$type}.queries");
 
@@ -725,7 +729,7 @@ class Builder
         } else {
             $sql = join(' ', $queries);
 
-            $sql = preg_replace('/^(AND |OR )/i', '', $sql);
+            $sql = $this->firstJoinReplace($sql);
 
             $join = strtoupper($join);
 
@@ -739,6 +743,32 @@ class Builder
         }
 
         return $this;
+    }
+
+    /**
+     * @param string $query
+     * 
+     * @return string
+     */
+    public function firstJoinReplace($query)
+    {
+        return preg_replace('/^(AND |OR )/i', '', $query);
+    }
+
+    /**
+     * @param array $value
+     * @param string $join
+     * 
+     * @return array
+     */
+    protected function nestedArrayArguments($value, $join)
+    {
+        return array_replace(
+            array(
+                null, null, null, $join
+            ),
+            $value
+        );
     }
 
     /**
@@ -765,7 +795,10 @@ class Builder
     protected function arrayWhereNested($query, $key, $value, $join)
     {
         if (is_numeric($key) && is_array($value)) {
-            call_user_func_array(array($query, 'where'), array_values($value));
+            call_user_func_array(
+                array($query, 'where'),
+                array_values($this->nestedArrayArguments($value, $join))
+            );
         } else {
             call_user_func_array(array($query, 'where'), array($key, '=', $value, $join));
         }
@@ -799,7 +832,7 @@ class Builder
     }
 
     /**
-     * @param string|array|callback|Closure $column
+     * @param string|array|callback|Closure|static $column
      * @param string|null $operator
      * @param mixed|null $value
      * @param string $andOr
@@ -886,18 +919,32 @@ class Builder
     }
 
     /**
+     * @param string|array $column
+     * @param string|null $operator
+     * @param mixed|null $value
+     * 
+     * @return static
+     */
+    public function orWhere($column, $operator = null, $value = null)
+    {
+        return $this->where($column, $operator, $value, 'or');
+    }
+
+    /**
      * Add a full sub-select to the query.
      *
-     * @param  string|array  $column
+     * @param  string  $column
      * @param  string  $operator
-     * @param  Closure|callback  $callback
+     * @param  Closure|callback|null  $callback
      * @param  string  $andOr
      * 
      * @return static
      */
-    public function whereSub($column, $operator, $callback, $andOr = 'and')
+    public function whereSub($column, $operator, $callback = null, $andOr = 'and')
     {
-        $operator = strtolower($operator);
+        if (is_string($operator)) {
+            $operator = strtolower($operator);
+        }
 
         // 如果帶入參數只有兩個，則 $value = $operator and $operator = '='
         // 若否判斷 $operator 在 $this->operators 裡面有無符合的
@@ -922,25 +969,22 @@ class Builder
      *
      * @param  string  $column
      * @param  string  $operator
-     * @param  Closure|callback  $callback
+     * @param  Closure|callback|null  $callback
      * 
      * @return static
      */
-    public function orWhereSub($column, $operator, $callback)
+    public function orWhereSub($column, $operator, $callback = null)
     {
-        return $this->whereSub($column, $operator, $callback, 'or');
-    }
+        // 如果帶入參數只有兩個，則 $value = $operator and $operator = '='
+        // 若否判斷 $operator 在 $this->operators 裡面有無符合的
+        // 有，返回 $operator 無，則返回例外
+        list($callback, $operator) = $this->prepareValueAndOperator(
+            $callback,
+            $operator,
+            func_num_args() === 2
+        );
 
-    /**
-     * @param string|array $column
-     * @param string|null $operator
-     * @param mixed|null $value
-     * 
-     * @return static
-     */
-    public function orWhere($column, $operator = null, $value = null)
-    {
-        return $this->where($column, $operator, $value, 'or');
+        return $this->whereSub($column, $operator, $callback, 'or');
     }
 
     /**
@@ -1283,7 +1327,10 @@ class Builder
     protected function arrayGroupByNested($query, $key, $value, $join)
     {
         if (is_numeric($key) && is_array($value)) {
-            call_user_func_array(array($query, 'groupBy'), array_values($value));
+            call_user_func_array(
+                array($query, 'groupBy'),
+                array_values($this->nestedArrayArguments($value, $join))
+            );
         } else {
             call_user_func_array(array($query, 'groupBy'), array($value));
         }
@@ -1415,7 +1462,10 @@ class Builder
     protected function arrayHavingNested($query, $key, $value, $join)
     {
         if (is_numeric($key) && is_array($value)) {
-            call_user_func_array(array($query, 'having'), array_values($value));
+            call_user_func_array(
+                array($query, 'having'),
+                array_values($this->nestedArrayArguments($value, $join))
+            );
         } else {
             call_user_func_array(array($query, 'having'), array($key, '=', $value, $join));
         }
@@ -1561,7 +1611,10 @@ class Builder
     protected function arrayOrderByNested($query, $key, $value, $join)
     {
         if (is_numeric($key) && is_array($value)) {
-            call_user_func_array(array($query, 'orderBy'), array_values($value));
+            call_user_func_array(
+                array($query, 'orderBy'),
+                array_values($this->nestedArrayArguments($value, $join))
+            );
         } else {
             call_user_func_array(array($query, 'orderBy'), array($value));
         }
@@ -1910,10 +1963,10 @@ class Builder
     public function join($table, $first, $operator = null, $second = null, $type = 'inner', $isWhere = false)
     {
         $method = $isWhere ? 'WHERE' : 'ON';
-        
+
         if ($first instanceof Closure || is_callable($first)) {
             $join = $this->newJoinClause($this, $type, $table);
-            
+
             call_user_func($first, $join);
 
             list('queries'  => $queries, 'bindings' => $bindings) = array_replace([
@@ -2372,7 +2425,7 @@ class Builder
     public function contactBacktick($value)
     {
         if ($value instanceof Expression) {
-            return $value;
+            return (string) $value;
         }
 
         if (func_num_args() > 1) {

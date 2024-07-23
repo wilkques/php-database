@@ -118,7 +118,7 @@ abstract class Grammar implements GrammarInterface
 
         $wheres = join(' ', $this->arrayNested($wheres));
 
-        $wheres = preg_replace('/^(AND |OR )/i', '', $wheres);
+        $wheres = $query->firstJoinReplace($wheres);
 
         return "WHERE {$wheres}";
     }
@@ -138,7 +138,7 @@ abstract class Grammar implements GrammarInterface
 
         $havings = join(' ', $this->arrayNested($havings));
 
-        $havings = preg_replace('/^(AND |OR )/i', '', $havings);
+        $havings = $query->firstJoinReplace($havings);
 
         return "HAVING {$havings}";
     }

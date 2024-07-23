@@ -376,7 +376,7 @@ class BuilderTest extends TestCase
             array(
                 'froms' => array(
                     'queries' => array(
-                        new \Wilkques\Database\Queries\Expression('`dns_record`'),
+                        new Expression('`dns_record`'),
                     ),
                 ),
                 'columns' => array(
@@ -390,7 +390,7 @@ class BuilderTest extends TestCase
                         127,
                     ),
                     'queries' => array(
-                        new \Wilkques\Database\Queries\Expression('INNER JOIN (SELECT * FROM `default`.`zones` AS `zones` WHERE `zones`.`id` = ? OR `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` AND (`zones`.`id` = `dns_record`.`zones_id`)'),
+                        new Expression('INNER JOIN (SELECT * FROM `default`.`zones` AS `zones` WHERE `zones`.`id` = ? OR `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` AND (`zones`.`id` = `dns_record`.`zones_id`)'),
                     ),
                 ),
                 'wheres' => array(
@@ -421,8 +421,8 @@ class BuilderTest extends TestCase
                 ),
                 'havings' => array(
                     'queries' => array(
-                        new \Wilkques\Database\Queries\Expression('AND `dns_record`.`provider_id` = ?'),
-                        new \Wilkques\Database\Queries\Expression('AND `dns_record`.`cdn_provider_id` = ?'),
+                        new Expression('AND `dns_record`.`provider_id` = ?'),
+                        new Expression('AND `dns_record`.`cdn_provider_id` = ?'),
                     ),
                     'bindings' => array(
                         1,
@@ -631,6 +631,52 @@ class BuilderTest extends TestCase
         );
     }
 
+    public function testSubQueryAsContactBacktick()
+    {
+        $builder = $this->builder();
+
+        $builderMethod = new \ReflectionMethod($builder, 'subQueryAsContactBacktick');
+
+        $builderMethod->setAccessible(true);
+
+        $result = $builderMethod->invoke($builder, 'abc');
+
+        $this->assertEquals(
+            '(abc)',
+            $result
+        );
+
+        $result = $builderMethod->invoke($builder, 'abc', 'a');
+
+        $this->assertEquals(
+            '(abc) AS `a`',
+            $result
+        );
+    }
+
+    public function testQueryAsContactBacktick()
+    {
+        $builder = $this->builder();
+
+        $builderMethod = new \ReflectionMethod($builder, 'queryAsContactBacktick');
+
+        $builderMethod->setAccessible(true);
+
+        $result = $builderMethod->invoke($builder, 'abc');
+
+        $this->assertEquals(
+            '`abc`',
+            $result
+        );
+
+        $result = $builderMethod->invoke($builder, 'abc', 'a');
+
+        $this->assertEquals(
+            '`abc` AS `a`',
+            $result
+        );
+    }
+
     public function testRaw()
     {
         $raw = $this->builder()->raw('abc');
@@ -670,7 +716,7 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('`abc`')
+                new Expression('`abc`')
             ),
             $from->getFrom()
         );
@@ -679,7 +725,7 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('`abc` AS `a`')
+                new Expression('`abc` AS `a`')
             ),
             $from->getFrom()
         );
@@ -692,7 +738,7 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg`)')
+                new Expression('(SELECT * FROM `efg`)')
             ),
             $from->getFrom()
         );
@@ -705,8 +751,8 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg`)'),
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg`)')
+                new Expression('(SELECT * FROM `efg`)'),
+                new Expression('(SELECT * FROM `efg`)')
             ),
             $from->getFrom()
         );
@@ -719,7 +765,7 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`)')
+                new Expression('(SELECT * FROM `efg` AS `e`)')
             ),
             $from->getFrom()
         );
@@ -732,8 +778,8 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`)'),
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`)')
+                new Expression('(SELECT * FROM `efg` AS `e`)'),
+                new Expression('(SELECT * FROM `efg` AS `e`)')
             ),
             $from->getFrom()
         );
@@ -746,7 +792,7 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg`) AS `e`')
+                new Expression('(SELECT * FROM `efg`) AS `e`')
             ),
             $from->getFrom()
         );
@@ -759,8 +805,8 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg`) AS `e`'),
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg`) AS `e`')
+                new Expression('(SELECT * FROM `efg`) AS `e`'),
+                new Expression('(SELECT * FROM `efg`) AS `e`')
             ),
             $from->getFrom()
         );
@@ -773,7 +819,7 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`) AS `e`')
+                new Expression('(SELECT * FROM `efg` AS `e`) AS `e`')
             ),
             $from->getFrom()
         );
@@ -786,8 +832,8 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`) AS `e`'),
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`) AS `e`')
+                new Expression('(SELECT * FROM `efg` AS `e`) AS `e`'),
+                new Expression('(SELECT * FROM `efg` AS `e`) AS `e`')
             ),
             $from->getFrom()
         );
@@ -802,7 +848,7 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`)')
+                new Expression('(SELECT * FROM `efg` AS `e`)')
             ),
             $from->getFrom()
         );
@@ -817,7 +863,7 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`) AS `e`')
+                new Expression('(SELECT * FROM `efg` AS `e`) AS `e`')
             ),
             $from->getFrom()
         );
@@ -835,8 +881,8 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`)'),
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`)')
+                new Expression('(SELECT * FROM `efg` AS `e`)'),
+                new Expression('(SELECT * FROM `efg` AS `e`)')
             ),
             $from->getFrom()
         );
@@ -854,8 +900,8 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`) AS `e`'),
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`) AS `f`')
+                new Expression('(SELECT * FROM `efg` AS `e`) AS `e`'),
+                new Expression('(SELECT * FROM `efg` AS `e`) AS `f`')
             ),
             $from->getFrom()
         );
@@ -872,7 +918,7 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`)')
+                new Expression('(SELECT * FROM `efg` AS `e`)')
             ),
             $from->getFrom()
         );
@@ -893,8 +939,8 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`)'),
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`)')
+                new Expression('(SELECT * FROM `efg` AS `e`)'),
+                new Expression('(SELECT * FROM `efg` AS `e`)')
             ),
             $from->getFrom()
         );
@@ -916,7 +962,7 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`) AS `e`')
+                new Expression('(SELECT * FROM `efg` AS `e`) AS `e`')
             ),
             $from->getFrom()
         );
@@ -924,12 +970,12 @@ class BuilderTest extends TestCase
         $builder = $this->builder();
 
         $from = $builder->from(array(
-            new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg`)')
+            new Expression('(SELECT * FROM `efg`)')
         ));
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg`)')
+                new Expression('(SELECT * FROM `efg`)')
             ),
             $from->getFrom()
         );
@@ -937,12 +983,12 @@ class BuilderTest extends TestCase
         $builder = $this->builder();
 
         $from = $builder->from(array(
-            'e' => new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg`)')
+            'e' => new Expression('(SELECT * FROM `efg`)')
         ));
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg`) AS `e`')
+                new Expression('(SELECT * FROM `efg`) AS `e`')
             ),
             $from->getFrom()
         );
@@ -958,7 +1004,7 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg`)')
+                new Expression('(SELECT * FROM `efg`)')
             ),
             $from->getFrom()
         );
@@ -971,8 +1017,8 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg`)'),
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg`)')
+                new Expression('(SELECT * FROM `efg`)'),
+                new Expression('(SELECT * FROM `efg`)')
             ),
             $from->getFrom()
         );
@@ -985,7 +1031,7 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`)')
+                new Expression('(SELECT * FROM `efg` AS `e`)')
             ),
             $from->getFrom()
         );
@@ -998,8 +1044,8 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`)'),
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`)')
+                new Expression('(SELECT * FROM `efg` AS `e`)'),
+                new Expression('(SELECT * FROM `efg` AS `e`)')
             ),
             $from->getFrom()
         );
@@ -1012,7 +1058,7 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg`) AS `e`')
+                new Expression('(SELECT * FROM `efg`) AS `e`')
             ),
             $from->getFrom()
         );
@@ -1025,8 +1071,8 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg`) AS `e`'),
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg`) AS `e`')
+                new Expression('(SELECT * FROM `efg`) AS `e`'),
+                new Expression('(SELECT * FROM `efg`) AS `e`')
             ),
             $from->getFrom()
         );
@@ -1039,7 +1085,7 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`) AS `e`')
+                new Expression('(SELECT * FROM `efg` AS `e`) AS `e`')
             ),
             $from->getFrom()
         );
@@ -1052,8 +1098,8 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`) AS `e`'),
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`) AS `e`')
+                new Expression('(SELECT * FROM `efg` AS `e`) AS `e`'),
+                new Expression('(SELECT * FROM `efg` AS `e`) AS `e`')
             ),
             $from->getFrom()
         );
@@ -1068,7 +1114,7 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`)')
+                new Expression('(SELECT * FROM `efg` AS `e`)')
             ),
             $from->getFrom()
         );
@@ -1083,7 +1129,7 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`) AS `e`')
+                new Expression('(SELECT * FROM `efg` AS `e`) AS `e`')
             ),
             $from->getFrom()
         );
@@ -1101,8 +1147,8 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`)'),
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`)')
+                new Expression('(SELECT * FROM `efg` AS `e`)'),
+                new Expression('(SELECT * FROM `efg` AS `e`)')
             ),
             $from->getFrom()
         );
@@ -1120,8 +1166,8 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`) AS `e`'),
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`) AS `f`')
+                new Expression('(SELECT * FROM `efg` AS `e`) AS `e`'),
+                new Expression('(SELECT * FROM `efg` AS `e`) AS `f`')
             ),
             $from->getFrom()
         );
@@ -1138,7 +1184,7 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`)')
+                new Expression('(SELECT * FROM `efg` AS `e`)')
             ),
             $from->getFrom()
         );
@@ -1159,8 +1205,8 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`)'),
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`)')
+                new Expression('(SELECT * FROM `efg` AS `e`)'),
+                new Expression('(SELECT * FROM `efg` AS `e`)')
             ),
             $from->getFrom()
         );
@@ -1182,7 +1228,7 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`) AS `e`')
+                new Expression('(SELECT * FROM `efg` AS `e`) AS `e`')
             ),
             $from->getFrom()
         );
@@ -1190,12 +1236,12 @@ class BuilderTest extends TestCase
         $builder = $this->builder();
 
         $from = $builder->from(array(
-            new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg`)')
+            new Expression('(SELECT * FROM `efg`)')
         ));
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg`)')
+                new Expression('(SELECT * FROM `efg`)')
             ),
             $from->getFrom()
         );
@@ -1203,12 +1249,12 @@ class BuilderTest extends TestCase
         $builder = $this->builder();
 
         $from = $builder->from(array(
-            'e' => new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg`)')
+            'e' => new Expression('(SELECT * FROM `efg`)')
         ));
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg`) AS `e`')
+                new Expression('(SELECT * FROM `efg`) AS `e`')
             ),
             $from->getFrom()
         );
@@ -1227,7 +1273,7 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('`abc`')
+                new Expression('`abc`')
             ),
             $from->getFrom()
         );
@@ -1236,7 +1282,7 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('`abc` AS `a`')
+                new Expression('`abc` AS `a`')
             ),
             $from->getFrom()
         );
@@ -1249,7 +1295,7 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg`)')
+                new Expression('(SELECT * FROM `efg`)')
             ),
             $from->getFrom()
         );
@@ -1262,8 +1308,8 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg`)'),
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg`)')
+                new Expression('(SELECT * FROM `efg`)'),
+                new Expression('(SELECT * FROM `efg`)')
             ),
             $from->getFrom()
         );
@@ -1276,7 +1322,7 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`)')
+                new Expression('(SELECT * FROM `efg` AS `e`)')
             ),
             $from->getFrom()
         );
@@ -1289,8 +1335,8 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`)'),
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`)')
+                new Expression('(SELECT * FROM `efg` AS `e`)'),
+                new Expression('(SELECT * FROM `efg` AS `e`)')
             ),
             $from->getFrom()
         );
@@ -1303,7 +1349,7 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg`) AS `e`')
+                new Expression('(SELECT * FROM `efg`) AS `e`')
             ),
             $from->getFrom()
         );
@@ -1316,8 +1362,8 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg`) AS `e`'),
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg`) AS `e`')
+                new Expression('(SELECT * FROM `efg`) AS `e`'),
+                new Expression('(SELECT * FROM `efg`) AS `e`')
             ),
             $from->getFrom()
         );
@@ -1330,7 +1376,7 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`) AS `e`')
+                new Expression('(SELECT * FROM `efg` AS `e`) AS `e`')
             ),
             $from->getFrom()
         );
@@ -1343,8 +1389,8 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`) AS `e`'),
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`) AS `e`')
+                new Expression('(SELECT * FROM `efg` AS `e`) AS `e`'),
+                new Expression('(SELECT * FROM `efg` AS `e`) AS `e`')
             ),
             $from->getFrom()
         );
@@ -1359,7 +1405,7 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`)')
+                new Expression('(SELECT * FROM `efg` AS `e`)')
             ),
             $from->getFrom()
         );
@@ -1374,7 +1420,7 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`) AS `e`')
+                new Expression('(SELECT * FROM `efg` AS `e`) AS `e`')
             ),
             $from->getFrom()
         );
@@ -1392,8 +1438,8 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`)'),
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`)')
+                new Expression('(SELECT * FROM `efg` AS `e`)'),
+                new Expression('(SELECT * FROM `efg` AS `e`)')
             ),
             $from->getFrom()
         );
@@ -1411,8 +1457,8 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`) AS `e`'),
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`) AS `f`')
+                new Expression('(SELECT * FROM `efg` AS `e`) AS `e`'),
+                new Expression('(SELECT * FROM `efg` AS `e`) AS `f`')
             ),
             $from->getFrom()
         );
@@ -1429,7 +1475,7 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`)')
+                new Expression('(SELECT * FROM `efg` AS `e`)')
             ),
             $from->getFrom()
         );
@@ -1450,8 +1496,8 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`)'),
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`)')
+                new Expression('(SELECT * FROM `efg` AS `e`)'),
+                new Expression('(SELECT * FROM `efg` AS `e`)')
             ),
             $from->getFrom()
         );
@@ -1473,7 +1519,7 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg` AS `e`) AS `e`')
+                new Expression('(SELECT * FROM `efg` AS `e`) AS `e`')
             ),
             $from->getFrom()
         );
@@ -1481,12 +1527,12 @@ class BuilderTest extends TestCase
         $builder = $this->builder();
 
         $from = $builder->setTable(array(
-            new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg`)')
+            new Expression('(SELECT * FROM `efg`)')
         ));
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg`)')
+                new Expression('(SELECT * FROM `efg`)')
             ),
             $from->getFrom()
         );
@@ -1494,12 +1540,12 @@ class BuilderTest extends TestCase
         $builder = $this->builder();
 
         $from = $builder->setTable(array(
-            'e' => new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg`)')
+            'e' => new Expression('(SELECT * FROM `efg`)')
         ));
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg`) AS `e`')
+                new Expression('(SELECT * FROM `efg`) AS `e`')
             ),
             $from->getFrom()
         );
@@ -1518,7 +1564,7 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('*')
+                new Expression('*')
             ),
             $builder->getQuery('columns.queries')
         );
@@ -1572,7 +1618,7 @@ class BuilderTest extends TestCase
         );
 
         $builder = $this->builder()->select(
-            new \Wilkques\Database\Queries\Expression('*')
+            new Expression('*')
         );
 
         $this->assertEquals(
@@ -1583,21 +1629,21 @@ class BuilderTest extends TestCase
         );
 
         $builder = $this->builder()->select(
-            new \Wilkques\Database\Queries\Expression('abc'),
-            new \Wilkques\Database\Queries\Expression('efg')
+            new Expression('abc'),
+            new Expression('efg')
         );
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('abc'),
-                new \Wilkques\Database\Queries\Expression('efg')
+                new Expression('abc'),
+                new Expression('efg')
             ),
             $builder->getQuery('columns.queries')
         );
 
         $builder = $this->builder()->select(array(
-            'a' => new \Wilkques\Database\Queries\Expression('abc'),
-            'e' => new \Wilkques\Database\Queries\Expression('efg')
+            'a' => new Expression('abc'),
+            'e' => new Expression('efg')
         ));
 
         $this->assertEquals(
@@ -1632,10 +1678,879 @@ class BuilderTest extends TestCase
 
         $this->assertEquals(
             array(
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `abc`)'),
-                new \Wilkques\Database\Queries\Expression('(SELECT * FROM `efg`)')
+                new Expression('(SELECT * FROM `abc`)'),
+                new Expression('(SELECT * FROM `efg`)')
             ),
             $builder->getQuery('columns.queries')
         );
+    }
+
+    public function testSelectSub()
+    {
+        $builder = $this->builder()->selectSub('*');
+
+        $this->assertEquals(
+            array(
+                '(*)'
+            ),
+            $builder->getQuery('columns.queries')
+        );
+
+        $builder = $this->builder()->selectSub('abc', 'efg');
+
+        $this->assertEquals(
+            array(
+                '(abc) AS `efg`'
+            ),
+            $builder->getQuery('columns.queries')
+        );
+
+        $builder = $this->builder()->selectSub(array('*'));
+
+        $this->assertEquals(
+            array(
+                '*'
+            ),
+            $builder->getQuery('columns.queries')
+        );
+
+        $builder = $this->builder()->selectSub(array('abc', 'efg'));
+
+        $this->assertEquals(
+            array(
+                '`abc`', '`efg`'
+            ),
+            $builder->getQuery('columns.queries')
+        );
+
+        $builder = $this->builder()->selectSub(array('abc' => 'efg'));
+
+        $this->assertEquals(
+            array(
+                '`efg` AS `abc`'
+            ),
+            $builder->getQuery('columns.queries')
+        );
+
+        $builder = $this->builder()->selectSub(
+            new Expression('*')
+        );
+
+        $this->assertEquals(
+            array(
+                new Expression('(*)')
+            ),
+            $builder->getQuery('columns.queries')
+        );
+
+        $builder = $this->builder()->selectSub(
+            new Expression('abc'),
+            new Expression('efg')
+        );
+
+        $this->assertEquals(
+            array(
+                new Expression('(abc) AS efg')
+            ),
+            $builder->getQuery('columns.queries')
+        );
+
+        $builder = $this->builder()->selectSub(array(
+            'a' => new Expression('abc'),
+            'e' => new Expression('efg')
+        ));
+
+        $this->assertEquals(
+            array(
+                'abc AS `a`',
+                'efg AS `e`'
+            ),
+            $builder->getQuery('columns.queries')
+        );
+
+        $builder = $this->builder()->selectSub(
+            function ($query) {
+                $query->from('abc');
+            }
+        );
+
+        $this->assertEquals(
+            array(
+                '(SELECT * FROM `abc`)'
+            ),
+            $builder->getQuery('columns.queries')
+        );
+
+        $builder = $this->builder()->selectSub(
+            function ($query) {
+                $query->from('abc');
+            }
+        );
+
+        $this->assertEquals(
+            array(
+                new Expression('(SELECT * FROM `abc`)')
+            ),
+            $builder->getQuery('columns.queries')
+        );
+    }
+
+    public function testInvalidOperatorAndValue()
+    {
+        $builder = $this->builder();
+
+        $builderMethod = new \ReflectionMethod($builder, 'invalidOperatorAndValue');
+
+        $builderMethod->setAccessible(true);
+
+        $result = $builderMethod->invoke($builder, '=', 'abc');
+
+        $this->assertFalse($result);
+
+        $result = $builderMethod->invoke($builder, '=', null);
+
+        $this->assertFalse($result);
+
+        $result = $builderMethod->invoke($builder, '>', 'abc');
+
+        $this->assertFalse($result);
+
+        $result = $builderMethod->invoke($builder, '>', null);
+
+        $this->assertTrue($result);
+    }
+
+    public function testPrepareValueAndOperator()
+    {
+        $builder = $this->builder();
+
+        $builderMethod = new \ReflectionMethod($builder, 'prepareValueAndOperator');
+
+        $builderMethod->setAccessible(true);
+
+        $result = $builderMethod->invoke($builder, 'abc', '=');
+
+        $this->assertEquals(
+            array(
+                'abc', '='
+            ),
+            $result
+        );
+
+        $result = $builderMethod->invoke($builder, null, 'abc', true);
+
+        $this->assertEquals(
+            array(
+                'abc', '='
+            ),
+            $result
+        );
+
+        try {
+            $builderMethod->invoke($builder, '))', 'abc', true);
+        } catch (InvalidArgumentException $e) {
+            $this->assertTrue(
+                $e instanceof InvalidArgumentException
+            );
+
+            $this->assertEquals(
+                'Illegal operator and value combination.',
+                $e->getMessage()
+            );
+        }
+    }
+
+    public function testInvalidOperator()
+    {
+        $builder = $this->builder();
+
+        $builderMethod = new \ReflectionMethod($builder, 'invalidOperator');
+
+        $builderMethod->setAccessible(true);
+
+        $result = $builderMethod->invoke($builder, 123);
+
+        $this->assertTrue($result);
+
+        $result = $builderMethod->invoke($builder, new \stdClass);
+
+        $this->assertTrue($result);
+
+        $result = $builderMethod->invoke($builder, '=');
+
+        $this->assertFalse($result);
+
+        $result = $builderMethod->invoke($builder, '!');
+
+        $this->assertTrue($result);
+    }
+
+    public function testArrayNested()
+    {
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $builderMethod = new \ReflectionMethod($builder, 'arrayNested');
+
+        $builderMethod->setAccessible(true);
+
+        $result = $builderMethod->invoke($builder, array(array('abc', 123)), 'and');
+
+        $this->assertTrue($result instanceof Builder);
+
+        $this->assertEquals(
+            array(
+                new Expression('`abc`')
+            ),
+            $builder->getFrom()
+        );
+
+        $this->assertEquals(
+            array('AND (`abc` = ?)'),
+            $builder->getQuery('wheres.queries')
+        );
+    }
+
+    public function testNested()
+    {
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $builderMethod = new \ReflectionMethod($builder, 'nested');
+
+        $builderMethod->setAccessible(true);
+
+        $result = $builderMethod->invoke($builder, function ($query) {
+            $query->where('abc', 123);
+        });
+
+        $this->assertTrue($result instanceof Builder);
+
+        $this->assertEquals(
+            array(
+                new Expression('`abc`')
+            ),
+            $builder->getFrom()
+        );
+
+        $this->assertEquals(
+            array('AND (`abc` = ?)'),
+            $builder->getQuery('wheres.queries')
+        );
+    }
+
+    public function testForNested()
+    {
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $builderMethod = new \ReflectionMethod($builder, 'forNested');
+
+        $builderMethod->setAccessible(true);
+
+        $result = $builderMethod->invoke($builder);
+
+        $this->assertTrue($result instanceof Builder);
+
+        $this->assertEquals(
+            array(
+                new Expression('`abc`')
+            ),
+            $builder->getFrom()
+        );
+    }
+
+    public function testAddNestedQuery()
+    {
+        $builder = $this->builder();
+
+        $nested = $this->builder();
+
+        $nested->where('abc', 123);
+
+        $builderMethod = new \ReflectionMethod($builder, 'addNestedQuery');
+
+        $builderMethod->setAccessible(true);
+
+        $result = $builderMethod->invoke($builder, $nested);
+
+        $this->assertTrue($result instanceof Builder);
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    'AND (`abc` = ?)'
+                ),
+                'bindings' => array(
+                    123
+                )
+            ),
+            $result->getQuery('wheres')
+        );
+    }
+
+    public function testFirstJoinReplace()
+    {
+        $builder = $this->builder();
+
+        $result = $builder->firstJoinReplace('');
+
+        $this->assertEquals('', $result);
+
+        $result = $builder->firstJoinReplace('`abc` = ?');
+
+        $this->assertEquals('`abc` = ?', $result);
+
+        $result = $builder->firstJoinReplace('AND `abc` = ?');
+
+        $this->assertEquals('`abc` = ?', $result);
+
+        $result = $builder->firstJoinReplace('OR `abc` = ?');
+
+        $this->assertEquals('`abc` = ?', $result);
+
+        $result = $builder->firstJoinReplace(', `abc` = ?');
+
+        $this->assertEquals(', `abc` = ?', $result);
+    }
+
+    public function testNestedArrayArguments()
+    {
+        $builder = $this->builder();
+
+        $builderMethod = new \ReflectionMethod($builder, 'nestedArrayArguments');
+
+        $builderMethod->setAccessible(true);
+
+        $this->assertEquals(
+            array(
+                'abc', null, null, 'AND'
+            ),
+            $builderMethod->invoke($builder, array(
+                'abc'
+            ), 'AND')
+        );
+    }
+
+    public function testWhereNested()
+    {
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $builderMethod = new \ReflectionMethod($builder, 'whereNested');
+
+        $builderMethod->setAccessible(true);
+
+        $result = $builderMethod->invoke($builder, function ($query) {
+            $query->where('abc', 123);
+        });
+
+        $this->assertTrue($result instanceof Builder);
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    'AND (`abc` = ?)'
+                ),
+                'bindings' => array(
+                    123
+                )
+            ),
+            $result->getQuery('wheres')
+        );
+    }
+
+    public function testArrayWhereNested()
+    {
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $builderMethod = new \ReflectionMethod($builder, 'arrayWhereNested');
+
+        $builderMethod->setAccessible(true);
+
+        $nested = $this->builder();
+
+        $builderMethod->invoke($builder, $nested, 1, array('abc', 123), 'and');
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    new Expression('AND `abc` = ?')
+                ),
+                'bindings' => array(
+                    123
+                )
+            ),
+            $nested->getQuery('wheres')
+        );
+    }
+
+    public function testWhereRaw()
+    {
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $builder->whereRaw('abc = ?', array(123));
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    new Expression('and abc = ?')
+                ),
+                'bindings' => array(
+                    123
+                )
+            ),
+            $builder->getQuery('wheres')
+        );
+    }
+
+    public function testOrWhereRaw()
+    {
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $builder->orWhereRaw('abc = ?', array(123));
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    new Expression('or abc = ?')
+                ),
+                'bindings' => array(
+                    123
+                )
+            ),
+            $builder->getQuery('wheres')
+        );
+    }
+
+    public function testWhere()
+    {
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $builder->where('abc', 123);
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    new Expression('AND `abc` = ?')
+                ),
+                'bindings' => array(
+                    123
+                )
+            ),
+            $builder->getQuery('wheres')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $builder->where(function ($query) {
+            $query->where('abc', 123);
+        });
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    'AND (`abc` = ?)'
+                ),
+                'bindings' => array(
+                    123
+                )
+            ),
+            $builder->getQuery('wheres')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $newBuilder = $this->builder();
+
+        $newBuilder->where('abc', 123);
+
+        $builder->where($newBuilder, '=', 123);
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    new Expression('AND (SELECT * WHERE `abc` = ?) = ?')
+                ),
+                'bindings' => array(
+                    123,
+                    123
+                )
+            ),
+            $builder->getQuery('wheres')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $newBuilder = $this->builder();
+
+        $newBuilder->where('abc', 123);
+
+        $builder->where($newBuilder);
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    new Expression('AND EXISTS (SELECT * WHERE `abc` = ?)')
+                ),
+                'bindings' => array(
+                    123
+                )
+            ),
+            $builder->getQuery('wheres')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $builder->where('abc', '>', 123);
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    new Expression('AND `abc` > ?')
+                ),
+                'bindings' => array(
+                    123
+                )
+            ),
+            $builder->getQuery('wheres')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $builder->where('abc', '>', function ($query) {
+            $query->where('abc', 123);
+        });
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    new Expression('AND `abc` > (SELECT * WHERE `abc` = ?)')
+                ),
+                'bindings' => array(
+                    123
+                )
+            ),
+            $builder->getQuery('wheres')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $builder->where(array(
+            array('abc', '>', 123),
+            array('abc', 123),
+            array(
+                function ($query) {
+                    $query->where('abc', '<', 123);
+                }
+            ),
+            array(
+                'abc', '<', function ($query) {
+                    $query->where('abc', 123);
+                }
+            )
+        ));
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    'AND (`abc` > ? AND `abc` = ? AND (`abc` < ?) AND `abc` < (SELECT * WHERE `abc` = ?))'
+                ),
+                'bindings' => array(
+                    123,
+                    123,
+                    123,
+                    123
+                )
+            ),
+            $builder->getQuery('wheres')
+        );
+    }
+
+    public function testOrWhere()
+    {
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $builder->orWhere('abc', 123);
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    new Expression('OR `abc` = ?')
+                ),
+                'bindings' => array(
+                    123
+                )
+            ),
+            $builder->getQuery('wheres')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $builder->orWhere(function ($query) {
+            $query->orWhere('abc', 123);
+        });
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    'OR (`abc` = ?)'
+                ),
+                'bindings' => array(
+                    123
+                )
+            ),
+            $builder->getQuery('wheres')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $newBuilder = $this->builder();
+
+        $newBuilder->orWhere('abc', 123);
+
+        $builder->orWhere($newBuilder, '=', 123);
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    new Expression('OR (SELECT * WHERE `abc` = ?) = ?')
+                ),
+                'bindings' => array(
+                    123,
+                    123
+                )
+            ),
+            $builder->getQuery('wheres')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $newBuilder = $this->builder();
+
+        $newBuilder->orWhere('abc', 123);
+
+        $builder->orWhere($newBuilder);
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    new Expression('OR EXISTS (SELECT * WHERE `abc` = ?)')
+                ),
+                'bindings' => array(
+                    123
+                )
+            ),
+            $builder->getQuery('wheres')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $builder->orWhere('abc', '>', 123);
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    new Expression('OR `abc` > ?')
+                ),
+                'bindings' => array(
+                    123
+                )
+            ),
+            $builder->getQuery('wheres')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $builder->orWhere('abc', '>', function ($query) {
+            $query->orWhere('abc', 123);
+        });
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    new Expression('OR `abc` > (SELECT * WHERE `abc` = ?)')
+                ),
+                'bindings' => array(
+                    123
+                )
+            ),
+            $builder->getQuery('wheres')
+        );
+
+        $builder = $this->builder();
+
+        $builder->from('abc');
+
+        $builder->orWhere(array(
+            array('abc', '>', 123),
+            array('abc', 123),
+            array(
+                function ($query) {
+                    $query->orWhere('abc', '<', 123);
+                }
+            ),
+            array(
+                'abc', '<', function ($query) {
+                    $query->orWhere('abc', 123);
+                }
+            )
+        ));
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    'OR (`abc` > ? OR `abc` = ? OR (`abc` < ?) OR `abc` < (SELECT * WHERE `abc` = ?))'
+                ),
+                'bindings' => array(
+                    123,
+                    123,
+                    123,
+                    123
+                )
+            ),
+            $builder->getQuery('wheres')
+        );
+    }
+
+    public function testWhereSub()
+    {
+        $builder = $this->builder();
+
+        $builder->whereSub('abc', function ($query) {
+            $query->from('efg')->where('abc', 123);
+        });
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    new Expression('AND `abc` = (SELECT * FROM `efg` WHERE `abc` = ?)')
+                ),
+                'bindings' => array(
+                    123
+                )
+            ),
+            $builder->getQuery('wheres')
+        );
+
+        $builder = $this->builder();
+
+        $builder->whereSub('abc', '>', function ($query) {
+            $query->from('efg')->where('abc', 123);
+        });
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    new Expression('AND `abc` > (SELECT * FROM `efg` WHERE `abc` = ?)')
+                ),
+                'bindings' => array(
+                    123
+                )
+            ),
+            $builder->getQuery('wheres')
+        );
+    }
+
+    public function testOrWhereSub()
+    {
+        $builder = $this->builder();
+
+        $builder->orWhereSub('abc', function ($query) {
+            $query->from('efg')->where('abc', 123);
+        });
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    new Expression('OR `abc` = (SELECT * FROM `efg` WHERE `abc` = ?)')
+                ),
+                'bindings' => array(
+                    123
+                )
+            ),
+            $builder->getQuery('wheres')
+        );
+
+        $builder = $this->builder();
+
+        $builder->orWhereSub('abc', '>', function ($query) {
+            $query->from('efg')->where('abc', 123);
+        });
+
+        $this->assertEquals(
+            array(
+                'queries' => array(
+                    new Expression('OR `abc` > (SELECT * FROM `efg` WHERE `abc` = ?)')
+                ),
+                'bindings' => array(
+                    123
+                )
+            ),
+            $builder->getQuery('wheres')
+        );
+    }
+
+    public function testWhereNull()
+    {
+        $builder = $this->builder();
+
+        $builder->whereNull('abc');
+
+        $this->assertEquals(
+            array(
+                new Expression('AND `abc` IS NULL')
+            ),
+            $builder->getQuery('wheres.queries')
+        );
+        
+        // $builder = $this->builder();
+
+        // $builder->whereNull(function ($query) {
+        //     $query->where('abc');
+        // });
+
+        // $this->assertEquals(
+        //     array(
+        //         new Expression('AND `abc` IS NULL')
+        //     ),
+        //     $builder->getQuery('wheres.queries')
+        // );
     }
 }
