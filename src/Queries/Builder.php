@@ -142,7 +142,7 @@ class Builder
      */
     public function getConnection()
     {
-        return $this->getResolver(ConnectionInterface::class);
+        return $this->getResolver('Wilkques\Database\Connections\ConnectionInterface');
     }
 
     /**
@@ -160,7 +160,7 @@ class Builder
      */
     public function getGrammar()
     {
-        return $this->getResolver(GrammarInterface::class);
+        return $this->getResolver('Wilkques\Database\Queries\Grammar\GrammarInterface');
     }
 
     /**
@@ -180,7 +180,7 @@ class Builder
      */
     public function getProcessor()
     {
-        return $this->getResolver(ProcessorInterface::class);
+        return $this->getResolver('Wilkques\Database\Queries\Processors\ProcessorInterface');
     }
 
     /**
