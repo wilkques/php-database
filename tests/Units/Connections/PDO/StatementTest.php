@@ -26,10 +26,10 @@ class StatementTest extends TestCase
         parent::setUp();
 
         // Mock PDOStatement
-        $this->pdoStatement = $this->createMock(PDOStatement::class);
+        $this->pdoStatement = $this->createMock('Wilkques\Database\Connections\PDO\Statement');
 
         // Mock Connections
-        $this->connections = $this->createMock(MySql::class);
+        $this->connections = $this->createMock('Wilkques\Database\Connections\PDO\Drivers\MySql');
 
         // Create the Statement instance
         $this->statement = new Statement($this->pdoStatement, $this->connections);
