@@ -3,7 +3,6 @@
 namespace Wilkques\Database\Connections\PDO;
 
 use Exception;
-use Wilkques\Database\Connections\ConnectionInterface;
 use Wilkques\Database\Connections\Connections;
 use Wilkques\Database\Connections\Traits\DetectsLostConnections;
 

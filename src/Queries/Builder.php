@@ -4,7 +4,7 @@ namespace Wilkques\Database\Queries;
 
 use Closure;
 use InvalidArgumentException;
-use Wilkques\Database\Connections\ConnectionInterface;
+use Wilkques\Database\Connections\Connections;
 use Wilkques\Database\Queries\Grammar\GrammarInterface;
 use Wilkques\Database\Queries\Processors\ProcessorInterface;
 use Wilkques\Helpers\Arrays;
@@ -29,7 +29,7 @@ class Builder
             'insertGetId',
         ),
         'get'       => array(
-            'parseQueryLog', 'lastParseQuery', 'lastInsertId', 'queryLog', 'lastQueryLog'
+            'parseQueryLog', 'lastParseQuery', 'lastInsertId', 'queryLog', 'lastQueryLog',
         )
     );
 
@@ -57,12 +57,12 @@ class Builder
     );
 
     /**
-     * @param ConnectionInterface $connection
+     * @param Connections $connection
      * @param GrammarInterface|null $grammar
      * @param ProcessorInterface|null $processor
      */
     public function __construct(
-        ConnectionInterface $connection,
+        Connections $connection,
         GrammarInterface $grammar = null,
         ProcessorInterface $processor = null
     ) {
@@ -72,14 +72,14 @@ class Builder
     }
 
     /**
-     * @param ConnectionInterface $connection
+     * @param Connections $connection
      * @param GrammarInterface|null $grammar
      * @param ProcessorInterface|null $processor
      * 
      * @return static
      */
     public static function make(
-        ConnectionInterface $connection,
+        Connections $connection,
         GrammarInterface $grammar = null,
         ProcessorInterface $processor = null
     ) {
@@ -121,28 +121,30 @@ class Builder
     protected function getResolver($abstract)
     {
         $abstract = Arrays::filter($this->getResolvers(), function ($resolver) use ($abstract) {
-            return in_array($abstract, class_implements($resolver));
+            $resolvers = Arrays::mergeDistinctRecursive(class_parents($resolver), class_implements($resolver));
+
+            return in_array($abstract, $resolvers);
         });
 
         return Arrays::first($abstract);
     }
 
     /**
-     * @param ConnectionInterface $connection
+     * @param Connections $connection
      * 
      * @return static
      */
-    public function setConnection(ConnectionInterface $connection)
+    public function setConnection(Connections $connection)
     {
         return $this->resolverRegister($connection);
     }
 
     /**
-     * @return ConnectionInterface
+     * @return Connections
      */
     public function getConnection()
     {
-        return $this->getResolver('Wilkques\Database\Connections\ConnectionInterface');
+        return $this->getResolver('Wilkques\Database\Connections\Connections');
     }
 
     /**
@@ -300,7 +302,7 @@ class Builder
     /**
      * @return string
      */
-    protected function toSql()
+    public function toSql()
     {
         return $this->getGrammar()->compilerSelect($this);
     }
@@ -312,11 +314,21 @@ class Builder
      */
     protected function bindingsNested($bindings)
     {
-        $bindings = Arrays::filter($bindings, function ($value) {
+        $callback = function ($value) {
             if (!$value instanceof Expression) {
                 return $value;
             }
-        });
+        };
+
+        $newArray = array();
+
+        foreach ($bindings as $key => $value) {
+            $result = $callback($value, $key);
+
+            if ($result || is_numeric($result)) {
+                $newArray[$key] = $value;
+            }
+        }
 
         return array_values($bindings);
     }
@@ -895,11 +907,7 @@ class Builder
         }
 
         if (is_null($value) && $column instanceof self) {
-            if ('and' == $andOr) {
-                return $this->whereExists($column);
-            }
-
-            return $this->orWhereExists($column);
+            return $this->whereExists($column, $andOr);
         }
 
         if ($value instanceof self || $value instanceof Closure) {
@@ -924,7 +932,7 @@ class Builder
 
         if (is_array($value)) {
             if (in_array($operator, array('between', 'not between'))) {
-                $varValue = join(" {$andOr} ", array_fill(0, count($value), "?"));
+                $varValue = join(" AND ", array_fill(0, count($value), "?"));
             } else {
                 $varValue = "(" . join(', ', array_fill(0, count($value), "?")) . ")";
             }
@@ -1264,23 +1272,28 @@ class Builder
     }
 
     /**
-     * @param string|array|callback|Closure $column
+     * @param string|callback|Closure $column
      * @param string|null $operator
-     * @param mixed|null $value
+     * @param callback|Closure $value
      * 
      * @return static
      */
-    public function whereAny($column, $operator = null, $value = null)
+    public function whereAny($column, $operator = '=', $value = null)
     {
-        if ($value instanceof Closure) {
-            return $this->whereSub($column, "{$operator} ANY", $value);
-        }
+        // 如果帶入參數只有兩個，則 $value = $operator and $operator = '='
+        // 若否判斷 $operator 在 $this->operators 裡面有無符合的
+        // 有，返回 $operator 無，則返回例外
+        list($value, $operator) = $this->prepareValueAndOperator(
+            $value,
+            $operator,
+            func_num_args() === 2
+        );
 
-        return $this->where($column, "{$operator} ANY", $value);
+        return $this->whereSub($column, "{$operator} ANY", $value);
     }
 
     /**
-     * @param string|array|callback|Closure $column
+     * @param string|callback|Closure $column
      * @param string|null $operator
      * @param mixed|null $value
      * 
@@ -1288,15 +1301,20 @@ class Builder
      */
     public function orWhereAny($column, $operator = null, $value = null)
     {
-        if ($value instanceof Closure) {
-            return $this->whereSub($column, "{$operator} ANY", $value, 'or');
-        }
+        // 如果帶入參數只有兩個，則 $value = $operator and $operator = '='
+        // 若否判斷 $operator 在 $this->operators 裡面有無符合的
+        // 有，返回 $operator 無，則返回例外
+        list($value, $operator) = $this->prepareValueAndOperator(
+            $value,
+            $operator,
+            func_num_args() === 2
+        );
 
-        return $this->orWhere($column, "{$operator} ANY", $value);
+        return $this->orWhereSub($column, "{$operator} ANY", $value);
     }
 
     /**
-     * @param string|array|callback|Closure $column
+     * @param string|callback|Closure $column
      * @param string|null $operator
      * @param mixed|null $value
      * 
@@ -1304,15 +1322,20 @@ class Builder
      */
     public function whereAll($column, $operator = null, $value = null)
     {
-        if ($value instanceof Closure) {
-            return $this->whereSub($column, "{$operator} ALL", $value);
-        }
+        // 如果帶入參數只有兩個，則 $value = $operator and $operator = '='
+        // 若否判斷 $operator 在 $this->operators 裡面有無符合的
+        // 有，返回 $operator 無，則返回例外
+        list($value, $operator) = $this->prepareValueAndOperator(
+            $value,
+            $operator,
+            func_num_args() === 2
+        );
 
-        return $this->where($column, "{$operator} ALL", $value);
+        return $this->whereSub($column, "{$operator} ALL", $value);
     }
 
     /**
-     * @param string|array|callback|Closure $column
+     * @param string|callback|Closure $column
      * @param string|null $operator
      * @param mixed|null $value
      * 
@@ -1320,15 +1343,20 @@ class Builder
      */
     public function orWhereAll($column, $operator = null, $value = null)
     {
-        if ($value instanceof Closure) {
-            return $this->whereSub($column, "{$operator} ALL", $value, 'or');
-        }
+        // 如果帶入參數只有兩個，則 $value = $operator and $operator = '='
+        // 若否判斷 $operator 在 $this->operators 裡面有無符合的
+        // 有，返回 $operator 無，則返回例外
+        list($value, $operator) = $this->prepareValueAndOperator(
+            $value,
+            $operator,
+            func_num_args() === 2
+        );
 
-        return $this->orWhere($column, "{$operator} ALL", $value);
+        return $this->orWhereSub($column, "{$operator} ALL", $value);
     }
 
     /**
-     * @param string|array|callback|Closure $column
+     * @param string|callback|Closure $column
      * @param string|null $operator
      * @param mixed|null $value
      * 
@@ -1336,15 +1364,20 @@ class Builder
      */
     public function whereSome($column, $operator = null, $value = null)
     {
-        if ($value instanceof Closure) {
-            return $this->whereSub($column, "{$operator} SOME", $value);
-        }
+        // 如果帶入參數只有兩個，則 $value = $operator and $operator = '='
+        // 若否判斷 $operator 在 $this->operators 裡面有無符合的
+        // 有，返回 $operator 無，則返回例外
+        list($value, $operator) = $this->prepareValueAndOperator(
+            $value,
+            $operator,
+            func_num_args() === 2
+        );
 
-        return $this->where($column, "{$operator} SOME", $value);
+        return $this->whereSub($column, "{$operator} SOME", $value);
     }
 
     /**
-     * @param string|array|callback|Closure $column
+     * @param string|callback|Closure $column
      * @param string|null $operator
      * @param mixed|null $value
      * 
@@ -1352,11 +1385,16 @@ class Builder
      */
     public function orWhereSome($column, $operator = null, $value = null)
     {
-        if ($value instanceof Closure) {
-            return $this->whereSub($column, "{$operator} SOME", $value, 'or');
-        }
+        // 如果帶入參數只有兩個，則 $value = $operator and $operator = '='
+        // 若否判斷 $operator 在 $this->operators 裡面有無符合的
+        // 有，返回 $operator 無，則返回例外
+        list($value, $operator) = $this->prepareValueAndOperator(
+            $value,
+            $operator,
+            func_num_args() === 2
+        );
 
-        return $this->orWhere($column, "{$operator} SOME", $value);
+        return $this->orWhereSub($column, "{$operator} SOME", $value);
     }
 
     /**
@@ -1388,7 +1426,7 @@ class Builder
                 array_values($this->nestedArrayArguments($value, $join))
             );
         } else {
-            call_user_func_array(array($query, 'groupBy'), array($value));
+            call_user_func(array($query, 'groupBy'), $value);
         }
     }
 
@@ -1406,7 +1444,7 @@ class Builder
     }
 
     /**
-     * @param string|array $column
+     * @param string|array|callback|Closure|static $column
      * @param string $sort
      * 
      * @return static
@@ -1418,15 +1456,17 @@ class Builder
             return $this->arrayNested($column, '', 'groupBy');
         }
 
+        $sort = strtoupper($sort);
+
         if ($column instanceof Closure || $column instanceof self) {
             return $this->groupBySub($column, $sort);
         }
 
-        return $this->groupByRaw("{$column} {$sort}");
+        return $this->groupByRaw("{$this->contactBacktick($column)} {$sort}");
     }
 
     /**
-     * @param string|array|callback|Closure|static $column
+     * @param string|callback|Closure|static $column
      * @param string $sort
      * 
      * @return static
@@ -1439,25 +1479,37 @@ class Builder
     }
 
     /**
-     * @param array $column
+     * @param array $columns
      * 
      * @return array
      */
     protected function sortByAsc($columns)
     {
         return Arrays::map($columns, function ($column) {
+            if (is_array($column)) {
+                array_push($column, 'ASC');
+
+                return $column;
+            }
+
             return array($column, 'ASC');
         });
     }
 
     /**
-     * @param array $column
+     * @param array $columns
      * 
      * @return array
      */
     protected function sortByDesc($columns)
     {
         return Arrays::map($columns, function ($column) {
+            if (is_array($column)) {
+                array_push($column, 'DESC');
+
+                return $column;
+            }
+
             return array($column, 'DESC');
         });
     }
@@ -1555,7 +1607,7 @@ class Builder
     /**
      * Add a "having" clause to the query.
      *
-     * @param  string  $column
+     * @param  string|array|closure|static  $column
      * @param  string|null  $operator
      * @param  string|null  $value
      * @param  string  $andOr
@@ -1672,7 +1724,7 @@ class Builder
                 array_values($this->nestedArrayArguments($value, $join))
             );
         } else {
-            call_user_func_array(array($query, 'orderBy'), array($value));
+            call_user_func(array($query, 'orderBy'), $value);
         }
     }
 
@@ -1701,6 +1753,8 @@ class Builder
         if (is_array($column)) {
             return $this->arrayNested($column, '', 'orderBy');
         }
+
+        $sort = strtoupper($sort);
 
         if ($column instanceof Closure || $column instanceof self) {
             return $this->orderBySub($column, $sort);
@@ -1773,8 +1827,10 @@ class Builder
             $this->select($columns);
         }
 
+        $this->limit($this->raw(1));
+
         return $this->getConnection()->exec(
-            $this->toSql() . " LIMIT 1",
+            $this->toSql(),
             $this->getBindings(array('insert', 'update'))
         )->fetch();
     }
@@ -1828,7 +1884,7 @@ class Builder
                 $values = array_merge($values, $bindings);
             } else if ($value instanceof Expression) {
                 if (is_numeric($column)) {
-                    $columns[] = $this->raw($value);
+                    $columns[] = $value;
                 } else {
                     $columns[] = $this->raw("{$this->contactBacktick($column)} = ({$value})");
                 }
@@ -1854,22 +1910,20 @@ class Builder
      * 
      * @throws \InvalidArgumentException
      */
-    public function increment($column, $amount = 1, $data = array())
+    public function increment($column, $amount = 1, $data = array(), $isIncrement = true)
     {
         if (!is_numeric($amount)) {
             throw new \InvalidArgumentException("second Arguments must be numeric");
         }
 
-        $values = $data;
+        $formula = $isIncrement ? '+' : '-';
 
-        array_push($values, $amount);
-
-        return $this->bindingPush($values, 'update')
+        return $this->bindingPush(array($amount), 'update')
             ->update(
                 array_merge(
                     $data,
                     array(
-                        $this->raw("{$this->contactBacktick($column)} = {$this->contactBacktick($column)} + ?")
+                        $this->raw("{$this->contactBacktick($column)} = {$this->contactBacktick($column)} {$formula} ?")
                     )
                 )
             );
@@ -1886,23 +1940,7 @@ class Builder
      */
     public function decrement($column, $amount = 1, $data = array())
     {
-        if (!is_numeric($amount)) {
-            throw new \InvalidArgumentException("second Arguments must be numeric");
-        }
-
-        $values = $data;
-
-        array_push($values, $amount);
-
-        return $this->bindingPush($values, 'update')
-            ->update(
-                array_merge(
-                    $data,
-                    array(
-                        $this->raw("{$this->contactBacktick($column)} = {$this->contactBacktick($column)} - ?")
-                    )
-                )
-            );
+        return $this->increment($column, $amount, $data, false);
     }
 
     /**
@@ -1967,19 +2005,23 @@ class Builder
 
     /**
      * @param string $column
-     * @param string $dateTimeFormat
+     * @param null|mixed $value
      * 
      * @return int
      * 
      * @throws \InvalidArgumentException
      */
-    public function softDelete($column = 'deleted_at', $dateTimeFormat = "Y-m-d H:i:s")
+    public function reStore($column = 'deleted_at', $value = null)
     {
         if (!is_string($column)) {
             throw new \InvalidArgumentException(" first Arguments must be string");
         }
 
-        $value = date($dateTimeFormat);
+        if (is_null($value)) {
+            return $this->update(array(
+                $this->raw("{$this->contactBacktick($column)} = NULL")
+            ));
+        }
 
         return $this->update(array(
             $column => $value
@@ -1988,22 +2030,17 @@ class Builder
 
     /**
      * @param string $column
+     * @param string $dateTimeFormat
      * 
      * @return int
      * 
      * @throws \InvalidArgumentException
      */
-    public function reStore($column = 'deleted_at')
+    public function softDelete($column = 'deleted_at', $dateTimeFormat = "Y-m-d H:i:s")
     {
-        if (!is_string($column)) {
-            throw new \InvalidArgumentException(" first Arguments must be string");
-        }
+        $value = date($dateTimeFormat);
 
-        $value = null;
-
-        return $this->update(array(
-            $column => $value
-        ));
+        return $this->reStore($column, $value);
     }
 
     /**
@@ -2054,7 +2091,7 @@ class Builder
 
             $sql = join(' ', $queries);
 
-            $sql = ltrim(ltrim($sql, 'AND '), 'OR ');
+            $sql = $this->firstJoinReplace($sql);
 
             $type = strtoupper($type);
 
@@ -2121,6 +2158,7 @@ class Builder
 
     /**
      * @param  string  $table
+     * @param  string  $as
      * @param  Closure|string  $first
      * @param  string|null  $operator
      * @param  string|null  $second
@@ -2128,9 +2166,9 @@ class Builder
      * 
      * @return static
      */
-    public function joinSubWhere($table, $first, $operator = null, $second = null, $type = 'inner')
+    public function joinWhereSub($table, $as, $first, $operator = null, $second = null, $type = 'inner')
     {
-        return $this->joinSub($table, $first, $operator, $second, $type, true);
+        return $this->joinSub($table, $as, $first, $operator, $second, $type, true);
     }
 
     /**
@@ -2186,7 +2224,7 @@ class Builder
      * 
      * @return static
      */
-    public function leftJoinSubWhere($table, $as, $first, $operator = null, $second = null)
+    public function leftJoinWhereSub($table, $as, $first, $operator = null, $second = null)
     {
         return $this->joinSub($table, $as, $first, $operator, $second, 'left', true);
     }
@@ -2244,7 +2282,7 @@ class Builder
      * 
      * @return static
      */
-    public function rightJoinSubWhere($table, $as, $first, $operator = null, $second = null)
+    public function rightJoinWhereSub($table, $as, $first, $operator = null, $second = null)
     {
         return $this->joinSub($table, $as, $first, $operator, $second, 'right', true);
     }
@@ -2302,7 +2340,7 @@ class Builder
      * 
      * @return static
      */
-    public function crossJoinSubWhere($table, $as, $first, $operator = null, $second = null)
+    public function crossJoinWhereSub($table, $as, $first, $operator = null, $second = null)
     {
         return $this->joinSub($table, $as, $first, $operator, $second, 'cross', true);
     }
@@ -2362,7 +2400,7 @@ class Builder
      * 
      * @return static
      */
-    public function fullOuterJoinSubWhere($table, $as, $first, $operator = null, $second = null)
+    public function fullOuterJoinWhereSub($table, $as, $first, $operator = null, $second = null)
     {
         return $this->joinSub($table, $as, $first, $operator, $second, 'full outer', true);
     }
@@ -2375,15 +2413,27 @@ class Builder
      */
     public function limit($limit, $offset = null)
     {
-        $bindings = array($limit);
+        $queries = array();
 
-        $queries = array("?");
+        $bindings = array();
 
         if ($offset) {
-            $bindings[] = $offset;
+            if (!$offset instanceof Expression) {
+                $bindings[] = $offset;
+            }
 
-            $queries[] = "?";
+            $queries[] = $offset instanceof Expression ? $offset : '?';
         }
+
+        if ($limit instanceof Expression) {
+            array_unshift($queries, $limit);
+
+            return $this->setQuery('limits', compact('queries', 'bindings'));
+        }
+
+        array_unshift($bindings, $limit);
+
+        array_unshift($queries, '?');
 
         return $this->setQuery('limits', compact('queries', 'bindings'));
     }
@@ -2546,6 +2596,10 @@ class Builder
     public function __call($method, $arguments)
     {
         $method = $this->method($method);
+
+        if (method_exists($this, $method)) {
+            return call_user_func_array(array($this, $method), $arguments);
+        }
 
         $abstract = null;
 

@@ -4,7 +4,7 @@ namespace Wilkques\Database\Connections;
 
 use Wilkques\Helpers\Arrays;
 
-abstract class Connections implements ConnectionInterface
+abstract class Connections
 {
     /** @var array */
     protected $config = array();
@@ -302,9 +302,9 @@ abstract class Connections implements ConnectionInterface
             $index = 0;
 
             return preg_replace_callback('/\?/', function ($match) use (&$index, $queryLog) {
-                $index++;
-
                 $binding = Arrays::get($queryLog, "bindings.{$index}");
+
+                $index++;
 
                 if (is_numeric($binding)) {
                     return $binding;
@@ -331,4 +331,33 @@ abstract class Connections implements ConnectionInterface
      * @return static
      */
     abstract public function newConnection($dns = null);
+
+    /**
+     * @param string $sql
+     * 
+     * @return \Wilkques\Database\Connections\PDO\Statement
+     */
+    abstract public function prepare($sql);
+
+    /**
+     * @param string|null $query
+     * @param array $bindings
+     * 
+     * @return \Wilkques\Database\Connections\PDO\Result
+     */
+    abstract public function exec($query, $bindings = array());
+
+    /**
+     * @param string $database
+     * 
+     * @return static
+     */
+    abstract public function selectDatabase($database);
+
+    /**
+     * @param string|null $sequence
+     * 
+     * @return static
+     */
+    abstract public function getLastInsertId($sequence = null);
 }

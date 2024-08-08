@@ -354,14 +354,16 @@ abstract class Grammar implements GrammarInterface
      */
     public function compilerInsert($query, $data = array(), $sql = null)
     {
-        if (empty($data)) {
-            return "INSERT INTO {$query->getFrom()} DEFAULT VALUES";
-        }
-
         if (!is_array(current($data))) {
             $data = array(
                 $data
             );
+        }
+
+        $from = join(', ', $query->getFrom());
+
+        if (empty(current($data))) {
+            return "INSERT INTO {$from} DEFAULT VALUES";
         }
 
         $columns = Arrays::map(array_keys(current($data)), function ($column) use ($query) {
@@ -369,8 +371,6 @@ abstract class Grammar implements GrammarInterface
         });
         
         $columns = join(', ', $columns);
-
-        $from = join(', ', $query->getFrom());
 
         if (!$sql) {
             $self = $this;

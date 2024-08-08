@@ -3,8 +3,9 @@
 namespace Wilkques\Database\Connections\PDO;
 
 use Wilkques\Database\Connections\Connections;
+use Wilkques\Database\Connections\ResultInterface;
 
-class Result
+class Result implements ResultInterface
 {
     /** @var \PDOStatement */
     protected $statement;
@@ -111,7 +112,7 @@ class Result
     /**
      * @return int
      */
-    public function rowCount(): int
+    public function rowCount()
     {
         $result = $this->getStatement()->rowCount();
 

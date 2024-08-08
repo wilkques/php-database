@@ -348,8 +348,8 @@
     ```php
 
     $db->from('<table name1>')->joinSub(
-        function ($builder) {
-            $builder->table('<table name2>');
+        function ($query) {
+            $query->table('<table name2>');
 
             // do something
         },
@@ -1226,18 +1226,19 @@
     ```php
 
     $db->insertSub([
-        '<ColumnName1>' => 'ColumnValue1>',
-        '<ColumnName2>' => 'ColumnValue2>',
+        '<ColumnName1>'
+        '<ColumnName2>'
         ...
     ], function ($query) {
-        $query->table('<table name>')->select(
-            '<columnName1>',
-            '<ColumnName2>',
+        $query->from('<Sub table name>')->select(
+            '<Sub ColumnName1>',
+            '<Sub ColumnName2>',
             ...
-        )->where('<columnName3>', '<value3>')->where('<columnName4>', '<value4>');
+        )->where('<Sub columnName3>', '<Sub value1>')->where('<Sub columnName4>', '<Sub value2>');
     });
 
-    // output: insert <table> (...) SELECT ...
+    // output: Insert <table> (<ColumnName1>, <ColumnName2>) SELECT <Sub ColumnName1>, <Sub ColumnName2> FROM <Sub table name>
+    // WHERE <Sub columnName3> = <Sub value1> AND <Sub columnName4> = <Sub value2>
     ```
 
 ### Delete
