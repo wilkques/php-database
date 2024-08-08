@@ -10,7 +10,7 @@
 
 ## ENV
 
-1. php >= 5.3
+1. php >= 5.4
 1. mysql >= 5.6
 1. PDO extension
 
