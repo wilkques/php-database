@@ -136,16 +136,6 @@ class JoinClause extends Builder
     }
 
     /**
-     * Create a new query instance for sub-query.
-     *
-     * @return Builder
-     */
-    protected function forSubQuery()
-    {
-        return $this->newParentQuery()->newQuery();
-    }
-
-    /**
      * Create a new parent query instance.
      *
      * @return Builder
@@ -155,5 +145,15 @@ class JoinClause extends Builder
         $parentClass = $this->getParentClass();
 
         return new $parentClass($this->getConnection(), $this->getGrammar(), $this->getProcessor());
+    }
+
+    /**
+     * Create a new query instance for sub-query.
+     *
+     * @return Builder
+     */
+    protected function forSubQuery()
+    {
+        return $this->newParentQuery()->newQuery();
     }
 }
