@@ -12,8 +12,18 @@ class DatabaseTest extends TestCase
 {
     public function testConnection()
     {
+        $driver = 'mysql';
+
+        $host = getenv('DB_HOST') ?: '127.0.0.1';
+
+        $username = getenv('DB_USER') ?: 'user';
+
+        $password = getenv('DB_PASSWORD') ?: 'root';
+
+        $database = getenv('DB_NAME') ?: 'test';
+
         $builder = Database::connect(
-            'mysql', 'mariadb', 'user', 'root', 'test'
+            $driver, $host, $username, $password, $database
         );
 
         $this->assertTrue(
@@ -28,13 +38,7 @@ class DatabaseTest extends TestCase
             $builder->getGrammar() instanceof MySqlGrammar
         );
 
-        $builder = Database::connect([
-            'driver'    => 'mysql',
-            'host'      => 'mariadb',
-            'username'  => 'user',
-            'password'  => 'root',
-            'database'  => 'test',
-        ]);
+        $builder = Database::connect(compact('driver', 'host', 'username', 'password', 'database'));
 
         $this->assertTrue(
             $builder instanceof Builder
