@@ -5183,7 +5183,7 @@ class BuilderTest extends TestCase
         );
     }
 
-    private function result()
+    private function dbResult()
     {
         $createMock = method_exists($this, 'createMock') ? 'createMock' : 'getMock';
 
@@ -5194,7 +5194,7 @@ class BuilderTest extends TestCase
     {
         $connection = $this->connection();
 
-        $result = $this->result();
+        $result = $this->dbResult();
 
         $method = $isFirst ? 'fetch' : 'fetchAll';
 
@@ -5318,7 +5318,7 @@ class BuilderTest extends TestCase
     {
         $connection = $this->connection();
 
-        $result = $this->result();
+        $result = $this->dbResult();
 
         $result->expects($this->once())->method('rowCount')->willReturn(1);
 
@@ -7106,7 +7106,7 @@ class BuilderTest extends TestCase
 
         $connection = $this->resultConnect(false);
 
-        $result = $this->result();
+        $result = $this->dbResult();
 
         $connection->expects($this->any())->method('exec')
             ->willReturnCallback(function ($query, $bindings) use ($connection, $result) {
@@ -7153,7 +7153,7 @@ class BuilderTest extends TestCase
 
         $connection = $this->resultConnect();
 
-        $result = $this->result();
+        $result = $this->dbResult();
 
         $connection->expects($this->any())->method('exec')
             ->willReturnCallback(function ($query, $bindings) use ($connection, $result) {
