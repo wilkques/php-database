@@ -13,7 +13,7 @@ class BuilderTest extends TestCase
     public function testConnection()
     {
         $builder = Database::connect(
-            'mysql', 'mariadb', 'root', 'root', 'test'
+            'mysql', 'mariadb', 'user', 'root', 'test'
         );
 
         $this->assertTrue(
@@ -31,7 +31,7 @@ class BuilderTest extends TestCase
         $builder = Database::connect([
             'driver'    => 'mysql',
             'host'      => 'mariadb',
-            'username'  => 'root',
+            'username'  => 'user',
             'password'  => 'root',
             'database'  => 'test',
         ]);
