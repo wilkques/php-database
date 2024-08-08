@@ -8,7 +8,7 @@ use Wilkques\Database\Database;
 use Wilkques\Database\Queries\Builder;
 use Wilkques\Database\Queries\Grammar\Drivers\MySql as MySqlGrammar;
 
-class BuilderTest extends TestCase
+class DatabaseTest extends TestCase
 {
     public function testConnection()
     {
