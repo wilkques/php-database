@@ -1,6 +1,6 @@
 <?php
 
-namespace Wilkques\Tests\Queries;
+namespace Wilkques\Tests\Units\Queries;
 
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;

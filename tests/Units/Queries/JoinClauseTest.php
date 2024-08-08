@@ -1,6 +1,6 @@
 <?php
 
-namespace Wilkques\Tests\Queries;
+namespace Wilkques\Tests\Units\Queries;
 
 use PHPUnit\Framework\TestCase;
 use Wilkques\Database\Queries\Builder;

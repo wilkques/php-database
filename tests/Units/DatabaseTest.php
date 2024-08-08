@@ -1,6 +1,6 @@
 <?php
 
-namespace Wilkques\Tests;
+namespace Wilkques\Tests\Units;
 
 use PHPUnit\Framework\TestCase;
 use Wilkques\Database\Connections\PDO\Drivers\MySql as MySqlConnection;
