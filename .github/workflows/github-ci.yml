@@ -29,9 +29,22 @@ jobs:
           - 3306:3306
         options: --health-cmd="mysqladmin ping --silent" --health-interval=10s
 
-    name: PHP ${{ matrix.php-versions }} Test on ${{ matrix.operating-system }}
     steps:
-    - uses: actions/checkout@v3
+    - name: PHP ${{ matrix.php-versions }} Test on ${{ matrix.operating-system }}
+      uses: actions/checkout@v3
+
+    - name: Wait for MySQL to be ready
+      run: |
+        for i in {1..30}; do
+          if mysql -h 127.0.0.1 -P 3306 -u root -prootpassword -e "SELECT 1;" > /dev/null 2>&1; then
+            echo "MySQL is up and running."
+            exit 0
+          fi
+          echo "Waiting for MySQL..."
+          sleep 5
+        done
+        echo "MySQL did not start in time."
+        exit 1
 
     - name: Install PHP
       uses: shivammathur/setup-php@v2
