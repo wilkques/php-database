@@ -10,7 +10,7 @@ class Connections
     /**
      * @param array $config
      * 
-     * @return \Wilkques\Database\Connections\ConnectionInterface
+     * @return \Wilkques\Database\Connections\Connections
      */
     public function connection($config)
     {
@@ -28,7 +28,7 @@ class Connections
     /**
      * @param array $config
      * 
-     * @return \Wilkques\Database\Connections\ConnectionInterface
+     * @return \Wilkques\Database\Connections\Connections
      */
     public static function connect($config)
     {

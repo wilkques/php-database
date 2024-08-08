@@ -3,24 +3,30 @@
 namespace Wilkques\Database\Connections\Connectors\PDO\Drivers;
 
 use Wilkques\Database\Connections\Connectors\Connector;
+use Wilkques\Helpers\Arrays;
 
 class MySqlConnector extends Connector
 {
     /**
      * @param array $config
      * 
-     * @return \Wilkques\Database\Connections\ConnectionInterface
+     * @return \Wilkques\Database\Connections\Connections
      */
     public function connection($config)
     {
-        list(
-            'host'          => $host,
-            'username'      => $username,
-            'password'      => $password,
-            'database'      => $database,
-            'port'          => $port,
-            'charset'       => $charset,
-        ) = $this->config($config);
+        $config = $this->config($config);
+
+        $host = Arrays::get($config, 'host');
+
+        $username = Arrays::get($config, 'username');
+
+        $password = Arrays::get($config, 'password');
+
+        $database = Arrays::get($config, 'database');
+
+        $port = Arrays::get($config, 'port');
+
+        $charset = Arrays::get($config, 'charset');
 
         /** 
          * @var \Wilkques\Database\Connections\Connections|\Wilkques\Database\Connections\PDO\Drivers\MySql

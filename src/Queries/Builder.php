@@ -94,6 +94,10 @@ class Builder
      */
     protected function resolverRegister($abstract, $resolver = null)
     {
+        if (is_null($abstract)) {
+            return $this;
+        }
+
         if (is_object($abstract)) {
             $resolver = $abstract;
 

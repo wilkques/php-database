@@ -124,7 +124,7 @@ class Result implements ResultInterface
     /**
      * @return int
      */
-    public function columnCount(): int
+    public function columnCount()
     {
         $result = $this->getStatement()->columnCount();
 
@@ -136,7 +136,7 @@ class Result implements ResultInterface
     /**
      * @return void
      */
-    public function free(): void
+    public function free()
     {
         $this->getStatement()->closeCursor();
     }

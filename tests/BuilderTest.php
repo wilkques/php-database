@@ -1,6 +1,6 @@
 <?php
 
-namespace Wilkques\Helpers\Tests\Grammar;
+namespace Wilkques\Tests;
 
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;

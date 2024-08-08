@@ -35,17 +35,13 @@
     require "vendor/autoload.php";
     ```
 
-1. connect
+1. start
     ```php
-    $connection = new \Wilkques\Database\Connections\PDO\Drivers\MySql('<host>', '<username>', '<password>', '<database>', '<port>', '<character>');
+    $connection = \Wilkques\Database\Database::connect('<host>', '<username>', '<password>', '<database>', '<port>', '<character>');
 
     // or
 
-    $connection = \Wilkques\Database\Connections\PDO\Drivers\MySql::connect('<host>', '<username>', '<password>', '<database>', '<port>', '<character>');
-
-    // or
-
-    $connection = (new \Wilkques\Database\Connections\Connectors\PDO\Connections)->connection([
+    $connection = \Wilkques\Database\Database::connect([
         'driver'    => '<DB driver>',   // mysql
         'host'      => '<host>',        // default localhost
         'username'  => '<username>',
@@ -54,66 +50,6 @@
         'port'      => '<port>',        // default 3360
         'charset'   => '<character>',   // default utf8mb4
     ]);
-
-    // or
-
-    $connection = \Wilkques\Database\Connections\Connectors\PDO\Connections::connect([
-        'driver'    => '<DB driver>',   // mysql
-        'host'      => '<host>',        // default localhost
-        'username'  => '<username>',
-        'password'  => '<password>',
-        'database'  => '<database>',
-        'port'      => '<port>',        // default 3360
-        'charset'   => '<character>',   // default utf8mb4
-    ]);
-    ```
-
-1. Using
-    ```php
-    $db = new \Wilkques\Database\Queries\Builder(
-        $connection,
-        new \Wilkques\Database\Queries\Grammar\Drivers\MySql,
-        new \Wilkques\Database\Queries\Processors\Processor,
-    );
-
-    // or 
-    
-    $db = \Wilkques\Database\Queries\Builder::make(
-        $connection,
-        new \Wilkques\Database\Queries\Grammar\Drivers\MySql,
-        new \Wilkques\Database\Queries\Processors\Processor,
-    );
-    ```
-
-1. connect other connection or database
-    ```php
-    $connection1 = \Wilkques\Database\Connections\Connectors\PDO\Connections::connect([
-        'driver'    => '<DB driver>',   // mysql
-        'host'      => '<host>',        // default localhost
-        'username'  => '<username>',
-        'password'  => '<password>',
-        'database'  => '<database>',
-        'port'      => '<port>',        // default 3360
-        'charset'   => '<character>',   // default utf8mb4
-    ]);
-
-    $db->table('<table name>')->where(function ($query) use ($connection1) {
-        $query->setConnection(
-            $connection1
-        )->table('<table name1>');
-
-        // do something ...
-    });
-
-    // or
-
-    $db1 = \Wilkques\Database\Queries\Builder::make(
-        $connection1,
-        new \Wilkques\Database\Queries\Grammar\Drivers\MySql,
-        new \Wilkques\Database\Queries\Processors\Processor,
-    );
-
-    $db->table('<table name>')->where($db1->table('<table name1>'));
     ```
 
 ## Methods
