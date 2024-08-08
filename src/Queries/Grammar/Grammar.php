@@ -354,7 +354,9 @@ abstract class Grammar implements GrammarInterface
      */
     public function compilerInsert($query, $data = array(), $sql = null)
     {
-        if (!is_array(current($data))) {
+        $current = current($data);
+
+        if (!is_array($current)) {
             $data = array(
                 $data
             );
@@ -362,7 +364,9 @@ abstract class Grammar implements GrammarInterface
 
         $from = join(', ', $query->getFrom());
 
-        if (empty(current($data))) {
+        $current = current($data);
+
+        if (empty($current)) {
             return "INSERT INTO {$from} DEFAULT VALUES";
         }
 
