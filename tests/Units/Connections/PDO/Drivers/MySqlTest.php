@@ -24,6 +24,12 @@ class MySqlTest extends TestCase
         $this->setupDatabase();
     }
 
+    protected function tearDown(): void
+    {
+        // 清理测试环境
+        $this->cleanupDatabase();
+    }
+
     private function connection()
     {
         $host = getenv('DB_HOST') ?: 'mariadb';
@@ -37,12 +43,6 @@ class MySqlTest extends TestCase
         $connection = MySql::connect($host, $username, $password, $database);
 
         $this->connection = $connection->newConnection();
-    }
-
-    protected function tearDown()
-    {
-        // 清理测试环境
-        $this->cleanupDatabase();
     }
 
     private function setupDatabase()
