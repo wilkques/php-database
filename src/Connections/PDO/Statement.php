@@ -200,6 +200,28 @@ class Statement
     }
 
     /**
+     * @param string $bindMethod
+     * @param array $params
+     * @param \Closure|null $callback
+     * 
+     * @return static
+     */
+    public function binding($bindMethod, $params = array(), \Closure $callback = null)
+    {
+        $params = $params ?: $this->getParams();
+
+        $datas = $callback ? $callback($params) : $params;
+
+        array_map(function ($item, $index) use ($bindMethod) {
+            is_numeric($index) && ++$index;
+
+            call_user_func_array(array($this, $bindMethod), array($index, $item));
+        }, $datas, array_keys($datas));
+
+        return $this;
+    }
+
+    /**
      * @param array|[] $params
      * 
      * @return static
@@ -211,7 +233,9 @@ class Statement
 
             foreach ($params as $item) {
                 if (is_array($item)) {
-                    call_user_func('array_push', $newParams, array_values($item));
+                    $item = array_values($item);
+
+                    $newParams = array_merge($newParams, $item);
                 } else {
                     array_push($newParams, $item);
                 }
@@ -233,7 +257,9 @@ class Statement
 
             foreach ($params as $item) {
                 if (is_array($item)) {
-                    call_user_func('array_push', $newParams, array_values($item));
+                    $item = array_values($item);
+
+                    $newParams = array_merge($newParams, $item);
                 } else {
                     array_push($newParams, $item);
                 }
@@ -241,28 +267,6 @@ class Statement
 
             return $newParams;
         });
-    }
-
-    /**
-     * @param string $bindMethod
-     * @param array $params
-     * @param \Closure|null $callback
-     * 
-     * @return static
-     */
-    public function binding($bindMethod, $params = array(), \Closure $callback = null)
-    {
-        $params = $params ?: $this->getParams();
-
-        $datas = $callback ? $callback($params) : $params;
-
-        array_map(function ($item, $index) use ($bindMethod) {
-            is_numeric($index) && ++$index;
-
-            call_user_func_array(array($this, $bindMethod), array($index, $item));
-        }, $datas, array_keys($datas));
-
-        return $this;
     }
 
     /**
