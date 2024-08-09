@@ -32,13 +32,13 @@ class MySqlTest extends TestCase
 
     private function connection()
     {
-        $host = getenv('DB_HOST') ?: 'mariadb';
+        $host = getenv('DB_HOST') ?: '127.0.0.1';
 
-        $username = getenv('DB_USER') ?: 'root';
+        $username = getenv('DB_USER') ?: 'user';
 
         $password = getenv('DB_PASSWORD') ?: 'root';
 
-        $database = getenv('DB_NAME') ?: 'try';
+        $database = getenv('DB_NAME') ?: 'test';
 
         $connection = MySql::connect($host, $username, $password, $database);
 
