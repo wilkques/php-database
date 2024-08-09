@@ -8,7 +8,8 @@
     },
     "require-dev": {
         "phpunit/phpunit": "*",
-        "mockery/mockery": "*"
+        "mockery/mockery": "*",
+        "vlucas/phpdotenv": "*"
     },
     "autoload": {
         "psr-4": {

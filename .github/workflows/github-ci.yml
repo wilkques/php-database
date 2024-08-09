@@ -22,12 +22,14 @@ jobs:
         image: mysql:5.7
         env:
           MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: test
+          MYSQL_DATABASE_1: test
+          MYSQL_DATABASE_2: try
           MYSQL_USER: user
           MYSQL_PASSWORD: root
         ports:
           - 3306:3306
         options: --health-cmd "mysqladmin ping -h 127.0.0.1" --health-interval 20s --health-timeout 10s --health-retries 10
+
 
     steps:
     - name: PHP ${{ matrix.php-versions }} Test on ${{ matrix.operating-system }}
@@ -55,11 +57,8 @@ jobs:
     # Add a test script to composer.json, for instance: "test": "vendor/bin/phpunit"
     # Docs: https://getcomposer.org/doc/articles/scripts.md
 
+    - name: set env
+      run: cp tests/.env.example tests/.env
+
     - name: Run test
-      env:
-        DB_HOST: 127.0.0.1
-        DB_PORT: 3306
-        DB_USER: user
-        DB_PASSWORD: root
-        DB_NAME: test
       run: vendor/bin/phpunit

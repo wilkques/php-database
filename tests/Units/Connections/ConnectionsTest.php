@@ -11,13 +11,19 @@ class ConnectionsTest extends TestCase
     {
         $driver = 'mysql';
 
-        $host = getenv('DB_HOST') ?: '127.0.0.1';
+        $dir = dirname(dirname(__DIR__));
 
-        $username = getenv('DB_USER') ?: 'user';
+        $dotenv = \Dotenv\Dotenv::createImmutable($dir);
 
-        $password = getenv('DB_PASSWORD') ?: 'root';
+        $dotenv->load();
 
-        $database = getenv('DB_NAME') ?: 'test';
+        $host = getenv('DB_HOST');
+
+        $username = getenv('DB_USER');
+
+        $password = getenv('DB_PASSWORD');
+
+        $database = getenv('DB_NAME_1');
 
         return $this->getMockForAbstractClass(
             'Wilkques\Database\Connections\Connections',
@@ -38,13 +44,19 @@ class ConnectionsTest extends TestCase
     {
         $driver = 'mysql';
 
-        $host = getenv('DB_HOST') ?: '127.0.0.1';
+        $dir = dirname(dirname(__DIR__));
 
-        $username = getenv('DB_USER') ?: 'user';
+        $dotenv = \Dotenv\Dotenv::createImmutable($dir);
 
-        $password = getenv('DB_PASSWORD') ?: 'root';
+        $dotenv->load();
 
-        $database = getenv('DB_NAME') ?: 'test';
+        $host = getenv('DB_HOST');
+
+        $username = getenv('DB_USER');
+
+        $password = getenv('DB_PASSWORD');
+
+        $database = getenv('DB_NAME_1');
 
         $connections = \Wilkques\Database\Connections\PDO\Drivers\MySql::connect(
             compact('driver', 'host', 'username', 'password', 'database')

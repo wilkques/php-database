@@ -11,7 +11,7 @@ class MySqlTest extends TestCase
     /** @var MySql */
     private $connection;
 
-    protected function setUp(): void
+    protected function setUp()
     {
         parent::setUp();
 
@@ -24,7 +24,7 @@ class MySqlTest extends TestCase
         $this->setupDatabase();
     }
 
-    protected function tearDown(): void
+    protected function tearDown()
     {
         // 清理测试环境
         $this->cleanupDatabase();
@@ -32,17 +32,26 @@ class MySqlTest extends TestCase
 
     private function connection()
     {
-        $host = getenv('DB_HOST') ?: '127.0.0.1';
+        $dir = dirname(dirname(dirname(dirname(__DIR__))));
+        
+        $dotenv = \Dotenv\Dotenv::createImmutable($dir);
 
-        $username = getenv('DB_USER') ?: 'user';
+        $dotenv->load();
 
-        $password = getenv('DB_PASSWORD') ?: 'root';
+        $host = getenv('DB_HOST');
 
-        $database = getenv('DB_NAME') ?: 'test';
+        $username = getenv('DB_USER');
+
+        $password = getenv('DB_PASSWORD');
+
+        $database = getenv('DB_NAME_1');
 
         $connection = MySql::connect($host, $username, $password, $database);
-
-        $this->connection = $connection->newConnection();
+        try {
+            $this->connection = $connection->newConnection();
+        } catch (\Exception $e) {
+            ved($e->getMessage());
+        }
     }
 
     private function setupDatabase()
@@ -263,7 +272,7 @@ class MySqlTest extends TestCase
 
     public function testSelectDatabase()
     {
-        $result = $this->connection->selectDatabase('try');
+        $result = $this->connection->selectDatabase(getenv('DB_NAME_2'));
 
         $this->assertTrue(
             $result instanceof MySql
