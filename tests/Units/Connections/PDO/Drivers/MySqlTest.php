@@ -8,9 +8,6 @@ use Wilkques\Database\Connections\PDO\Drivers\MySql;
 
 class MySqlTest extends TestCase
 {
-    /** @var MySql */
-    private $connection;
-
     private function connection()
     {
         $dir = dirname(dirname(dirname(dirname(__DIR__))));

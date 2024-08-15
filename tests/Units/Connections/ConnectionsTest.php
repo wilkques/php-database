@@ -9,7 +9,7 @@ class ConnectionsTest extends TestCase
 {
     private function connection()
     {
-        $driver = 'mysql';
+        $driver = getenv('DB_DRIVER');
 
         $dir = dirname(dirname(__DIR__));
 
@@ -42,7 +42,7 @@ class ConnectionsTest extends TestCase
 
     public function testConnect()
     {
-        $driver = 'mysql';
+        $driver = getenv('DB_DRIVER');
 
         $dir = dirname(dirname(__DIR__));
 
