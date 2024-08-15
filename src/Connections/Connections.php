@@ -18,6 +18,9 @@ abstract class Connections
     /** @var array */
     protected $queryLog = array();
 
+    /** @var \Wilkques\Database\Queries\Grammar\Grammar */
+    protected $grammar;
+
     /**
      * @param string $host
      * @param string $username
@@ -33,7 +36,8 @@ abstract class Connections
             ->setPassword($password)
             ->setDatabase($database)
             ->setPort($port)
-            ->setCharacterSet($characterSet);
+            ->setCharacterSet($characterSet)
+            ->useDefaultQueryGrammar();
     }
 
     /**
@@ -64,7 +68,7 @@ abstract class Connections
     }
 
     /**
-     * @return mixed
+     * @return \PDO
      */
     public function getConnection()
     {
@@ -203,6 +207,14 @@ abstract class Connections
     public function getCharacterSet()
     {
         return $this->getConfig('characterSet');
+    }
+
+    /**
+     * @return \Wilkques\Database\Queries\Grammar\Grammar
+     */
+    protected function useDefaultQueryGrammar()
+    {
+        $this->grammar = new \Wilkques\Database\Queries\Grammar\Grammar;
     }
 
     /**

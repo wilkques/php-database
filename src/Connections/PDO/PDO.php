@@ -10,6 +10,9 @@ abstract class PDO extends Connections
 {
     use DetectsLostConnections;
 
+    /** @var int */
+    protected $transactions = 0;
+
     /**
      * @param int $attribute
      * @param mixed $value
@@ -65,7 +68,36 @@ abstract class PDO extends Connections
      */
     public function beginTransaction()
     {
-        return $this->getConnection()->beginTransaction();
+        if (!$this->transactions++) {
+            $this->reconnectIfMissingConnection();
+
+            try {
+                return $this->getConnection()->beginTransaction();
+            } catch (\Exception $e) {
+                $this->handleBeginTransactionException($e);
+            }
+        } else if ($this->transactions >= 1 && $this->grammar->supportsSavepoints()) {
+            return $this->exec(
+                $this->grammar->compileSavepoint('trans' . ($this->transactions + 1))
+            );
+        }
+    }
+
+    /**
+     * Handle an exception from a transaction beginning.
+     *
+     * @param  \Throwable|\Exception  $e
+     * @return void
+     *
+     * @throws \Throwable|\Exception
+     */
+    protected function handleBeginTransactionException($e)
+    {
+        if ($this->causedByLostConnection($e)) {
+            $this->reConnection()->getConnection()->beginTransaction();
+        } else {
+            throw $e;
+        }
     }
 
     /**
@@ -73,7 +105,11 @@ abstract class PDO extends Connections
      */
     public function commit()
     {
-        return $this->getConnection()->commit();
+        if (!--$this->transactions) {
+            return $this->getConnection()->commit();
+        }
+
+        return $this->transactions >= 0;
     }
 
     /**
@@ -81,7 +117,38 @@ abstract class PDO extends Connections
      */
     public function rollback()
     {
-        return $this->getConnection()->rollBack();
+        try {
+            if (--$this->transactions && $this->grammar->supportsSavepoints()) {
+                $this->exec(
+                    $this->grammar->compileSavepoint('trans' . ($this->transactions + 1))
+                );
+    
+                return true;
+            }
+    
+            return $this->getConnection()->rollBack();
+        } catch (\Exception $e) {
+            $this->handleRollBackException($e);
+        }
+    }
+
+    /**
+     * Handle an exception from a rollback.
+     *
+     * @param  \Throwable|\Exception  $e
+     * @return void
+     *
+     * @throws \Throwable|\Exception
+     */
+    protected function handleRollBackException($e)
+    {
+        if ($this->causedByLostConnection($e)) {
+            $this->transactions = 0;
+
+            $this->reConnection()->getConnection()->rollBack();
+        }
+
+        throw $e;
     }
 
     /**
@@ -89,7 +156,7 @@ abstract class PDO extends Connections
      */
     public function inTransation()
     {
-        return $this->getConnection()->inTransaction();
+        return $this->transactions > 0;
     }
 
     /**
@@ -118,7 +185,7 @@ abstract class PDO extends Connections
      * 
      * @return static
      */
-    public function reConnecntion($dns = null)
+    public function reConnection($dns = null)
     {
         return $this->newConnection($dns);
     }
@@ -185,7 +252,7 @@ abstract class PDO extends Connections
     protected function tryAgainIfCausedByLostConnection(Exception $e, $query, $bindings)
     {
         if ($this->causedByLostConnection($e)) {
-            $this->reConnecntion();
+            $this->reConnection();
 
             return $this->run($query, $bindings);
         }
@@ -201,7 +268,7 @@ abstract class PDO extends Connections
     protected function reconnectIfMissingConnection()
     {
         if (is_null($this->getConnection())) {
-            $this->reConnecntion();
+            $this->reConnection();
         }
 
         return $this;

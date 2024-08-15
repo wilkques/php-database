@@ -7,7 +7,7 @@ use PHPUnit\Framework\TestCase;
 use Wilkques\Database\Connections\Connections;
 use Wilkques\Database\Queries\Builder;
 use Wilkques\Database\Queries\Expression;
-use Wilkques\Database\Queries\Grammar\GrammarInterface;
+use Wilkques\Database\Queries\Grammar\Grammar;
 use Wilkques\Database\Queries\JoinClause;
 use Wilkques\Database\Queries\Processors\ProcessorInterface;
 
@@ -103,7 +103,7 @@ class BuilderTest extends TestCase
         );
 
         $this->assertTrue(
-            $getResolverMethod->invoke($builder, 'Wilkques\Database\Queries\Grammar\GrammarInterface') instanceof GrammarInterface
+            $getResolverMethod->invoke($builder, 'Wilkques\Database\Queries\Grammar\Grammar') instanceof Grammar
         );
 
         $this->assertTrue(
@@ -151,7 +151,7 @@ class BuilderTest extends TestCase
         $grammar = $builder->getGrammar();
 
         $this->assertTrue(
-            $grammar instanceof GrammarInterface
+            $grammar instanceof Grammar
         );
     }
 
@@ -7233,18 +7233,12 @@ class BuilderTest extends TestCase
     {
         $builder = $this->builder();
 
-        $grammar = $this->grammar();
-
-        $grammar->expects($this->any())->method('lockForUpdate')->willReturn('FOR UPDATE');
-
-        $builder->setGrammar($grammar);
-
         $builder->from('abc');
 
         $builder->lockForUpdate();
 
         $this->assertEquals(
-            'FOR UPDATE',
+            'lockForUpdate',
             $builder->getQuery('lock')
         );
     }
@@ -7253,18 +7247,12 @@ class BuilderTest extends TestCase
     {
         $builder = $this->builder();
 
-        $grammar = $this->grammar();
-
-        $grammar->expects($this->any())->method('sharedLock')->willReturn('LOCK IN SHARE MODE');
-
-        $builder->setGrammar($grammar);
-
         $builder->from('abc');
 
         $builder->sharedLock();
 
         $this->assertEquals(
-            'LOCK IN SHARE MODE',
+            'sharedLock',
             $builder->getQuery('lock')
         );
     }

@@ -72,7 +72,7 @@ class Statement
      * 
      * @return static
      */
-    public function debug($debug = true)
+    public function setDebug($debug = true)
     {
         $this->debug = $debug;
 

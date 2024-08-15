@@ -5,7 +5,7 @@ namespace Wilkques\Database\Queries;
 use Closure;
 use InvalidArgumentException;
 use Wilkques\Database\Connections\Connections;
-use Wilkques\Database\Queries\Grammar\GrammarInterface;
+use Wilkques\Database\Queries\Grammar\Grammar;
 use Wilkques\Database\Queries\Processors\ProcessorInterface;
 use Wilkques\Helpers\Arrays;
 
@@ -58,12 +58,12 @@ class Builder
 
     /**
      * @param Connections $connection
-     * @param GrammarInterface|null $grammar
+     * @param Grammar|null $grammar
      * @param ProcessorInterface|null $processor
      */
     public function __construct(
         Connections $connection,
-        GrammarInterface $grammar = null,
+        Grammar $grammar = null,
         ProcessorInterface $processor = null
     ) {
         $this->setConnection($connection)
@@ -73,14 +73,14 @@ class Builder
 
     /**
      * @param Connections $connection
-     * @param GrammarInterface|null $grammar
+     * @param Grammar|null $grammar
      * @param ProcessorInterface|null $processor
      * 
      * @return static
      */
     public static function make(
         Connections $connection,
-        GrammarInterface $grammar = null,
+        Grammar $grammar = null,
         ProcessorInterface $processor = null
     ) {
         return new static($connection, $grammar, $processor);
@@ -152,21 +152,21 @@ class Builder
     }
 
     /**
-     * @param GrammarInterface $grammar
+     * @param Grammar $grammar
      * 
      * @return static
      */
-    public function setGrammar(GrammarInterface $grammar = null)
+    public function setGrammar(Grammar $grammar = null)
     {
         return $this->resolverRegister($grammar);
     }
 
     /**
-     * @return GrammarInterface
+     * @return Grammar
      */
     public function getGrammar()
     {
-        return $this->getResolver('Wilkques\Database\Queries\Grammar\GrammarInterface');
+        return $this->getResolver('Wilkques\Database\Queries\Grammar\Grammar');
     }
 
     /**
@@ -2536,7 +2536,7 @@ class Builder
      */
     public function lockForUpdate()
     {
-        return $this->setQuery('lock', $this->getGrammar()->lockForUpdate());
+        return $this->setQuery('lock', 'lockForUpdate');
     }
 
     /**
@@ -2544,7 +2544,7 @@ class Builder
      */
     public function sharedLock()
     {
-        return $this->setQuery('lock', $this->getGrammar()->sharedLock());
+        return $this->setQuery('lock', 'sharedLock');
     }
 
     /**
@@ -2624,7 +2624,7 @@ class Builder
 
             is_object($abstract) && $this->resolverRegister($abstract);
 
-            if ($abstract instanceof GrammarInterface) {
+            if ($abstract instanceof Grammar) {
                 $abstract = $this;
             }
         }

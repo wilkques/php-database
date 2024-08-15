@@ -20,10 +20,8 @@ class StatementTest extends TestCase
     /** @var MockObject|Connections */
     private $connections;
 
-    protected function setUp(): void
+    private function init()
     {
-        parent::setUp();
-
         // Mock PDOStatement
         $this->pdoStatement = $this->createMock('PDOStatement');
 
@@ -36,6 +34,8 @@ class StatementTest extends TestCase
 
     public function testGetStatement()
     {
+        $this->init();
+
         $this->assertTrue(
             $this->statement->getStatement() instanceof PDOStatement
         );
@@ -43,6 +43,8 @@ class StatementTest extends TestCase
 
     public function testSetStatement()
     {
+        $this->init();
+
         $this->statement->setStatement($this->pdoStatement);
 
         $this->assertTrue(
@@ -52,6 +54,8 @@ class StatementTest extends TestCase
 
     public function testGetConnections()
     {
+        $this->init();
+
         $this->assertTrue(
             $this->statement->getConnections() instanceof MySql
         );
@@ -59,6 +63,8 @@ class StatementTest extends TestCase
 
     public function testSetConnections()
     {
+        $this->init();
+
         $this->statement->setConnections($this->connections);
 
         $this->assertTrue(
@@ -68,6 +74,8 @@ class StatementTest extends TestCase
 
     public function testGetDebug()
     {
+        $this->init();
+
         $this->assertFalse(
             $this->statement->getDebug()
         );
@@ -75,6 +83,8 @@ class StatementTest extends TestCase
 
     public function testDebug()
     {
+        $this->init();
+
         $this->statement->debug();
 
         $this->assertTrue(
@@ -84,6 +94,8 @@ class StatementTest extends TestCase
 
     public function testGetParam()
     {
+        $this->init();
+
         try {
             $this->statement->getParam('abc');
         } catch (\Exception $e) {
@@ -96,6 +108,8 @@ class StatementTest extends TestCase
 
     public function testSetParam()
     {
+        $this->init();
+
         $this->statement->setParam('abc', 1);
 
         $this->assertNotEmpty(
@@ -105,6 +119,8 @@ class StatementTest extends TestCase
 
     public function testGetParams()
     {
+        $this->init();
+
         $this->assertEmpty(
             $this->statement->getParams()
         );
@@ -112,6 +128,8 @@ class StatementTest extends TestCase
 
     public function testSetParams()
     {
+        $this->init();
+
         $this->statement->setParams(array('abc' => 1));
 
         $this->assertNotEmpty(
@@ -121,6 +139,8 @@ class StatementTest extends TestCase
 
     public function testBindVarsType()
     {
+        $this->init();
+
         $statement = new ReflectionMethod($this->statement, 'bindVarsType');
 
         $statement->setAccessible(true);
@@ -158,6 +178,8 @@ class StatementTest extends TestCase
 
     public function testBindParam()
     {
+        $this->init();
+
         $param = 'abc';
 
         $value = 1;
@@ -175,6 +197,8 @@ class StatementTest extends TestCase
 
     public function testBindParamWithDefaultVarsType()
     {
+        $this->init();
+
         $param = 'abc';
 
         $value = 1;
@@ -198,6 +222,8 @@ class StatementTest extends TestCase
 
     public function testBindValue()
     {
+        $this->init();
+
         $param = 'abc';
 
         $value = 1;
@@ -215,6 +241,8 @@ class StatementTest extends TestCase
 
     public function testBindValueWithDefaultVarsType()
     {
+        $this->init();
+
         $param = 'param1';
 
         $value = 1;
@@ -238,6 +266,8 @@ class StatementTest extends TestCase
 
     public function testBindingWithSimpleArray()
     {
+        $this->init();
+
         $params = array(
             'param1' => 'value1',
             'param2' => 'value2'
@@ -252,7 +282,7 @@ class StatementTest extends TestCase
             );
 
         // Call the binding method with a callback
-        $this->statement->binding('bindParam', $params, function($params) {
+        $this->statement->binding('bindParam', $params, function ($params) {
             $newParams = array();
 
             foreach ($params as $item) {
@@ -269,6 +299,8 @@ class StatementTest extends TestCase
 
     public function testBindingWithArrayOfArrays()
     {
+        $this->init();
+
         $params = array(
             array('param1' => 'value1'),
             array('param2' => 'value2'),
@@ -283,7 +315,7 @@ class StatementTest extends TestCase
             );
 
         // Call the binding method with a callback
-        $this->statement->binding('bindParam', $params, function($params) {
+        $this->statement->binding('bindParam', $params, function ($params) {
             $newParams = array();
 
             foreach ($params as $item) {
@@ -300,6 +332,8 @@ class StatementTest extends TestCase
 
     public function testBindParamsWithSimpleArray()
     {
+        $this->init();
+
         $params = array(
             'param1' => 'value1',
             'param2' => 'value2',
@@ -319,6 +353,8 @@ class StatementTest extends TestCase
 
     public function testBindParamsWithArrayOfArrays()
     {
+        $this->init();
+
         $params = array(
             array('param1' => 'value1'),
             array('param2' => 'value2'),
@@ -338,6 +374,8 @@ class StatementTest extends TestCase
 
     public function testBindValuesWithSimpleArray()
     {
+        $this->init();
+
         $params = array(
             'param1' => 'value1',
             'param2' => 'value2',
@@ -357,6 +395,8 @@ class StatementTest extends TestCase
 
     public function testBindValuesWithArrayOfArrays()
     {
+        $this->init();
+
         $params = array(
             array('param1' => 'value1'),
             array('param2' => 'value2'),
@@ -376,6 +416,8 @@ class StatementTest extends TestCase
 
     public function testExecuteWithoutParams()
     {
+        $this->init();
+
         // Set up the expectation for execute method
         $this->pdoStatement->expects($this->once())
             ->method('execute')
@@ -394,6 +436,8 @@ class StatementTest extends TestCase
 
     public function testExecuteWithParams()
     {
+        $this->init();
+
         $params = array('param1' => 'value1');
 
         // Set up the expectation for execute method
@@ -414,6 +458,8 @@ class StatementTest extends TestCase
 
     public function testExecuteWithDebugMode()
     {
+        $this->init();
+
         $params = array('param1' => 'value1');
 
         // Enable debug mode
@@ -435,45 +481,46 @@ class StatementTest extends TestCase
         $this->assertInstanceOf('Wilkques\Database\Connections\PDO\Result', $result);
     }
 
-    // public function testMagicCallDebugMethod()
-    // {
-    //     // Create a mock for setDebug
-    //     $this->statement = $this->getMockBuilder(Statement::class)
-    //         ->setConstructorArgs([$this->pdoStatement, $this->connections])
-    //         ->getMock();
+    public function testMagicCallDebugMethod()
+    {
+        $this->statement = $this->getMockBuilder('Wilkques\Database\Connections\PDO\Statement')
+            ->setMethods(array('setDebug'))
+            ->disableOriginalConstructor()
+            ->getMock();
 
-    //     // Expect setDebug to be called with true
-    //     $this->statement->expects($this->once())
-    //         ->method('setDebug')
-    //         ->with($this->equalTo(true));
+        // Expect setDebug to be called with true
+        $this->statement->expects($this->once())
+            ->method('setDebug')
+            ->with($this->equalTo(true));
 
-    //     // Call the magic method __call
-    //     $this->statement->debug(true);
-    // }
+        // Call the magic method __call
+        $this->statement->debug(true);
+    }
 
-    // public function testMagicCallParamsMethod()
-    // {
-    //     // Create a mock for setParams
-    //     $this->statement = $this->getMockBuilder(Statement::class)
-    //         ->setConstructorArgs([$this->pdoStatement, $this->connections])
-    //         ->onlyMethods(['setParams'])
-    //         ->getMock();
+    public function testMagicCallParamsMethod()
+    {
+        $this->statement = $this->getMockBuilder('Wilkques\Database\Connections\PDO\Statement')
+            ->setMethods(array('setParams'))
+            ->disableOriginalConstructor()
+            ->getMock();
 
-    //     // Expect setParams to be called with an array
-    //     $this->statement->expects($this->once())
-    //         ->method('setParams')
-    //         ->with($this->equalTo(['param1' => 'value1']));
+        // Expect setParams to be called with an array
+        $this->statement->expects($this->once())
+            ->method('setParams')
+            ->with($this->equalTo(array('param1' => 'value1')));
 
-    //     // Call the magic method __call
-    //     $this->statement->params(['param1' => 'value1']);
-    // }
+        // Call the magic method __call
+        $this->statement->params(array('param1' => 'value1'));
+    }
 
-    // public function testMagicCallNonExistentMethod()
-    // {
-    //     // Call the magic method __call with a method that does not exist
-    //     $result = $this->statement->nonExistentMethod();
+    public function testMagicCallNonExistentMethod()
+    {
+        $this->init();
 
-    //     // Ensure the result is null because non-existent methods are not handled
-    //     $this->assertNull($result);
-    // }
+        // Call the magic method __call with a method that does not exist
+        $result = $this->statement->nonExistentMethod();
+
+        // Ensure the result is null because non-existent methods are not handled
+        $this->assertNull($result);
+    }
 }

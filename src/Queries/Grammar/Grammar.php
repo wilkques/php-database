@@ -6,7 +6,7 @@ use Wilkques\Database\Queries\Builder;
 use Wilkques\Database\Queries\Expression;
 use Wilkques\Helpers\Arrays;
 
-abstract class Grammar implements GrammarInterface
+class Grammar
 {
     /**
      * The components that make up a select clause.
@@ -228,7 +228,7 @@ abstract class Grammar implements GrammarInterface
             return false;
         }
 
-        return $lock;
+        return call_user_func(array($this, $lock));
     }
 
     /**
@@ -373,7 +373,7 @@ abstract class Grammar implements GrammarInterface
         $columns = Arrays::map(array_keys(current($data)), function ($column) use ($query) {
             return $query->contactBacktick($column);
         });
-        
+
         $columns = join(', ', $columns);
 
         if (!$sql) {
@@ -425,7 +425,7 @@ abstract class Grammar implements GrammarInterface
         if ($query->getQuery('joins')) {
             return $this->compilerDeleteWithJoins($query);
         }
-        
+
         return $this->compilerDeleteWithoutJoins($query);
     }
 
@@ -468,12 +468,34 @@ abstract class Grammar implements GrammarInterface
     }
 
     /**
-     * @return string
+     * Determine if the grammar supports savepoints.
+     *
+     * @return bool
      */
-    abstract public function lockForUpdate();
+    public function supportsSavepoints()
+    {
+        return true;
+    }
 
     /**
+     * Compile the SQL statement to define a savepoint.
+     *
+     * @param  string  $name
      * @return string
      */
-    abstract public function sharedLock();
+    public function compileSavepoint($name)
+    {
+        return 'SAVEPOINT ' . $name;
+    }
+
+    /**
+     * Compile the SQL statement to execute a savepoint rollback.
+     *
+     * @param  string  $name
+     * @return string
+     */
+    public function compileSavepointRollBack($name)
+    {
+        return 'ROLLBACK TO SAVEPOINT ' . $name;
+    }
 }

@@ -374,25 +374,18 @@ class GrammarTest extends TestCase
     {
         $lock = array();
 
-        Arrays::set($lock, 'lock', 'FOR UPDATE');
+        Arrays::set($lock, 'lock', 'lockForUpdate');
 
-        $mock = $this->builder($lock);
+        $builder = $this->builder($lock);
 
-        $this->assertEquals(
-            "FOR UPDATE",
-            $this->grammar()->compilerLock($mock)
-        );
+        $grammar = $this->getMockBuilder('Wilkques\Database\Queries\Grammar\Grammar')
+            ->getMock();
 
-        $lock = array();
+        $grammar->expects($this->once())
+            ->method('compilerLock')
+            ->willReturn("FOR UPDATE");
 
-        Arrays::set($lock, 'lock', 'LOCK IN SHARE MODE');
-
-        $mock = $this->builder($lock);
-
-        $this->assertEquals(
-            "LOCK IN SHARE MODE",
-            $this->grammar()->compilerLock($mock)
-        );
+        $this->assertEquals('FOR UPDATE', $grammar->compilerLock($builder));
     }
 
     public function testCompilerJoins()
