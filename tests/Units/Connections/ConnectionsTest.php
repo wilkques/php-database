@@ -4,30 +4,31 @@ namespace Wilkques\Tests\Units\Connections;
 
 use PHPUnit\Framework\TestCase;
 use Wilkques\Database\Connections\Connections;
+use Wilkques\Helpers\Arrays;
 
 class ConnectionsTest extends TestCase
 {
     private function connection()
     {
-        $driver = getenv('DB_DRIVER');
-
         $dir = dirname(dirname(__DIR__));
 
         $dotenv = \Dotenv\Dotenv::createImmutable($dir);
 
         $dotenv->load();
 
-        $host = getenv('DB_HOST');
+        $driver = Arrays::get($_ENV, 'DB_DRIVER');
 
-        $username = getenv('DB_USER');
+        $host = Arrays::get($_ENV, 'DB_HOST');
 
-        $password = getenv('DB_PASSWORD');
+        $username = Arrays::get($_ENV, 'DB_USER');
 
-        $database = getenv('DB_NAME_1');
+        $password = Arrays::get($_ENV, 'DB_PASSWORD');
+
+        $database = Arrays::get($_ENV, 'DB_NAME_1');
 
         return $this->getMockForAbstractClass(
             'Wilkques\Database\Connections\Connections',
-            compact('driver', 'host', 'username', 'password', 'database')
+            array_values(compact('driver', 'host', 'username', 'password', 'database'))
         );
     }
 
@@ -42,24 +43,24 @@ class ConnectionsTest extends TestCase
 
     public function testConnect()
     {
-        $driver = getenv('DB_DRIVER');
-
         $dir = dirname(dirname(__DIR__));
 
         $dotenv = \Dotenv\Dotenv::createImmutable($dir);
 
         $dotenv->load();
 
-        $host = getenv('DB_HOST');
+        $driver = Arrays::get($_ENV, 'DB_DRIVER');
 
-        $username = getenv('DB_USER');
+        $host = Arrays::get($_ENV, 'DB_HOST');
 
-        $password = getenv('DB_PASSWORD');
+        $username = Arrays::get($_ENV, 'DB_USER');
 
-        $database = getenv('DB_NAME_1');
+        $password = Arrays::get($_ENV, 'DB_PASSWORD');
+
+        $database = Arrays::get($_ENV, 'DB_NAME_1');
 
         $connections = \Wilkques\Database\Connections\PDO\Drivers\MySql::connect(
-            compact('driver', 'host', 'username', 'password', 'database')
+            array_values(compact('driver', 'host', 'username', 'password', 'database'))
         );
 
         $this->assertTrue(

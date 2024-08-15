@@ -5,9 +5,13 @@ namespace Wilkques\Tests\Units\Connections\PDO\Drivers;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 use Wilkques\Database\Connections\PDO\Drivers\MySql;
+use Wilkques\Helpers\Arrays;
 
 class MySqlTest extends TestCase
 {
+    /** @var MySql */
+    private $connection;
+
     private function connection()
     {
         $dir = dirname(dirname(dirname(dirname(__DIR__))));
@@ -16,13 +20,13 @@ class MySqlTest extends TestCase
 
         $dotenv->load();
 
-        $host = getenv('DB_HOST');
+        $host = Arrays::get($_ENV, 'DB_HOST');
 
-        $username = getenv('DB_USER');
+        $username = Arrays::get($_ENV, 'DB_USER');
 
-        $password = getenv('DB_PASSWORD');
+        $password = Arrays::get($_ENV, 'DB_PASSWORD');
 
-        $database = getenv('DB_NAME_1');
+        $database = Arrays::get($_ENV, 'DB_NAME_1');
 
         $connection = MySql::connect($host, $username, $password, $database);
 
