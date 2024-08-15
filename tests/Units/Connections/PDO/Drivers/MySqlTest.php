@@ -282,7 +282,9 @@ class MySqlTest extends TestCase
 
     public function testSelectDatabase()
     {
-        $result = $this->connection()->selectDatabase(getenv('DB_NAME_2'));
+        $database = Arrays::get($_ENV, 'DB_NAME_2');
+
+        $result = $this->connection()->selectDatabase($database);
 
         $this->assertTrue(
             $result instanceof MySql
