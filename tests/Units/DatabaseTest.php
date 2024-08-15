@@ -7,20 +7,21 @@ use Wilkques\Database\Connections\PDO\Drivers\MySql as MySqlConnection;
 use Wilkques\Database\Database;
 use Wilkques\Database\Queries\Builder;
 use Wilkques\Database\Queries\Grammar\Drivers\MySql as MySqlGrammar;
+use Wilkques\Helpers\Arrays;
 
 class DatabaseTest extends TestCase
 {
     public function testConnection()
     {
-        $driver = 'mysql';
+        $driver = Arrays::get($_ENV, 'DB_DRIVER');
 
-        $host = getenv('DB_HOST') ?: '127.0.0.1';
+        $host = Arrays::get($_ENV, 'DB_HOST');
 
-        $username = getenv('DB_USER') ?: 'user';
+        $username = Arrays::get($_ENV, 'DB_USER');
 
-        $password = getenv('DB_PASSWORD') ?: 'root';
+        $password = Arrays::get($_ENV, 'DB_PASSWORD');
 
-        $database = getenv('DB_NAME') ?: 'test';
+        $database = Arrays::get($_ENV, 'DB_NAME_1');
 
         $builder = Database::connect(
             $driver, $host, $username, $password, $database
