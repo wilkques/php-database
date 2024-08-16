@@ -7,12 +7,6 @@ on:
 permissions:
   contents: read
 
-env:
-  DB_HOST: '127.0.0.1'
-  MYSQL_ROOT_PASSWORD: root
-  MYSQL_USER: user
-  MYSQL_PASSWORD: root
-
 jobs:
   build:
 
@@ -41,6 +35,11 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Run SQL script
+      env:
+        DB_HOST: '127.0.0.1'
+        MYSQL_ROOT_PASSWORD: root
+        MYSQL_USER: user
+        MYSQL_PASSWORD: root
       run: |
         mysql -h $DB_HOST -u$DB_USER -p$DB_PASSWORD < tests/database.sql
 
