@@ -8,11 +8,10 @@ permissions:
   contents: read
 
 env:
-  DB_HOST: "127.0.0.1"
   MYSQL_ROOT_PASSWORD: root
   MYSQL_USER: user
   MYSQL_PASSWORD: root
-  DB_PORT: 3360
+  MYSQL_PORT: 3360
 
 jobs:
   build:
@@ -28,26 +27,19 @@ jobs:
       mysql:
         image: mysql:5.7
         ports:
-          - 3306:3360
+          - 3306:3306
         env:
           DB_HOST: ${{ env.DB_HOST }}
           MYSQL_ROOT_PASSWORD: ${{ env.MYSQL_ROOT_PASSWORD }}
           MYSQL_USER: ${{ env.MYSQL_USER }}
           MYSQL_PASSWORD: ${{ env.MYSQL_PASSWORD }}
-        options: --health-cmd "mysqladmin ping -h $DB_HOST" --health-interval 20s --health-timeout 10s --health-retries 10
+        options: --health-cmd "mysqladmin ping" --health-interval 20s --health-timeout 10s --health-retries 10
 
     steps:
-      - name: Wait for MySQL to be ready
-        run: |
-          echo "Waiting for MySQL to start..."
-          while ! mysqladmin ping -h ${{ env.DB_HOST }} -P ${{ env.DB_PORT }} --silent; do
-            sleep 1
-          done
-          echo "MySQL is up and running."
-
       - name: Run SQL script
         run: |
-          mysql -h ${{ env.DB_HOST }} -P ${{ env.DB_PORT }} -u${{ env.MYSQL_USER }} -p${{ env.MYSQL_PASSWORD }} < tests/database.sql
+          sudo /etc/init.d/mysql start
+          mysql -P ${{ env.MYSQL_PORT }} -u${{ env.MYSQL_USER }} -p${{ env.MYSQL_PASSWORD }} < tests/database.sql
 
       - name: PHP ${{ matrix.php-versions }} Test on ${{ matrix.operating-system }}
         uses: actions/checkout@v3
