@@ -41,7 +41,7 @@ jobs:
 
     steps:
       - name: Clean up ${{ github.workspace }}/.github/Driver/MySql directory
-        run: rm -rf ${{ github.workspace }}/.github/Driver/MySql
+        run: sudo rm -rf ${{ github.workspace }}/.github/Driver/MySql
 
       - name: PHP ${{ matrix.php-versions }} Test on ${{ matrix.operating-system }}
         uses: actions/checkout@v3
