@@ -8,7 +8,6 @@ permissions:
   contents: read
 
 env:
-  MYSQL_ROOT_PASSWORD: root
   MYSQL_USER: user
   MYSQL_PASSWORD: root
   MYSQL_PORT: 3360
@@ -30,7 +29,7 @@ jobs:
           - 3306:3306
         env:
           DB_HOST: ${{ env.DB_HOST }}
-          MYSQL_ROOT_PASSWORD: ${{ env.MYSQL_ROOT_PASSWORD }}
+          MYSQL_ROOT_PASSWORD: ${{ env.MYSQL_PASSWORD }}
           MYSQL_USER: ${{ env.MYSQL_USER }}
           MYSQL_PASSWORD: ${{ env.MYSQL_PASSWORD }}
         options: --health-cmd "mysqladmin ping" --health-interval 20s --health-timeout 10s --health-retries 10
@@ -42,7 +41,7 @@ jobs:
       - name: Run SQL script
         run: |
           sudo /etc/init.d/mysql start
-          mysql -P ${{ env.MYSQL_PORT }} -u${{ env.MYSQL_USER }} -p${{ env.MYSQL_PASSWORD }} < tests/database.sql
+          mysql -P ${{ env.MYSQL_PORT }} -uroot -p${{ env.MYSQL_PASSWORD }} < tests/database.sql
 
       - name: Install PHP
         uses: shivammathur/setup-php@v2
