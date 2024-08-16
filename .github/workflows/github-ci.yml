@@ -35,7 +35,7 @@ jobs:
 
     - name: Run SQL file
       run: |
-        mysql -u user < .github/workflows/database.yml
+        mysql -u user < ./.github/workflows/database.yml
 
     - name: Install PHP
       uses: shivammathur/setup-php@v2
