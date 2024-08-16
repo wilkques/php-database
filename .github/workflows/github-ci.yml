@@ -36,13 +36,10 @@ jobs:
           MYSQL_USER: ${{ env.MYSQL_USER }}
           MYSQL_PASSWORD: ${{ env.MYSQL_PASSWORD }}
         volumes:
-          - ${{ github.workspace }}/.github/Driver/MySql/my.cnf:/etc/mysql/my.cnf
+          - ${{ github.workspace }}/tests/Database/Driver/MySql/my.cnf:/etc/mysql/my.cnf
         options: --health-cmd "mysqladmin ping -h $DB_HOST -u$MYSQL_USER -p$MYSQL_PASSWORD" --health-interval 20s --health-timeout 10s --health-retries 10
 
     steps:
-      - name: Clean up ${{ github.workspace }}/.github/Driver/MySql directory
-        run: sudo rm -rf ${{ github.workspace }}/.github/Driver/MySql
-
       - name: PHP ${{ matrix.php-versions }} Test on ${{ matrix.operating-system }}
         uses: actions/checkout@v3
 
