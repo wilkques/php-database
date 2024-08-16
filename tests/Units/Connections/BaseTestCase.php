@@ -6,7 +6,7 @@ use PHPUnit\Framework\TestCase;
 
 class BaseTestCase extends TestCase
 {
-    private function envLoad()
+    protected function envLoad()
     {
         $dir = dirname(dirname(dirname(dirname(__DIR__))));
 
