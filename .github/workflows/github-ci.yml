@@ -6,15 +6,16 @@ on:
 
 permissions:
   contents: read
+  
+env:
+  DB_HOST: '127.0.0.1'
+  MYSQL_ROOT_PASSWORD: root
+  MYSQL_USER: user
+  MYSQL_PASSWORD: root
+  DB_PORT: 3360
 
 jobs:
   build:
-    env:
-      DB_HOST: '127.0.0.1'
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_USER: user
-      MYSQL_PASSWORD: root
-      DB_PORT: 3360
 
     runs-on: ${{ matrix.operating-system }}
 
