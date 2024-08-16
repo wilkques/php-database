@@ -28,13 +28,18 @@ jobs:
         ports:
           - 3306:3306
         options: --health-cmd "mysqladmin ping -h 127.0.0.1" --health-interval 20s --health-timeout 10s --health-retries 10
-        script:
-          - CREATE DATABASE IF NOT EXISTS `test`;
-          - CREATE DATABASE IF NOT EXISTS `try`;
 
     steps:
     - name: PHP ${{ matrix.php-versions }} Test on ${{ matrix.operating-system }}
       uses: actions/checkout@v3
+
+    - name: Run SQL script
+      env:
+        DB_HOST: 127.0.0.1
+        DB_USER: user
+        DB_PASSWORD: root
+      run: |
+        mysql -h $DB_HOST -u $DB_USER -p$DB_PASSWORD $DB_NAME < database.sql
 
     - name: Install PHP
       uses: shivammathur/setup-php@v2
