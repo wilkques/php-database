@@ -34,13 +34,9 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Run SQL script
-      env:
-        DB_HOST: '127.0.0.1'
-        DB_USER: user
-        DB_PASSWORD: root
       run: |
-        mysql -h $DB_HOST -u $DB_USER -p$DB_PASSWORD -e "CREATE DATABASE IF NOT EXISTS test;"
-        mysql -h $DB_HOST -u $DB_USER -p$DB_PASSWORD -e "CREATE DATABASE IF NOT EXISTS try;"
+        mysql -h 127.0.0.1 -u user -proot -e "CREATE DATABASE IF NOT EXISTS test;"
+        mysql -h 127.0.0.1 -u user -proot -e "CREATE DATABASE IF NOT EXISTS try;"
 
     - name: Install PHP
       uses: shivammathur/setup-php@v2
