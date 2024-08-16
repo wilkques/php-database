@@ -18,27 +18,17 @@ jobs:
         php-versions: ['5.4', '5.6', '7.3', '7.4', '8.0', '8.1', '8.2', '8.3']
 
     services:
-      mysql_test:
+      mysql:
         image: mysql:5.7
         env:
           MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE_1: test
-          MYSQL_DATABASE_2: try
           MYSQL_USER: user
           MYSQL_PASSWORD: root
         ports:
           - 3306:3306
+        volumes:
+          - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
         options: --health-cmd "mysqladmin ping -h 127.0.0.1" --health-interval 20s --health-timeout 10s --health-retries 10
-      # mysql_try:
-      #   image: mysql:5.7
-      #   env:
-      #     MYSQL_ROOT_PASSWORD: root
-      #     MYSQL_DATABASE: try
-      #     MYSQL_USER: user
-      #     MYSQL_PASSWORD: root
-      #   ports:
-      #     - 3307:3306
-      #   options: --health-cmd "mysqladmin ping -h 127.0.0.1" --health-interval 20s --health-timeout 10s --health-retries 10
 
 
     steps:
