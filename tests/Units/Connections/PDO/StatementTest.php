@@ -22,9 +22,9 @@ class StatementTest extends TestCase
 
     private function init()
     {
-        $method = 'createMock';
+        $method = method_exists($this, 'createMock') ? 'createMock' : 'getMockBuilder';
 
-        if (method_exists($this, 'getMockBuilder')) {
+        if ($method == 'getMockBuilder') {
             $pdoStatement = call_user_func(array($this, $method), 'PDOStatement');
 
             // Mock PDOStatement
