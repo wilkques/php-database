@@ -27,10 +27,10 @@ jobs:
           MYSQL_PASSWORD: root
         ports:
           - 3306:3306
-        volumes:
-          - ./:/docker-entrypoint-initdb.d/
         options: --health-cmd "mysqladmin ping -h 127.0.0.1" --health-interval 20s --health-timeout 10s --health-retries 10
-
+        script:
+          - CREATE DATABASE IF NOT EXISTS `test`;
+          - CREATE DATABASE IF NOT EXISTS `try`;
 
     steps:
     - name: PHP ${{ matrix.php-versions }} Test on ${{ matrix.operating-system }}
