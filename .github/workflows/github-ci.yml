@@ -7,6 +7,12 @@ on:
 permissions:
   contents: read
 
+env:
+  DB_HOST: '127.0.0.1'
+  MYSQL_ROOT_PASSWORD: root
+  MYSQL_USER: user
+  MYSQL_PASSWORD: root
+
 jobs:
   build:
 
@@ -21,11 +27,6 @@ jobs:
     services:
       mysql:
         image: mysql:5.7
-        env:
-          DB_HOST: '127.0.0.1'
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_USER: user
-          MYSQL_PASSWORD: root
         ports:
           - 3306:3306
         options: --health-cmd "mysqladmin ping -h $DB_HOST" --health-interval 20s --health-timeout 10s --health-retries 10
@@ -34,29 +35,9 @@ jobs:
     - name: PHP ${{ matrix.php-versions }} Test on ${{ matrix.operating-system }}
       uses: actions/checkout@v3
 
-    - name: Wait for MySQL to be ready
-      env:
-        DB_HOST: '127.0.0.1'
-        DB_USER: user
-        DB_PASSWORD: root
-      run: |
-        for i in {1..30}; do
-          if mysql -h $DB_HOST -u $DB_USER -p$DB_PASSWORD -e 'select 1;' > /dev/null 2>&1; then
-            exit 0
-          fi
-          sleep 5
-        done
-        exit 1
-
     - name: Run SQL script
-      env:
-        DB_HOST: '127.0.0.1'
-        DB_USER: user
-        DB_PASSWORD: root
       run: |
-        mysql -h $DB_HOST -u $DB_USER -p$DB_PASSWORD -e "GRANT ALL PRIVILEGES ON *.* TO '$DB_USER'@'%' IDENTIFIED BY '$DB_PASSWORD'; FLUSH PRIVILEGES;"
-        mysql -h $DB_HOST -u $DB_USER -p$DB_PASSWORD -e "CREATE DATABASE IF NOT EXISTS test;"
-        mysql -h $DB_HOST -u $DB_USER -p$DB_PASSWORD -e "CREATE DATABASE IF NOT EXISTS try;"
+        mysql -h $DB_HOST -u$DB_USER -p$DB_PASSWORD < tests/database.sql
 
     - name: Install PHP
       uses: shivammathur/setup-php@v2
