@@ -28,12 +28,14 @@ jobs:
         ports:
           - 3306:3306
         options: --health-cmd "mysqladmin ping -h 127.0.0.1" --health-interval 20s --health-timeout 10s --health-retries 10
-        run: |
-           mysql -u user < .github/workflows/database.yml
 
     steps:
     - name: PHP ${{ matrix.php-versions }} Test on ${{ matrix.operating-system }}
       uses: actions/checkout@v3
+
+    - name: Run SQL file
+      run: |
+        mysql -u user < .github/workflows/database.yml
 
     - name: Install PHP
       uses: shivammathur/setup-php@v2
