@@ -25,24 +25,39 @@ jobs:
         php-versions: ["5.4"]
         # php-versions: ['5.4', '5.6', '7.3', '7.4', '8.0', '8.1', '8.2', '8.3']
 
-    services:
-      mysql:
-        image: mysql:5.7
-        ports:
-          - 3306:3306
-        env:
-          DB_HOST: ${{ env.DB_HOST }}
-          MYSQL_ROOT_PASSWORD: ${{ env.MYSQL_ROOT_PASSWORD }}
-          MYSQL_USER: ${{ env.MYSQL_USER }}
-          MYSQL_PASSWORD: ${{ env.MYSQL_PASSWORD }}
-        volumes:
-          - ${{ github.workspace }}/.github/Driver/MySql/my.cnf:/etc/mysql/my.cnf
-          - ${{ github.workspace }}/.github/Driver/MySql/docker-entrypoint-initdb.d/:/docker-entrypoint-initdb.d
-        options: --health-cmd "mysqladmin ping -h $DB_HOST -u$MYSQL_USER -p$MYSQL_PASSWORD" --health-interval 20s --health-timeout 10s --health-retries 10
+    # services:
+    #   mysql:
+    #     image: mysql:5.7
+    #     ports:
+    #       - 3306:3306
+    #     env:
+    #       DB_HOST: ${{ env.DB_HOST }}
+    #       MYSQL_ROOT_PASSWORD: ${{ env.MYSQL_ROOT_PASSWORD }}
+    #       MYSQL_USER: ${{ env.MYSQL_USER }}
+    #       MYSQL_PASSWORD: ${{ env.MYSQL_PASSWORD }}
+    #     volumes:
+    #       - ${{ github.workspace }}/.github/Driver/MySql/my.cnf:/etc/mysql/my.cnf
+    #       - ${{ github.workspace }}/.github/Driver/MySql/docker-entrypoint-initdb.d/:/docker-entrypoint-initdb.d
+    #     options: --health-cmd "mysqladmin ping -h $DB_HOST -u$MYSQL_USER -p$MYSQL_PASSWORD" --health-interval 20s --health-timeout 10s --health-retries 10
 
     steps:
       - name: PHP ${{ matrix.php-versions }} Test on ${{ matrix.operating-system }}
         uses: actions/checkout@v3
+
+      - name: Set up MySQL container
+        run: |
+          docker run -d \
+            --name mysql-container \
+            -e MYSQL_ROOT_PASSWORD=${{ env.MYSQL_ROOT_PASSWORD }} \
+            -p 3306:3306 \
+            -v ${{ github.workspace }}/.github/Driver/MySql/my.cnf:/etc/mysql/my.cnf \
+            -v ${{ github.workspace }}/.github/Driver/MySql/docker-entrypoint-initdb.d/:/docker-entrypoint-initdb.d \
+            mysql:5.7
+          
+      - name: Wait for MySQL to be ready
+        run: |
+          echo "Waiting for MySQL to start..."
+          sleep 30 # Ensure MySQL is up and running
 
       - name: Install PHP
         uses: shivammathur/setup-php@v2
