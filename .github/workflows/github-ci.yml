@@ -25,17 +25,21 @@ jobs:
           MYSQL_ROOT_PASSWORD: root
           MYSQL_USER: user
           MYSQL_PASSWORD: root
+          MYSQL_DATABASE: test
         ports:
           - 3306:3306
+        volumes:
+          - ./database.sql:/docker-entrypoint-initdb.d/database.sql
         options: --health-cmd "mysqladmin ping -h 127.0.0.1" --health-interval 20s --health-timeout 10s --health-retries 10
+
 
     steps:
     - name: PHP ${{ matrix.php-versions }} Test on ${{ matrix.operating-system }}
       uses: actions/checkout@v3
 
-    - name: Run SQL file
-      run: |
-        mysql -u user < ./.github/workflows/database.yml
+    - name: Set up database
+      uses: |
+        mysql -h 127.0.0.1 -u user -proot testdb < ./database.sql
 
     - name: Install PHP
       uses: shivammathur/setup-php@v2
