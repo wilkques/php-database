@@ -3,7 +3,7 @@
 namespace Wilkques\Database\Tests\Units\Connections;
 
 use Wilkques\Database\Connections\Connections;
-use Wilkques\Database\Tests\Units\BaseTestCase;
+use Wilkques\Database\Tests\BaseTestCase;
 use Wilkques\Helpers\Arrays;
 
 class ConnectionsTest extends BaseTestCase
@@ -43,9 +43,7 @@ class ConnectionsTest extends BaseTestCase
     {
         $dir = dirname(dirname(__DIR__));
 
-        $dotenv = \Dotenv\Dotenv::createImmutable($dir);
-
-        $dotenv->load();
+        $this->envLoad($dir);
 
         $driver = Arrays::get($_ENV, 'DB_DRIVER');
 

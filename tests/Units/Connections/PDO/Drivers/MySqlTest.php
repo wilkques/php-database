@@ -4,7 +4,7 @@ namespace Wilkques\Database\Tests\Units\Connections\PDO\Drivers;
 
 use ReflectionMethod;
 use Wilkques\Database\Connections\PDO\Drivers\MySql;
-use Wilkques\Database\Tests\Units\BaseTestCase;
+use Wilkques\Database\Tests\BaseTestCase;
 use Wilkques\Helpers\Arrays;
 
 class MySqlTest extends BaseTestCase
@@ -14,7 +14,9 @@ class MySqlTest extends BaseTestCase
 
     private function connection()
     {
-        $this->envLoad();
+        $dir = dirname(dirname(dirname(dirname(__DIR__))));
+
+        $this->envLoad($dir);
 
         $host = Arrays::get($_ENV, 'DB_HOST');
 

@@ -6,6 +6,7 @@ use Wilkques\Database\Connections\PDO\Drivers\MySql as MySqlConnection;
 use Wilkques\Database\Database;
 use Wilkques\Database\Queries\Builder;
 use Wilkques\Database\Queries\Grammar\Drivers\MySql as MySqlGrammar;
+use Wilkques\Database\Tests\BaseTestCase;
 use Wilkques\Helpers\Arrays;
 
 class DatabaseTest extends BaseTestCase

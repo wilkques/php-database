@@ -1,6 +1,6 @@
 <?php
 
-namespace Wilkques\Database\Tests\Units;
+namespace Wilkques\Database\Tests;
 
 use PHPUnit\Framework\TestCase;
 
