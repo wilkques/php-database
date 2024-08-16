@@ -5,15 +5,11 @@ namespace Wilkques\Tests\Units\Connections;
 use Wilkques\Database\Connections\Connections;
 use Wilkques\Helpers\Arrays;
 
-class ConnectionsTest extends BaseTest
+class ConnectionsTest extends BaseTestCase
 {
     private function connection()
     {
-        $dir = dirname(dirname(__DIR__));
-
-        $dotenv = \Dotenv\Dotenv::createImmutable($dir);
-
-        $dotenv->load();
+        $this->envLoad();
 
         $driver = Arrays::get($_ENV, 'DB_DRIVER');
 
