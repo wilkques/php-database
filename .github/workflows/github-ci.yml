@@ -39,7 +39,7 @@ jobs:
         DB_USER: user
         DB_PASSWORD: root
       run: |
-        mysql -h $DB_HOST -u $DB_USER -p$DB_PASSWORD $DB_NAME < database.sql
+        mysql -h $DB_HOST -u $DB_USER -p$DB_PASSWORD $DB_NAME -e "CREATE DATABASE IF NOT EXISTS `test`;CREATE DATABASE IF NOT EXISTS `try`;"
 
     - name: Install PHP
       uses: shivammathur/setup-php@v2
