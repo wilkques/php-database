@@ -12,13 +12,22 @@ class MySqlTest extends TestCase
     /** @var MySql */
     private $connection;
 
-    private function connection()
+    private function envLoad()
     {
         $dir = dirname(dirname(dirname(dirname(__DIR__))));
 
-        $dotenv = \Dotenv\Dotenv::createImmutable($dir);
+        if (PHP_MAJOR_VERSION == 5) {
+            $dotenv = \Dotenv\Dotenv::create($dir);
+        } else {
+            $dotenv = \Dotenv\Dotenv::createImmutable($dir);
+        }
 
         $dotenv->load();
+    }
+
+    private function connection()
+    {
+        $this->envLoad();
 
         $host = Arrays::get($_ENV, 'DB_HOST');
 
