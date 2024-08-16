@@ -22,11 +22,13 @@ class StatementTest extends TestCase
 
     private function init()
     {
+        $method = method_exists($this, 'createMock') ? 'createMock' : 'getMock';
+
         // Mock PDOStatement
-        $this->pdoStatement = $this->createMock('PDOStatement');
+        $this->pdoStatement = call_user_func(array($this, $method), 'PDOStatement');
 
         // Mock Connections
-        $this->connections = $this->createMock('Wilkques\Database\Connections\PDO\Drivers\MySql');
+        $this->pdoStatement = call_user_func(array($this, $method), 'Wilkques\Database\Connections\PDO\Drivers\MySql');
 
         // Create the Statement instance
         $this->statement = new Statement($this->pdoStatement, $this->connections);
