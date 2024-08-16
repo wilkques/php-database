@@ -2,28 +2,15 @@
 
 namespace Wilkques\Tests\Units\Connections\PDO\Drivers;
 
-use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 use Wilkques\Database\Connections\PDO\Drivers\MySql;
 use Wilkques\Helpers\Arrays;
+use Wilkques\Tests\Units\Connections\BaseTestCase;
 
-class MySqlTest extends TestCase
+class MySqlTest extends BaseTestCase
 {
     /** @var MySql */
     private $connection;
-
-    private function envLoad()
-    {
-        $dir = dirname(dirname(dirname(dirname(__DIR__))));
-
-        if (PHP_MAJOR_VERSION == 5) {
-            $dotenv = \Dotenv\Dotenv::create($dir);
-        } else {
-            $dotenv = \Dotenv\Dotenv::createImmutable($dir);
-        }
-
-        $dotenv->load();
-    }
 
     private function connection()
     {

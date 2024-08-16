@@ -2,11 +2,10 @@
 
 namespace Wilkques\Tests\Units\Connections;
 
-use PHPUnit\Framework\TestCase;
 use Wilkques\Database\Connections\Connections;
 use Wilkques\Helpers\Arrays;
 
-class ConnectionsTest extends TestCase
+class ConnectionsTest extends BaseTest
 {
     private function connection()
     {
