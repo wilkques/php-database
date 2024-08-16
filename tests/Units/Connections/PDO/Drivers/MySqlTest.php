@@ -28,8 +28,6 @@ class MySqlTest extends TestCase
 
         $database = Arrays::get($_ENV, 'DB_NAME_1');
 
-        ve(compact('host', 'username', 'password', 'database'));
-
         $connection = MySql::connect($host, $username, $password, $database);
 
         return $connection->newConnection();
