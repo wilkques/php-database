@@ -1,18 +1,21 @@
 <?php
 
-namespace Wilkques\Tests\Units;
+namespace Wilkques\Database\Tests\Units;
 
-use PHPUnit\Framework\TestCase;
 use Wilkques\Database\Connections\PDO\Drivers\MySql as MySqlConnection;
 use Wilkques\Database\Database;
 use Wilkques\Database\Queries\Builder;
 use Wilkques\Database\Queries\Grammar\Drivers\MySql as MySqlGrammar;
 use Wilkques\Helpers\Arrays;
 
-class DatabaseTest extends TestCase
+class DatabaseTest extends BaseTestCase
 {
     public function testConnection()
     {
+        $dir = dirname(__DIR__);
+
+        $this->envLoad($dir);
+
         $driver = Arrays::get($_ENV, 'DB_DRIVER');
 
         $host = Arrays::get($_ENV, 'DB_HOST');

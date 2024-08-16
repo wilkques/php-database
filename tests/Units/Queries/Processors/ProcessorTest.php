@@ -1,6 +1,6 @@
 <?php
 
-namespace Wilkques\Tests\Units\Queries\Processors;
+namespace Wilkques\Database\Tests\Units\Queries\Processors;
 
 use PHPUnit\Framework\TestCase;
 

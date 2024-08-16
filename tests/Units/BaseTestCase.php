@@ -1,15 +1,13 @@
 <?php
 
-namespace Wilkques\Tests\Units\Connections;
+namespace Wilkques\Database\Tests\Units;
 
 use PHPUnit\Framework\TestCase;
 
 class BaseTestCase extends TestCase
 {
-    protected function envLoad()
+    protected function envLoad($dir)
     {
-        $dir = dirname(dirname(dirname(dirname(__DIR__))));
-
         if (PHP_MAJOR_VERSION == 5) {
             $dotenv = \Dotenv\Dotenv::create($dir);
         } else {

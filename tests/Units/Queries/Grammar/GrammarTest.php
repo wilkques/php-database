@@ -1,6 +1,6 @@
 <?php
 
-namespace Wilkques\Tests\Units\Queries\Grammar;
+namespace Wilkques\Database\Tests\Units\Queries\Grammar;
 
 use PHPUnit\Framework\TestCase;
 use Wilkques\Helpers\Arrays;

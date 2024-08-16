@@ -1,15 +1,18 @@
 <?php
 
-namespace Wilkques\Tests\Units\Connections;
+namespace Wilkques\Database\Tests\Units\Connections;
 
 use Wilkques\Database\Connections\Connections;
+use Wilkques\Database\Tests\Units\BaseTestCase;
 use Wilkques\Helpers\Arrays;
 
 class ConnectionsTest extends BaseTestCase
 {
     private function connection()
     {
-        $this->envLoad();
+        $dir = dirname(dirname(__DIR__));
+
+        $this->envLoad($dir);
 
         $driver = Arrays::get($_ENV, 'DB_DRIVER');
 

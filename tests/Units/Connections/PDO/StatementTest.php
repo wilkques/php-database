@@ -1,6 +1,6 @@
 <?php
 
-namespace Wilkques\Tests\Units\Connections\PDO\Drivers;
+namespace Wilkques\Database\Tests\Units\Connections\PDO\Drivers;
 
 use PDOStatement;
 use PHPUnit\Framework\TestCase;
