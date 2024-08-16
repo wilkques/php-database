@@ -22,22 +22,23 @@ jobs:
         image: mysql:5.7
         env:
           MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: test
+          MYSQL_DATABASE_1: test
+          MYSQL_DATABASE_2: try
           MYSQL_USER: user
           MYSQL_PASSWORD: root
         ports:
           - 3306:3306
         options: --health-cmd "mysqladmin ping -h 127.0.0.1" --health-interval 20s --health-timeout 10s --health-retries 10
-      mysql_try:
-        image: mysql:5.7
-        env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: try
-          MYSQL_USER: user
-          MYSQL_PASSWORD: root
-        ports:
-          - 3307:3306
-        options: --health-cmd "mysqladmin ping -h 127.0.0.1" --health-interval 20s --health-timeout 10s --health-retries 10
+      # mysql_try:
+      #   image: mysql:5.7
+      #   env:
+      #     MYSQL_ROOT_PASSWORD: root
+      #     MYSQL_DATABASE: try
+      #     MYSQL_USER: user
+      #     MYSQL_PASSWORD: root
+      #   ports:
+      #     - 3307:3306
+      #   options: --health-cmd "mysqladmin ping -h 127.0.0.1" --health-interval 20s --health-timeout 10s --health-retries 10
 
 
     steps:
