@@ -39,6 +39,7 @@ jobs:
       - name: Run SQL script
         run: |
           sudo /etc/init.d/mysql start
+          ls -al
           mysql -P ${{ env.MYSQL_PORT }} -u${{ env.MYSQL_USER }} -p${{ env.MYSQL_PASSWORD }} < tests/database.sql
 
       - name: PHP ${{ matrix.php-versions }} Test on ${{ matrix.operating-system }}
