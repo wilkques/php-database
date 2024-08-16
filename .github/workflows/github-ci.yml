@@ -2,13 +2,13 @@ name: TESTS
 
 on:
   push:
-    branches: [ "master" ]
+    branches: ["master"]
 
 permissions:
   contents: read
-  
+
 env:
-  DB_HOST: '127.0.0.1'
+  DB_HOST: "127.0.0.1"
   MYSQL_ROOT_PASSWORD: root
   MYSQL_USER: user
   MYSQL_PASSWORD: root
@@ -16,20 +16,19 @@ env:
 
 jobs:
   build:
-
     runs-on: ${{ matrix.operating-system }}
 
     strategy:
       matrix:
         operating-system: [ubuntu-latest]
-        php-versions: ['5.4']
+        php-versions: ["5.4"]
         # php-versions: ['5.4', '5.6', '7.3', '7.4', '8.0', '8.1', '8.2', '8.3']
 
     services:
       mysql:
         image: mysql:5.7
         ports:
-          - ${{ env.DB_PORT }}:3306
+          - 3306:${{ env.DB_PORT }}
         env:
           DB_HOST: ${{ env.DB_HOST }}
           MYSQL_ROOT_PASSWORD: ${{ env.MYSQL_ROOT_PASSWORD }}
@@ -38,45 +37,45 @@ jobs:
         options: --health-cmd "mysqladmin ping -h $DB_HOST" --health-interval 20s --health-timeout 10s --health-retries 10
 
     steps:
-    - name: Wait for MySQL to be ready
-      run: |
-        echo "Waiting for MySQL to start..."
-        while ! mysqladmin ping -h ${{ env.DB_HOST }} -P ${{ env.DB_PORT }} --silent; do
-          sleep 1
-        done
-        echo "MySQL is up and running."
+      - name: Wait for MySQL to be ready
+        run: |
+          echo "Waiting for MySQL to start..."
+          while ! mysqladmin ping -h ${{ env.DB_HOST }} -P ${{ env.DB_PORT }} --silent; do
+            sleep 1
+          done
+          echo "MySQL is up and running."
 
-    - name: Run SQL script
-      run: |
-        mysql -h ${{ env.DB_HOST }} -P ${{ env.DB_PORT }} -u${{ env.MYSQL_USER }} -p${{ env.MYSQL_PASSWORD }} < tests/database.sql
+      - name: Run SQL script
+        run: |
+          mysql -h ${{ env.DB_HOST }} -P ${{ env.DB_PORT }} -u${{ env.MYSQL_USER }} -p${{ env.MYSQL_PASSWORD }} < tests/database.sql
 
-    - name: PHP ${{ matrix.php-versions }} Test on ${{ matrix.operating-system }}
-      uses: actions/checkout@v3
+      - name: PHP ${{ matrix.php-versions }} Test on ${{ matrix.operating-system }}
+        uses: actions/checkout@v3
 
-    - name: Install PHP
-      uses: shivammathur/setup-php@v2
-      with:
-        php-version: ${{ matrix.php-versions }}
-        extensions: intl #optional
-        ini-values: "post_max_size=256M" #optional
+      - name: Install PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-versions }}
+          extensions: intl #optional
+          ini-values: "post_max_size=256M" #optional
 
-    - name: Cache Composer packages
-      id: composer-cache
-      uses: actions/cache@v3
-      with:
-        path: vendor
-        key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-php-${{ matrix.php-versions }}
+      - name: Cache Composer packages
+        id: composer-cache
+        uses: actions/cache@v3
+        with:
+          path: vendor
+          key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-php-${{ matrix.php-versions }}
 
-    - name: Install dependencies
-      run: composer install --prefer-dist --no-progress
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress
 
-    # Add a test script to composer.json, for instance: "test": "vendor/bin/phpunit"
-    # Docs: https://getcomposer.org/doc/articles/scripts.md
+      # Add a test script to composer.json, for instance: "test": "vendor/bin/phpunit"
+      # Docs: https://getcomposer.org/doc/articles/scripts.md
 
-    - name: set env
-      run: cp tests/.env.example tests/.env
+      - name: set env
+        run: cp tests/.env.example tests/.env
 
-    - name: Run test
-      run: vendor/bin/phpunit
+      - name: Run test
+        run: vendor/bin/phpunit
