@@ -29,6 +29,11 @@ jobs:
         image: mysql:5.7
         ports:
           - 3306:3306
+        env:
+          DB_HOST: '127.0.0.1'
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_USER: user
+          MYSQL_PASSWORD: root
         options: --health-cmd "mysqladmin ping -h $DB_HOST" --health-interval 20s --health-timeout 10s --health-retries 10
 
     steps:
