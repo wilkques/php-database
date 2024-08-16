@@ -41,8 +41,8 @@ jobs:
         options: --health-cmd "mysqladmin ping -h $DB_HOST -u$MYSQL_USER -p$MYSQL_PASSWORD" --health-interval 20s --health-timeout 10s --health-retries 10
 
     steps:
-      # - name: PHP ${{ matrix.php-versions }} Test on ${{ matrix.operating-system }}
-      #   uses: actions/checkout@v3
+      - name: PHP ${{ matrix.php-versions }} Test on ${{ matrix.operating-system }}
+        uses: actions/checkout@v3
 
       - name: Install PHP
         uses: shivammathur/setup-php@v2
@@ -61,9 +61,7 @@ jobs:
             ${{ runner.os }}-php-${{ matrix.php-versions }}
 
       - name: Install dependencies
-        run: |
-          cd ${{ github.workspace }}
-          composer install --prefer-dist --no-progress
+        run: composer install --prefer-dist --no-progress
 
       # Add a test script to composer.json, for instance: "test": "vendor/bin/phpunit"
       # Docs: https://getcomposer.org/doc/articles/scripts.md
