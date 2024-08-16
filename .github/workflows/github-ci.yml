@@ -36,7 +36,7 @@ jobs:
           MYSQL_USER: ${{ env.MYSQL_USER }}
           MYSQL_PASSWORD: ${{ env.MYSQL_PASSWORD }}
         volumes:
-          - ./.github/Database/MySql/my.cnf:/etc/mysql/my.cnf
+          - .github/Database/MySql/my.cnf:/etc/mysql/my.cnf
         options: --health-cmd "mysqladmin ping -h $DB_HOST -u$MYSQL_USER -p$MYSQL_PASSWORD" --health-interval 20s --health-timeout 10s --health-retries 10
 
     steps:
@@ -46,7 +46,7 @@ jobs:
       - name: Run SQL script
         run: |
           sudo /etc/init.d/mysql start
-          mysql -P ${{ env.MYSQL_PORT }} -u${{ env.MYSQL_ROOT }} -p${{ env.MYSQL_PASSWORD }} < ./.github/Database/database.sql
+          mysql -P ${{ env.MYSQL_PORT }} -u${{ env.MYSQL_ROOT }} -p${{ env.MYSQL_PASSWORD }} < .github/Database/database.sql
 
       - name: Install PHP
         uses: shivammathur/setup-php@v2
