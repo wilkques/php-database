@@ -47,7 +47,7 @@ jobs:
       - name: Set up MySQL container
         run: |
           docker run -d \
-            --name mysql-container \
+            --name mysql \
             -e MYSQL_ROOT_PASSWORD=${{ env.MYSQL_ROOT_PASSWORD }} \
             -p 3306:3306 \
             -v ${{ github.workspace }}/.github/Driver/MySql/my.cnf:/etc/mysql/my.cnf \
