@@ -35,9 +35,9 @@ jobs:
           MYSQL_ROOT_PASSWORD: ${{ env.MYSQL_ROOT_PASSWORD }}
           MYSQL_USER: ${{ env.MYSQL_USER }}
           MYSQL_PASSWORD: ${{ env.MYSQL_PASSWORD }}
-        options: --health-cmd "mysqladmin ping -h $DB_HOST -u$MYSQL_USER -p$MYSQL_PASSWORD" --health-interval 20s --health-timeout 10s --health-retries 10
         volumes:
-          - .github/workflows/mysql/my.cnf:/etc/mysql/my.cnf
+          - tests/CI/mysql/mysql/my.cnf:/etc/mysql/my.cnf
+        options: --health-cmd "mysqladmin ping -h $DB_HOST -u$MYSQL_USER -p$MYSQL_PASSWORD" --health-interval 20s --health-timeout 10s --health-retries 10
 
     steps:
       - name: PHP ${{ matrix.php-versions }} Test on ${{ matrix.operating-system }}
@@ -46,7 +46,7 @@ jobs:
       - name: Run SQL script
         run: |
           sudo /etc/init.d/mysql start
-          mysql -P ${{ env.MYSQL_PORT }} -u${{ env.MYSQL_ROOT }} -p${{ env.MYSQL_PASSWORD }} < .github/workflows/database.sql
+          mysql -P ${{ env.MYSQL_PORT }} -u${{ env.MYSQL_ROOT }} -p${{ env.MYSQL_PASSWORD }} < tests/CI/database.sql
 
       - name: Install PHP
         uses: shivammathur/setup-php@v2
