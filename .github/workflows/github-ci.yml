@@ -13,7 +13,7 @@ env:
   MYSQL_PASSWORD: root
   MYSQL_PORT: 3360
   MYSQL_ROOT: root
-  DB_HOST: '127.0.0.1'
+  DB_HOST: "127.0.0.1"
 
 jobs:
   build:
@@ -36,10 +36,13 @@ jobs:
           MYSQL_USER: ${{ env.MYSQL_USER }}
           MYSQL_PASSWORD: ${{ env.MYSQL_PASSWORD }}
         volumes:
-          - ${{ github.workspace }}/.github/MySql/my.cnf:/etc/mysql/my.cnf
+          - ${{ github.workspace }}/.github/Driver/MySql/my.cnf:/etc/mysql/my.cnf
         options: --health-cmd "mysqladmin ping -h $DB_HOST -u$MYSQL_USER -p$MYSQL_PASSWORD" --health-interval 20s --health-timeout 10s --health-retries 10
 
     steps:
+      - name: Clean up ${{ github.workspace }}/.github/Driver/MySql directory
+        run: rm -rf ${{ github.workspace }}/.github/Driver/MySql
+
       - name: PHP ${{ matrix.php-versions }} Test on ${{ matrix.operating-system }}
         uses: actions/checkout@v3
 
