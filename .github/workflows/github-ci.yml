@@ -41,7 +41,7 @@ jobs:
 
     - name: Run SQL script
       run: |
-        mysql -h 127.0.0.1 -uuser -proot < tests/database.sql
+        mysql -h 127.0.0.1 -uroot -proot < tests/database.sql
 
     - name: Install PHP
       uses: shivammathur/setup-php@v2
