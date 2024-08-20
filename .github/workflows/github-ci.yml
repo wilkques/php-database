@@ -51,16 +51,16 @@ jobs:
           sudo /etc/init.d/mysql start
 
       - name: Mysql Version
-        run: mysql -u ${{ env.DB_USER }} -p${{ env.DB_PASSWORD }} -e "SELECT VERSION();"
+        run: mysql --protocol=tcp -u ${{ env.DB_USER }} -p${{ env.DB_PASSWORD }} -e "SELECT VERSION();"
         
       - name: Create DB And User
         run: |
-          mysql -u ${{ env.DB_USER }} -p${{ env.DB_PASSWORD }} < tests/Drivers/MySql/docker-entrypoint-initdb.d/createdb.sql
+          mysql --protocol=tcp -u ${{ env.DB_USER }} -p${{ env.DB_PASSWORD }} < tests/Drivers/MySql/docker-entrypoint-initdb.d/createdb.sql
 
       - name: Check DB And User
         run: |
-          mysql -u ${{ env.DB_USER }} -p${{ env.DB_PASSWORD }} -e "SHOW DATABASES;"
-          mysql -u ${{ env.DB_USER }} -p${{ env.DB_PASSWORD }} -e "SHOW GRANTS FOR 'user'@'%';"
+          mysql --protocol=tcp -u ${{ env.DB_USER }} -p${{ env.DB_PASSWORD }} -e "SHOW DATABASES;"
+          mysql --protocol=tcp -u ${{ env.DB_USER }} -p${{ env.DB_PASSWORD }} -e "SHOW GRANTS FOR 'user'@'%';"
 
       - name: Install PHP
         uses: shivammathur/setup-php@v2
