@@ -38,6 +38,11 @@ jobs:
       - name: PHP ${{ matrix.php-versions }} Test on ${{ matrix.operating-system }}
         uses: actions/checkout@v3
 
+      - name: Mysql Version
+        uses: shogo82148/actions-setup-mysql@v1
+        with:
+          mysql-version: "5.7"
+
       # - name: List files in workspace
       #   run: ls -R ${{ github.workspace }}
 
