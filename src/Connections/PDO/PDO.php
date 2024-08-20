@@ -63,7 +63,6 @@ abstract class PDO extends Connections
         );
 
         if ($character = $this->getCharacterSet()) {
-            ve("SET NAMES {$character}");
             $pdo->exec("SET NAMES {$character}");
         }
 
@@ -129,10 +128,10 @@ abstract class PDO extends Connections
                 $this->exec(
                     $this->grammar->compileSavepoint('trans' . ($this->transactions + 1))
                 );
-    
+
                 return true;
             }
-    
+
             return $this->getConnection()->rollBack();
         } catch (\Exception $e) {
             $this->handleRollBackException($e);

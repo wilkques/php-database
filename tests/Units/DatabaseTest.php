@@ -7,7 +7,6 @@ use Wilkques\Database\Database;
 use Wilkques\Database\Queries\Builder;
 use Wilkques\Database\Queries\Grammar\Drivers\MySql as MySqlGrammar;
 use Wilkques\Database\Tests\BaseTestCase;
-use Wilkques\Helpers\Arrays;
 
 class DatabaseTest extends BaseTestCase
 {
@@ -17,15 +16,15 @@ class DatabaseTest extends BaseTestCase
 
         $this->envLoad($dir);
 
-        $driver = Arrays::get($_ENV, 'DB_DRIVER');
+        $driver = $this->getConfigItem('DB_DRIVER');
 
-        $host = Arrays::get($_ENV, 'DB_HOST');
+        $host = $this->getConfigItem('DB_HOST');
 
-        $username = Arrays::get($_ENV, 'DB_USER');
+        $username = $this->getConfigItem('DB_USER');
 
-        $password = Arrays::get($_ENV, 'DB_PASSWORD');
+        $password = $this->getConfigItem('DB_PASSWORD');
 
-        $database = Arrays::get($_ENV, 'DB_NAME_1');
+        $database = $this->getConfigItem('DB_NAME_1');
 
         $builder = Database::connect(
             $driver, $host, $username, $password, $database

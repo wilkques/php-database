@@ -12,23 +12,37 @@ class MySqlTest extends BaseTestCase
     /** @var MySql */
     private $connection;
 
-    private function connection()
+    private function init()
     {
         $dir = dirname(dirname(dirname(dirname(__DIR__))));
 
         $this->envLoad($dir);
+    }
 
-        $host = Arrays::get($_ENV, 'DB_HOST');
+    /**
+     * @return MySql
+     */
+    private function connection()
+    {
+        $mysql = \container()->get('Wilkques\Database\Connections\PDO\Drivers\MySql');
 
-        $username = Arrays::get($_ENV, 'DB_USER');
+        if (!$mysql) {
+            $host = $this->getConfigItem('DB_HOST');
 
-        $password = Arrays::get($_ENV, 'DB_PASSWORD');
+            $username = $this->getConfigItem('DB_USER');
 
-        $database = Arrays::get($_ENV, 'DB_NAME_1');
+            $password = $this->getConfigItem('DB_PASSWORD');
 
-        $connection = MySql::connect($host, $username, $password, $database);
+            $database = $this->getConfigItem('DB_NAME_1');
 
-        return $connection->newConnection();
+            $connection = MySql::connect($host, $username, $password, $database);
+
+            \container()->singleton('Wilkques\Database\Connections\PDO\Drivers\MySql', $connection->newConnection());
+
+            return \container('Wilkques\Database\Connections\PDO\Drivers\MySql');
+        }
+
+        return $mysql;
     }
 
     private function setupDatabase()
@@ -49,6 +63,8 @@ class MySqlTest extends BaseTestCase
 
     public function testSetAttribute()
     {
+        $this->init();
+
         $this->connection()->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
 
         $this->assertTrue(
@@ -58,6 +74,8 @@ class MySqlTest extends BaseTestCase
 
     public function testQuery()
     {
+        $this->init();
+
         $result = $this->connection()->query('SELECT 1');
 
         $this->assertEquals(
@@ -68,6 +86,8 @@ class MySqlTest extends BaseTestCase
 
     public function testPrepare()
     {
+        $this->init();
+
         $result = $this->connection()->prepare('SELECT 1')->execute();
 
         $this->assertEquals(
@@ -78,6 +98,8 @@ class MySqlTest extends BaseTestCase
 
     public function testConnection()
     {
+        $this->init();
+
         $pdo = $this->connection()->connection();
 
         $this->assertTrue(
@@ -87,6 +109,8 @@ class MySqlTest extends BaseTestCase
 
     public function testBeginTransaction()
     {
+        $this->init();
+
         $connection = $this->connection();
 
         $connection->beginTransaction();
@@ -95,14 +119,18 @@ class MySqlTest extends BaseTestCase
             $connection->inTransation(),
             'Transaction should be active after beginTransaction.'
         );
+
+        $connection->commit();
     }
 
     private function runDatabase($callback)
     {
+        $this->init();
+
         $this->connection = $this->connection();
 
         $this->cleanupDatabase();
-        
+
         $this->setupDatabase();
 
         call_user_func($callback, $this);
@@ -146,6 +174,8 @@ class MySqlTest extends BaseTestCase
 
     public function testInTransaction()
     {
+        $this->init();
+
         $connection = $this->connection();
 
         $connection->beginTransaction();
@@ -193,6 +223,8 @@ class MySqlTest extends BaseTestCase
 
     public function testNewConnection()
     {
+        $this->init();
+
         $connection = $this->connection();
 
         $connection->newConnection();
@@ -267,6 +299,8 @@ class MySqlTest extends BaseTestCase
 
     public function testReconnectIfMissingConnection()
     {
+        $this->init();
+
         $connection = $this->connection();
 
         $connectionMethod = new ReflectionMethod($connection, 'reconnectIfMissingConnection');
@@ -280,7 +314,9 @@ class MySqlTest extends BaseTestCase
 
     public function testSelectDatabase()
     {
-        $database = Arrays::get($_ENV, 'DB_NAME_2');
+        $this->init();
+
+        $database = $this->getConfigItem('DB_NAME_2');
 
         $result = $this->connection()->selectDatabase($database);
 

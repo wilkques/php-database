@@ -9,7 +9,8 @@
     "require-dev": {
         "phpunit/phpunit": "*",
         "mockery/mockery": "*",
-        "vlucas/phpdotenv": "*"
+        "vlucas/phpdotenv": "*",
+        "wilkques/Container": "*"
     },
     "autoload": {
         "psr-4": {
