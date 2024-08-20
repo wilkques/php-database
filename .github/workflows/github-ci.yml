@@ -12,8 +12,8 @@ env:
   MYSQL_USER: user
   DB_PORT: 3360
   DB_USER: root
-  # DB_HOST: '127.0.0.1'
-  DB_HOST: mysql
+  DB_HOST: '127.0.0.1'
+  # DB_HOST: mysql
 
 jobs:
   build:
