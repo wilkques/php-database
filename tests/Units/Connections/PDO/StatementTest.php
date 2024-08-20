@@ -1,7 +1,5 @@
 <?php
 
-ini_set('xdebug.max_nesting_level', 500);
-
 namespace Wilkques\Database\Tests\Units\Connections\PDO\Drivers;
 
 use Mockery;
@@ -25,6 +23,8 @@ class StatementTest extends TestCase
 
     private function runDatabase($callback)
     {
+        ini_set('xdebug.max_nesting_level', 500);
+
         $this->pdoStatement = Mockery::mock('PDOStatement');
 
         $this->connections = Mockery::mock('Wilkques\Database\Connections\PDO\Drivers\MySql');
