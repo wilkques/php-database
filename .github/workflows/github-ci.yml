@@ -90,7 +90,7 @@ jobs:
         
       - name: Create DB And User
         run: |
-          mysql -u ${{ env.MYSQL_ROOT }} -p${{ env.MYSQL_ROOT_PASSWORD }} < /tests/Drivers/MySql/docker-entrypoint-initdb.d/init.sql
+          mysql -u ${{ env.MYSQL_ROOT }} -p${{ env.MYSQL_ROOT_PASSWORD }} < ${{ github.workspace }}/tests/Drivers/MySql/docker-entrypoint-initdb.d/init.sql
 
       - name: Check DB And User
         run: |
