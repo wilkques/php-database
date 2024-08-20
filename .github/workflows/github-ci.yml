@@ -25,20 +25,20 @@ jobs:
         php-versions: ["5.4"]
         # php-versions: ['5.4', '5.6', '7.3', '7.4', '8.0', '8.1', '8.2', '8.3']
 
-    services:
-      mysql:
-        image: mysql:5.7
-        ports:
-          - 3306:3306
-        env:
-          DB_HOST: ${{ env.DB_HOST }}
-          MYSQL_ROOT_PASSWORD: ${{ env.DB_PASSWORD }}
-          MYSQL_USER: ${{ env.MYSQL_USER }}
-          MYSQL_PASSWORD: ${{ env.DB_PASSWORD }}
-        # volumes:
-        #   - ${{ github.workspace }}/.github/Driver/MySql/my.cnf:/etc/mysql/my.cnf
-        #   - ${{ github.workspace }}/.github/Driver/MySql/docker-entrypoint-initdb.d/:/docker-entrypoint-initdb.d
-        options: --health-cmd "mysqladmin ping -h $DB_HOST -u$MYSQL_USER -p$MYSQL_PASSWORD" --health-interval 20s --health-timeout 10s --health-retries 10
+    # services:
+    #   mysql:
+    #     image: mysql:5.7
+    #     ports:
+    #       - 3306:3306
+    #     env:
+    #       DB_HOST: ${{ env.DB_HOST }}
+    #       MYSQL_ROOT_PASSWORD: ${{ env.DB_PASSWORD }}
+    #       MYSQL_USER: ${{ env.MYSQL_USER }}
+    #       MYSQL_PASSWORD: ${{ env.DB_PASSWORD }}
+    #     # volumes:
+    #     #   - ${{ github.workspace }}/.github/Driver/MySql/my.cnf:/etc/mysql/my.cnf
+    #     #   - ${{ github.workspace }}/.github/Driver/MySql/docker-entrypoint-initdb.d/:/docker-entrypoint-initdb.d
+    #     options: --health-cmd "mysqladmin ping -h $DB_HOST -u$MYSQL_USER -p$MYSQL_PASSWORD" --health-interval 20s --health-timeout 10s --health-retries 10
 
     steps:
       - name: PHP ${{ matrix.php-versions }} Test on ${{ matrix.operating-system }}
@@ -77,7 +77,7 @@ jobs:
             ${{ runner.os }}-php-${{ matrix.php-versions }}
 
       - name: Install dependencies
-        run: composer install --prefer-dist --no-progress
+        run: composer install --prefer-dist --no-progress --no-interaction --dev
 
       # Add a test script to composer.json, for instance: "test": "vendor/bin/phpunit"
       # Docs: https://getcomposer.org/doc/articles/scripts.md
