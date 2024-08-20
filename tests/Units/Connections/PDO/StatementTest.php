@@ -1,5 +1,7 @@
 <?php
 
+ini_set('xdebug.max_nesting_level', 500);
+
 namespace Wilkques\Database\Tests\Units\Connections\PDO\Drivers;
 
 use Mockery;

@@ -5,7 +5,6 @@ namespace Wilkques\Database\Tests\Units\Connections\PDO\Drivers;
 use ReflectionMethod;
 use Wilkques\Database\Connections\PDO\Drivers\MySql;
 use Wilkques\Database\Tests\BaseTestCase;
-use Wilkques\Helpers\Arrays;
 
 class MySqlTest extends BaseTestCase
 {
