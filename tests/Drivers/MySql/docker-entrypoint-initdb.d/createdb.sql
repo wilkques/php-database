@@ -1,5 +1,5 @@
 -- Additional users
-CREATE USER IF NOT EXISTS 'user'@'%' IDENTIFIED BY 'root';
+CREATE USER IF NOT EXISTS 'user'@'%' IDENTIFIED WITH mysql_native_password BY 'root';
 
 CREATE DATABASE IF NOT EXISTS `test` COLLATE 'utf8_general_ci';
 GRANT ALL ON `test`.* TO 'user'@'%';
