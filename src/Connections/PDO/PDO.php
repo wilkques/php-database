@@ -56,15 +56,15 @@ abstract class PDO extends Connections
      */
     public function connection($dns = null)
     {
-        ve(
-            $dns ?: $this->getDNS()
-        );
-
-        return new \PDO(
-            $dns ?: $this->getDNS(),
-            $this->getUsername(),
-            $this->getPassword()
-        );
+        try {
+            return new \PDO(
+                $dns ?: $this->getDNS(),
+                $this->getUsername(),
+                $this->getPassword()
+            );
+        } catch (\Exception $e) {
+            ved($e);
+        }
     }
 
     /**
