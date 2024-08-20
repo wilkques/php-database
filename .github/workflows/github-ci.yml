@@ -9,10 +9,10 @@ permissions:
 
 env:
   MYSQL_ROOT_PASSWORD: root
-  DB_USER: user
+  MYSQL_USER: user
   DB_PASSWORD: root
   DB_PORT: 3360
-  MYSQL_ROOT: root
+  DB_USER: root
   # DB_HOST: '127.0.0.1'
   DB_HOST: mysql
 
@@ -34,7 +34,7 @@ jobs:
         env:
           DB_HOST: ${{ env.DB_HOST }}
           MYSQL_ROOT_PASSWORD: ${{ env.MYSQL_ROOT_PASSWORD }}
-          MYSQL_USER: ${{ env.DB_USER }}
+          MYSQL_USER: ${{ env.MYSQL_USER }}
           MYSQL_PASSWORD: ${{ env.DB_PASSWORD }}
         # volumes:
         #   - ${{ github.workspace }}/.github/Driver/MySql/my.cnf:/etc/mysql/my.cnf
@@ -103,12 +103,12 @@ jobs:
         
       - name: Create DB And User
         run: |
-          mysql -u ${{ env.MYSQL_ROOT }} -p${{ env.MYSQL_ROOT_PASSWORD }} < ${{ github.workspace }}/tests/Drivers/MySql/docker-entrypoint-initdb.d/createdb.sql
+          mysql -u ${{ env.DB_USER }} -p${{ env.MYSQL_ROOT_PASSWORD }} < ${{ github.workspace }}/tests/Drivers/MySql/docker-entrypoint-initdb.d/createdb.sql
 
       - name: Check DB And User
         run: |
-          mysql -u ${{ env.MYSQL_ROOT }} -p${{ env.MYSQL_ROOT_PASSWORD }} -e "SHOW DATABASES;"
-          mysql -u ${{ env.MYSQL_ROOT }} -p${{ env.MYSQL_ROOT_PASSWORD }} -e "SHOW GRANTS FOR 'user'@'%';"
+          mysql -u ${{ env.DB_USER }} -p${{ env.MYSQL_ROOT_PASSWORD }} -e "SHOW DATABASES;"
+          mysql -u ${{ env.DB_USER }} -p${{ env.MYSQL_ROOT_PASSWORD }} -e "SHOW GRANTS FOR 'user'@'%';"
 
       - name: Install PHP
         uses: shivammathur/setup-php@v2
