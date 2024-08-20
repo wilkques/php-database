@@ -18,6 +18,8 @@ class MySqlTest extends BaseTestCase
 
         $this->envLoad($dir);
 
+        var_export($_ENV);
+
         $host = Arrays::get($_ENV, 'DB_HOST');
 
         $username = Arrays::get($_ENV, 'DB_USER');
