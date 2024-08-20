@@ -29,8 +29,13 @@ jobs:
       - name: PHP ${{ matrix.php-versions }} Test on ${{ matrix.operating-system }}
         uses: actions/checkout@v3
 
-      - name: List files in workspace
-        run: ls -R ${{ github.workspace }}
+      # - name: List files in workspace
+      #   run: ls -R ${{ github.workspace }}
+
+      - name: Set up MySQL configuration
+        run: |
+          sudo cp tests/Drivers/MySql/my.cnf /etc/mysql/conf.d/my.cnf
+          sudo chmod -R 644 /etc/mysql/conf.d/my.cnf
 
       - name: Set Up Mysql
         run: |
