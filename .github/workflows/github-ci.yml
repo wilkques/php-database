@@ -48,17 +48,17 @@ jobs:
       - name: List files in workspace
         run: ls -R ${{ github.workspace }}
 
-      - name: Wait for MySQL to be ready
-        run: |
-          echo "Waiting for MySQL to start..."
-          for i in {1..30}; do
-            if mysqladmin ping -h mysql --silent; then
-              echo "MySQL is up!"
-              break
-            fi
-            echo "Waiting for MySQL..."
-            sleep 10
-          done
+      # - name: Wait for MySQL to be ready
+      #   run: |
+      #     echo "Waiting for MySQL to start..."
+      #     for i in {1..30}; do
+      #       if mysqladmin ping -h mysql --silent; then
+      #         echo "MySQL is up!"
+      #         break
+      #       fi
+      #       echo "Waiting for MySQL..."
+      #       sleep 10
+      #     done
 
       # - name: Set up MySQL container
       #   run: |
