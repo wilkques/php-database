@@ -23,7 +23,7 @@ class StatementTest extends TestCase
 
     private function runDatabase($callback)
     {
-        ini_set('xdebug.max_nesting_level', 500);
+        ini_set('xdebug.max_nesting_level', 2048);
 
         $this->pdoStatement = Mockery::mock('PDOStatement');
 
