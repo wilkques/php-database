@@ -56,15 +56,16 @@ jobs:
 
       - name: Create DB And User
         run: |
-          docker exec mysql ls /docker-entrypoint-initdb.d/
-          docker exec mysql ls -l /docker-entrypoint-initdb.d/
-          docker exec mysql cat /docker-entrypoint-initdb.d/createdb.sql
-          if [ -f /docker-entrypoint-initdb.d/createdb.sql ]; then \
-            docker exec mysql mysql -u ${{ env.MYSQL_ROOT }} -p${{ env.MYSQL_ROOT_PASSWORD }} < /docker-entrypoint-initdb.d/createdb.sql; \
-          else \
-            echo "SQL file not found!"; \
-            exit 1; \
-          fi
+          docker exec mysql mysql -u ${{ env.MYSQL_ROOT }} -p${{ env.MYSQL_ROOT_PASSWORD }} -e "SHOW DATABASES;"
+          # docker exec mysql ls /docker-entrypoint-initdb.d/
+          # docker exec mysql ls -l /docker-entrypoint-initdb.d/
+          # docker exec mysql cat /docker-entrypoint-initdb.d/createdb.sql
+          # if [ -f /docker-entrypoint-initdb.d/createdb.sql ]; then \
+          #   docker exec mysql mysql -u ${{ env.MYSQL_ROOT }} -p${{ env.MYSQL_ROOT_PASSWORD }} < /docker-entrypoint-initdb.d/createdb.sql; \
+          # else \
+          #   echo "SQL file not found!"; \
+          #   exit 1; \
+          # fi
 
       - name: Install PHP
         uses: shivammathur/setup-php@v2
