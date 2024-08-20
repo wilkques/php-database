@@ -215,6 +215,8 @@ abstract class Connections
     protected function useDefaultQueryGrammar()
     {
         $this->grammar = new \Wilkques\Database\Queries\Grammar\Grammar;
+
+        return $this;
     }
 
     /**
