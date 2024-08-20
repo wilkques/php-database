@@ -10,7 +10,7 @@
         "phpunit/phpunit": "*",
         "mockery/mockery": "*",
         "vlucas/phpdotenv": "*",
-        "wilkques/Container": "*"
+        "wilkques/container": "*"
     },
     "autoload": {
         "psr-4": {
