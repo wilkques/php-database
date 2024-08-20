@@ -46,10 +46,6 @@ jobs:
           sudo cp tests/Drivers/MySql/my.cnf /etc/mysql/conf.d/my.cnf
           sudo chmod -R 644 /etc/mysql/conf.d/my.cnf
 
-      - name: Set Up Mysql
-        run: |
-          sudo /etc/init.d/mysql start
-
       - name: Mysql Version
         run: mysql --protocol=tcp -u ${{ env.DB_USER }} -p${{ env.DB_PASSWORD }} -e "SELECT VERSION();"
         
