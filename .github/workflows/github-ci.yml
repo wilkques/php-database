@@ -35,8 +35,8 @@ jobs:
             --name mysql \
             -e MYSQL_ROOT_PASSWORD=${{ env.MYSQL_ROOT_PASSWORD }} \
             -p 3306:3306 \
-            -v ${{ github.workspace }}/.github/Driver/MySql/my.cnf:/etc/mysql/my.cnf \
-            -v ${{ github.workspace }}/.github/Driver/MySql/docker-entrypoint-initdb.d/:/docker-entrypoint-initdb.d \
+            -v ${{ github.workspace }}/.github/Drivers/MySql/my.cnf:/etc/mysql/my.cnf \
+            -v ${{ github.workspace }}/.github/Drivers/MySql/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d \
             mysql:5.7
           
       - name: Wait for MySQL to be ready
