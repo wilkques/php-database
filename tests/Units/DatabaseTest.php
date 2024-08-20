@@ -14,7 +14,7 @@ class DatabaseTest extends BaseTestCase
     {
         $dir = dirname(__DIR__);
 
-        $this->envLoad($dir);
+        $this->configLoad($dir);
 
         $driver = $this->getConfigItem('DB_DRIVER');
 

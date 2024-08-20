@@ -16,7 +16,7 @@ class MySqlTest extends BaseTestCase
     {
         $dir = dirname(dirname(dirname(dirname(__DIR__))));
 
-        $this->envLoad($dir);
+        $this->configLoad($dir);
     }
 
     /**

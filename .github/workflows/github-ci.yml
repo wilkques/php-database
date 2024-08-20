@@ -68,7 +68,7 @@ jobs:
       # Docs: https://getcomposer.org/doc/articles/scripts.md
 
       - name: set env
-        run: cp tests/.env.example tests/.env
+        run: cp tests/config.php.example tests/config.php
 
       - name: Run test
         run: vendor/bin/phpunit

@@ -12,17 +12,17 @@ class ConnectionsTest extends BaseTestCase
     {
         $dir = dirname(dirname(__DIR__));
 
-        $this->envLoad($dir);
+        $this->configLoad($dir);
 
-        $driver = Arrays::get($_ENV, 'DB_DRIVER');
+        $driver = $this->getConfigItem('DB_DRIVER');
 
-        $host = Arrays::get($_ENV, 'DB_HOST');
+        $host = $this->getConfigItem('DB_HOST');
 
-        $username = Arrays::get($_ENV, 'DB_USER');
+        $username = $this->getConfigItem('DB_USER');
 
-        $password = Arrays::get($_ENV, 'DB_PASSWORD');
+        $password = $this->getConfigItem('DB_PASSWORD');
 
-        $database = Arrays::get($_ENV, 'DB_NAME_1');
+        $database = $this->getConfigItem('DB_NAME_1');
 
         return $this->getMockForAbstractClass(
             'Wilkques\Database\Connections\Connections',
@@ -43,17 +43,17 @@ class ConnectionsTest extends BaseTestCase
     {
         $dir = dirname(dirname(__DIR__));
 
-        $this->envLoad($dir);
+        $this->configLoad($dir);
 
-        $driver = Arrays::get($_ENV, 'DB_DRIVER');
+        $driver = $this->getConfigItem('DB_DRIVER');
 
-        $host = Arrays::get($_ENV, 'DB_HOST');
+        $host = $this->getConfigItem('DB_HOST');
 
-        $username = Arrays::get($_ENV, 'DB_USER');
+        $username = $this->getConfigItem('DB_USER');
 
-        $password = Arrays::get($_ENV, 'DB_PASSWORD');
+        $password = $this->getConfigItem('DB_PASSWORD');
 
-        $database = Arrays::get($_ENV, 'DB_NAME_1');
+        $database = $this->getConfigItem('DB_NAME_1');
 
         $connections = \Wilkques\Database\Connections\PDO\Drivers\MySql::connect(
             array_values(compact('driver', 'host', 'username', 'password', 'database'))
