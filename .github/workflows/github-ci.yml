@@ -41,6 +41,12 @@ jobs:
             -v ${{ github.workspace }}/tests/Drivers/MySql/my.cnf:/etc/mysql/my.cnf \
             -v ${{ github.workspace }}/tests/Drivers/MySql/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d \
             mysql:5.7
+
+      - name: List files in Docker container
+        run: docker exec mysql ls /docker-entrypoint-initdb.d/
+
+      - name: Check file permissions in Docker container
+        run: docker exec mysql ls -l /docker-entrypoint-initdb.d/
           
       - name: Wait for MySQL to be ready
         run: |
