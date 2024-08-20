@@ -62,6 +62,8 @@ jobs:
 
       - name: Create DB And User
         run: |
+          docker exec mysql ls /docker-entrypoint-initdb.d/ \
+          docker exec mysql ls -l /docker-entrypoint-initdb.d/ \
           docker exec mysql mysql -u ${{ env.MYSQL_ROOT }} -p${{ env.MYSQL_ROOT_PASSWORD }} < /docker-entrypoint-initdb.d/createdb.sql
 
       - name: Install PHP
