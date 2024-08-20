@@ -76,6 +76,10 @@ jobs:
       #     docker exec mysql mysql -u ${{ env.MYSQL_ROOT }} -p${{ env.MYSQL_ROOT_PASSWORD }} -e "SHOW DATABASES;"
       #     docker exec mysql mysql -u ${{ env.MYSQL_ROOT }} -p${{ env.MYSQL_ROOT_PASSWORD }} -e "SHOW GRANTS FOR 'user'@'%';"
 
+      - name: Set Up Mysql
+        run: |
+          sudo systemctl start mysql
+
       - name: Wait for MySQL to be ready
         run: |
           echo "Waiting for MySQL to start..."
@@ -86,7 +90,7 @@ jobs:
         
       - name: Create DB And User
         run: |
-          mysql -u ${{ env.MYSQL_ROOT }} -p${{ env.MYSQL_ROOT_PASSWORD }}  -e "source /tests/Drivers/MySql/docker-entrypoint-initdb.d/init.sql"
+          mysql -u ${{ env.MYSQL_ROOT }} -p${{ env.MYSQL_ROOT_PASSWORD }} < /tests/Drivers/MySql/docker-entrypoint-initdb.d/init.sql
 
       - name: Check DB And User
         run: |
