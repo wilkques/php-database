@@ -19,21 +19,20 @@ jobs:
   build:
     runs-on: ${{ matrix.operating-system }}
 
-    strategy:
-      matrix:
-        operating-system: [ubuntu-latest]
-        php-versions: ["5.4"]
-        # php-versions: ['5.4', '5.6', '7.3', '7.4', '8.0', '8.1', '8.2', '8.3']
-
     services:
       mysql:
         image: mysql:5.7
         env:
           MYSQL_ROOT_PASSWORD: root
         ports:
-          - 3306/tcp
+          - 3306:3360
         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
 
+    strategy:
+      matrix:
+        operating-system: [ubuntu-latest]
+        php-versions: ["5.4"]
+        # php-versions: ['5.4', '5.6', '7.3', '7.4', '8.0', '8.1', '8.2', '8.3']
 
     steps:
       - name: PHP ${{ matrix.php-versions }} Test on ${{ matrix.operating-system }}
@@ -49,7 +48,7 @@ jobs:
 
       - name: Set Up Mysql
         run: |
-          sudo systemctl start mysql
+          sudo /etc/init.d/mysql start
 
       - name: Mysql Version
         run: mysql -u ${{ env.DB_USER }} -p${{ env.DB_PASSWORD }} -e "SELECT VERSION();"
