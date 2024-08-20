@@ -47,62 +47,13 @@ jobs:
       - name: List files in workspace
         run: ls -R ${{ github.workspace }}
 
-      # - name: Wait for MySQL to be ready
-      #   run: |
-      #     echo "Waiting for MySQL to start..."
-      #     for i in {1..30}; do
-      #       if mysqladmin ping -h mysql --silent; then
-      #         echo "MySQL is up!"
-      #         break
-      #       fi
-      #       echo "Waiting for MySQL..."
-      #       sleep 10
-      #     done
-
-      # - name: Set up MySQL container
-      #   run: |
-      #     docker run -d \
-      #       --name mysql \
-      #       -e MYSQL_ROOT_PASSWORD=${{ env.MYSQL_ROOT_PASSWORD }} \
-      #       -e MYSQL_USER=${{ env.MYSQL_USER }} \
-      #       -e MYSQL_PASSWORD=${{ env.MYSQL_PASSWORD }} \
-      #       -p 3306:3306 \
-      #       -v ${{ github.workspace }}/tests/Drivers/MySql/my.cnf:/etc/mysql/my.cnf \
-      #       -v ${{ github.workspace }}/tests/Drivers/MySql/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d \
-      #       mysql:5.7
-          
-      # - name: Wait for MySQL to be ready
-      #   run: |
-      #     echo "Waiting for MySQL to start..."
-      #     for i in {1..30}; do
-      #       if docker exec mysql mysqladmin ping --silent; then
-      #         echo "MySQL is up!"
-      #         break
-      #       fi
-      #       echo "Waiting for MySQL..."
-      #       sleep 10
-      #     done
-
-      # - name: Check DB And User
-      #   run: |
-      #     docker exec mysql mysql -u ${{ env.MYSQL_ROOT }} -p${{ env.MYSQL_ROOT_PASSWORD }} -e "SHOW DATABASES;"
-      #     docker exec mysql mysql -u ${{ env.MYSQL_ROOT }} -p${{ env.MYSQL_ROOT_PASSWORD }} -e "SHOW GRANTS FOR 'user'@'%';"
-
       - name: Set Up Mysql
         run: |
           sudo systemctl start mysql
-
-      # - name: Wait for MySQL to be ready
-      #   run: |
-      #     echo "Waiting for MySQL to start..."
-      #     while ! mysqladmin ping -h ${{ env.DB_HOST }} -P ${{ env.DB_PORT }} --silent; do
-      #       sleep 1
-      #     done
-      #     echo "MySQL is up and running."
         
       - name: Create DB And User
         run: |
-          mysql -u ${{ env.DB_USER }} -p${{ env.DB_PASSWORD }} < ${{ github.workspace }}/tests/Drivers/MySql/docker-entrypoint-initdb.d/createdb.sql
+          mysql -u ${{ env.DB_USER }} -p${{ env.DB_PASSWORD }} < tests/Drivers/MySql/docker-entrypoint-initdb.d/createdb.sql
 
       - name: Check DB And User
         run: |
@@ -113,7 +64,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php-versions }}
-          extensions: intl #optional
+          extensions: mbstring,pdo,pdo_mysql,intl #optional
           ini-values: "post_max_size=256M" #optional
 
       - name: Cache Composer packages
