@@ -16,16 +16,14 @@ class MySql extends PDO
                 "mysql:host=%s;dbname=%s;port=%s",
                 $this->getHost(),
                 $database,
-                $this->getPort(),
-                $this->getCharacterSet()
+                $this->getPort()
             );
         }
 
         return sprintf(
             "mysql:host=%s;port=%s",
             $this->getHost(),
-            $this->getPort(),
-            $this->getCharacterSet()
+            $this->getPort()
         );
     }
 }
