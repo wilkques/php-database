@@ -12,8 +12,8 @@ env:
   MYSQL_USER: user
   DB_PORT: 3360
   DB_USER: root
-  # DB_HOST: '127.0.0.1'
-  DB_HOST: mysql
+  DB_HOST: '127.0.0.1'
+  # DB_HOST: mysql
 
 jobs:
   build:
@@ -57,6 +57,13 @@ jobs:
         run: |
           mysql --protocol=tcp -u ${{ env.DB_USER }} -p${{ env.DB_PASSWORD }} -e "SHOW DATABASES;"
           mysql --protocol=tcp -u ${{ env.DB_USER }} -p${{ env.DB_PASSWORD }} -e "SHOW GRANTS FOR 'user'@'%';"
+
+      - name: Wait for MySQL to be ready
+        run: |
+          until mysqladmin ping -h${{ env.DB_HOST }} --silent; do
+            echo "Waiting for database connection..."
+            sleep 1
+          done
 
       - name: Install PHP
         uses: shivammathur/setup-php@v2
