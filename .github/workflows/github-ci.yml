@@ -80,13 +80,13 @@ jobs:
         run: |
           sudo systemctl start mysql
 
-      - name: Wait for MySQL to be ready
-        run: |
-          echo "Waiting for MySQL to start..."
-          while ! mysqladmin ping -h ${{ env.DB_HOST }} -P ${{ env.DB_PORT }} --silent; do
-            sleep 1
-          done
-          echo "MySQL is up and running."
+      # - name: Wait for MySQL to be ready
+      #   run: |
+      #     echo "Waiting for MySQL to start..."
+      #     while ! mysqladmin ping -h ${{ env.DB_HOST }} -P ${{ env.DB_PORT }} --silent; do
+      #       sleep 1
+      #     done
+      #     echo "MySQL is up and running."
         
       - name: Create DB And User
         run: |
