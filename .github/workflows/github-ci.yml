@@ -29,6 +29,9 @@ jobs:
       - name: PHP ${{ matrix.php-versions }} Test on ${{ matrix.operating-system }}
         uses: actions/checkout@v3
 
+      - name: List files in workspace
+        run: ls -R ${{ github.workspace }}
+
       - name: Set up MySQL container
         run: |
           docker run -d \
