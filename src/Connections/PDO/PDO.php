@@ -63,7 +63,8 @@ abstract class PDO extends Connections
         );
 
         if ($character = $this->getCharacterSet()) {
-            $pdo->exec("SET NAMES '{$character}'");
+            ve("SET NAMES {$character}");
+            $pdo->exec("SET NAMES {$character}");
         }
 
         return $pdo;
