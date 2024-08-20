@@ -32,6 +32,11 @@ jobs:
       - name: List files in workspace
         run: ls -R ${{ github.workspace }}
 
+      - name: Mysql Set cnf
+        run: |
+          cp tests/Drivers/MySql/docker-entrypoint-initdb.d/createdb.sql /etc/mysql/conf.d/my.cnf
+          chmod -R 644 /etc/mysql/conf.d/my.cnf
+
       - name: Set Up Mysql
         run: |
           sudo systemctl start mysql
