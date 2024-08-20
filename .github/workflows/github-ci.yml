@@ -37,6 +37,8 @@ jobs:
           docker run -d \
             --name mysql \
             -e MYSQL_ROOT_PASSWORD=${{ env.MYSQL_ROOT_PASSWORD }} \
+            -e MYSQL_USER=${{ env.MYSQL_USER }} \
+            -e MYSQL_PASSWORD=${{ env.MYSQL_PASSWORD }} \
             -p 3306:3306 \
             -v ${{ github.workspace }}/tests/Drivers/MySql/my.cnf:/etc/mysql/my.cnf \
             -v ${{ github.workspace }}/tests/Drivers/MySql/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d \
