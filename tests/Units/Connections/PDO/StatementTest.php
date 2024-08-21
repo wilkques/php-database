@@ -80,6 +80,7 @@ class StatementTest extends MockeryTestCase
                 $errorMessage = 'Undefined index: abc';
             }
 
+            $this->expectException('Exception');
             $this->expectExceptionMessage($errorMessage);
         }
     }
