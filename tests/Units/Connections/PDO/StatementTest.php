@@ -3,14 +3,14 @@
 namespace Wilkques\Database\Tests\Units\Connections\PDO;
 
 use Mockery;
+use Mockery\Adapter\Phpunit\MockeryTestCase;
 use PDOStatement;
-use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 use Wilkques\Database\Connections\PDO\Drivers\MySql;
 use Wilkques\Database\Connections\PDO\Statement;
 use Wilkques\Helpers\Strings;
 
-class StatementTest extends TestCase
+class StatementTest extends MockeryTestCase
 {
     /** @var Statement */
     protected $statement;
@@ -74,8 +74,14 @@ class StatementTest extends TestCase
         try {
             $this->statement->getParam('abc');
         } catch (\Exception $e) {
+            if (version_compare(PHP_VERSION, '8.0', '>=') && version_compare(PHP_VERSION, '8.1', '<')) {
+                $errorMessage = 'Undefined array key "abc"';
+            } else {
+                $errorMessage = 'Undefined index: abc';
+            }
+    
             $this->assertEquals(
-                'Undefined index: abc',
+                $errorMessage,
                 $e->getMessage()
             );
         }
