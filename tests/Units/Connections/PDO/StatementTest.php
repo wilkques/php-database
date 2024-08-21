@@ -23,8 +23,6 @@ class StatementTest extends TestCase
 
     private function runDatabase($callback)
     {
-        ini_set('xdebug.max_nesting_level', 2048);
-
         $this->pdoStatement = Mockery::mock('PDOStatement');
 
         $this->connections = Mockery::mock('Wilkques\Database\Connections\PDO\Drivers\MySql');
@@ -486,6 +484,8 @@ class StatementTest extends TestCase
 
         // Call the magic method __call
         $mysql->debug(true);
+
+        Mockery::close();
     }
 
     public function testMagicCallParamsMethod()
@@ -499,6 +499,8 @@ class StatementTest extends TestCase
 
         // Call the magic method __call
         $mysql->params(array('param1' => 'value1'));
+
+        Mockery::close();
     }
 
     public function testMagicCallNonExistentMethod()
