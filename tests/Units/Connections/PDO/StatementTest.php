@@ -478,7 +478,6 @@ class StatementTest extends TestCase
         $this->runDatabase(function ($statementTest) {
             $statementTest->statement->debug();
 
-            // Ensure the result is null because non-existent methods are not handled
             $statementTest->assertTrue($statementTest->statement->getDebug());
         });
     }
@@ -488,7 +487,6 @@ class StatementTest extends TestCase
         $this->runDatabase(function ($statementTest) {
             $statementTest->statement->params(array('param1' => 'value1'));
 
-            // Ensure the result is null because non-existent methods are not handled
             $statementTest->assertEquals(
                 array('param1' => 'value1'),
                 $statementTest->statement->getParams()
@@ -499,11 +497,15 @@ class StatementTest extends TestCase
     public function testMagicCallNonExistentMethod()
     {
         $this->runDatabase(function ($statementTest) {
-            // Call the magic method __call with a method that does not exist
-            $result = $statementTest->statement->nonExistentMethod();
-
-            // Ensure the result is null because non-existent methods are not handled
-            $statementTest->assertNull($result);
+            try {
+                // Call the magic method __call with a method that does not exist
+                $statementTest->statement->nonExistentMethod();
+            } catch (\RuntimeException $e) {
+                $statementTest->assertEquals(
+                    'Method: nonExistentMethod Not exists',
+                    $e->getMessage()
+                );
+            }
         });
     }
 }
