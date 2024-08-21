@@ -297,13 +297,10 @@ class Statement
      */
     public function __call($method, $arguments)
     {
-        ve($method);
         if (in_array($method, array("debug", "params"))) {
             $method = "set" . ucfirst($method);
-ve($method);
+
             return call_user_func_array(array($this, $method), $arguments);
         }
-
-        return call_user_func_array(array($this, $method), $arguments);
     }
 }

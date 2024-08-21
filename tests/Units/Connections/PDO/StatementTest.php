@@ -475,32 +475,28 @@ class StatementTest extends TestCase
 
     public function testMagicCallDebugMethod()
     {
-        $mysql = Mockery::mock('Wilkques\Database\Connections\PDO\Statement')->makePartial();
+        $this->runDatabase(function ($statementTest) {
+            // Set expectation for setDebug method
+            $statementTest->statement->shouldReceive('setDebug')
+                ->with(true)
+                ->once();
 
-        // Set expectation for setDebug method
-        $mysql->shouldReceive('setDebug')
-            ->with(true)
-            ->once();
-
-        // Call the magic method __call
-        $mysql->debug(true);
-
-        Mockery::close();
+            // Call the magic method __call
+            $statementTest->statement->debug(true);
+        });
     }
 
     public function testMagicCallParamsMethod()
     {
-        $mysql = Mockery::mock('Wilkques\Database\Connections\PDO\Statement')->makePartial();
+        $this->runDatabase(function ($statementTest) {
+            // Expect setParams to be called with an array
+            $statementTest->statement->shouldReceive('setParams')
+                ->with(array('param1' => 'value1'))
+                ->once();
 
-        // Expect setParams to be called with an array
-        $mysql->shouldReceive('setParams')
-            ->with(array('param1' => 'value1'))
-            ->once();
-
-        // Call the magic method __call
-        $mysql->params(array('param1' => 'value1'));
-
-        Mockery::close();
+            // Call the magic method __call
+            $statementTest->statement->params(array('param1' => 'value1'));
+        });
     }
 
     public function testMagicCallNonExistentMethod()
