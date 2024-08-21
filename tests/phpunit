@@ -2,9 +2,9 @@
 
 PHP_VERSION=$(php -r "echo PHP_MAJOR_VERSION;")
 
-echo PHP_VERSION
+echo $PHP_VERSION
 
-if [ "$a" -gt 5 ]; then
+if [ "$PHP_VERSION" -gt 5 ]; then
     CONFIG_FILE="phpunit-higher.xml"
 else
     CONFIG_FILE="phpunit-lower.xml"
