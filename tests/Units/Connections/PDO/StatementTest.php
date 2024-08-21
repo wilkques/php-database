@@ -79,11 +79,8 @@ class StatementTest extends MockeryTestCase
             } else {
                 $errorMessage = 'Undefined index: abc';
             }
-    
-            $this->assertEquals(
-                $errorMessage,
-                $e->getMessage()
-            );
+
+            $this->expectExceptionMessage($errorMessage);
         }
     }
 
