@@ -90,4 +90,4 @@ jobs:
         run: cp tests/config.php.example tests/config.php
 
       - name: Run test
-        run: vendor/bin/phpunit
+        run: tests/phpunit

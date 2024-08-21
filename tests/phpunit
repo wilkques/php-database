@@ -1,0 +1,11 @@
+#!/bin/bash
+
+PHP_VERSION=$(php -r "echo PHP_MAJOR_VERSION;")
+
+if [ "$a" -gt 5 ]; then
+    CONFIG_FILE="phpunit-higher.xml"
+else
+    CONFIG_FILE="phpunit-lower.xml"
+fi
+
+vendor/bin/phpunit --configuration $CONFIG_FILE

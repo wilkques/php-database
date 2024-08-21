@@ -1,6 +1,6 @@
 <?php
 
-namespace Wilkques\Database\Tests\Units\Connections\PDO\Drivers;
+namespace Wilkques\Database\Tests\Units\Connections\PDO;
 
 use Mockery;
 use PDOStatement;
@@ -13,499 +13,432 @@ use Wilkques\Helpers\Strings;
 class StatementTest extends TestCase
 {
     /** @var Statement */
-    private $statement;
+    protected $statement;
 
     /** @var MockObject|PDOStatement */
-    private $pdoStatement;
+    protected $pdoStatement;
 
     /** @var MockObject|Connections */
-    private $connections;
-
-    private function runDatabase($callback)
-    {
-        $this->pdoStatement = Mockery::mock('PDOStatement');
-
-        $this->connections = Mockery::mock('Wilkques\Database\Connections\PDO\Drivers\MySql');
-
-        $this->statement = new Statement($this->pdoStatement, $this->connections);
-
-        call_user_func($callback, $this);
-
-        Mockery::close();
-    }
+    protected $connections;
 
     public function testGetStatement()
     {
-        $this->runDatabase(function ($statementTest) {
-            $this->assertTrue(
-                $statementTest->statement->getStatement() instanceof PDOStatement
-            );
-        });
+        $this->assertTrue(
+            $this->statement->getStatement() instanceof PDOStatement
+        );
     }
 
     public function testSetStatement()
     {
-        $this->runDatabase(function ($statementTest) {
-            $statementTest->statement->setStatement($statementTest->pdoStatement);
+        $this->statement->setStatement($this->pdoStatement);
 
-            $statementTest->assertTrue(
-                $statementTest->statement->getStatement() instanceof PDOStatement
-            );
-        });
+        $this->assertTrue(
+            $this->statement->getStatement() instanceof PDOStatement
+        );
     }
 
     public function testGetConnections()
     {
-        $this->runDatabase(function ($statementTest) {
-            $statementTest->assertTrue(
-                $statementTest->statement->getConnections() instanceof MySql
-            );
-        });
+        $this->assertTrue(
+            $this->statement->getConnections() instanceof MySql
+        );
     }
 
     public function testSetConnections()
     {
-        $this->runDatabase(function ($statementTest) {
-            $statementTest->statement->setConnections($statementTest->connections);
+        $this->statement->setConnections($this->connections);
 
-            $statementTest->assertTrue(
-                $statementTest->statement->getConnections() instanceof MySql
-            );
-        });
+        $this->assertTrue(
+            $this->statement->getConnections() instanceof MySql
+        );
     }
 
     public function testGetDebug()
     {
-        $this->runDatabase(function ($statementTest) {
-            $statementTest->assertFalse(
-                $statementTest->statement->getDebug()
-            );
-        });
+        $this->assertFalse(
+            $this->statement->getDebug()
+        );
     }
 
     public function testDebug()
     {
-        $this->runDatabase(function ($statementTest) {
-            $statementTest->statement->setDebug();
+        $this->statement->setDebug();
 
-            $statementTest->assertTrue(
-                $statementTest->statement->getDebug()
-            );
-        });
+        $this->assertTrue(
+            $this->statement->getDebug()
+        );
     }
 
     public function testGetParam()
     {
-        $this->runDatabase(function ($statementTest) {
-            try {
-                $statementTest->statement->getParam('abc');
-            } catch (\Exception $e) {
-                $statementTest->assertEquals(
-                    'Undefined index: abc',
-                    $e->getMessage()
-                );
-            }
-        });
+        try {
+            $this->statement->getParam('abc');
+        } catch (\Exception $e) {
+            $this->assertEquals(
+                'Undefined index: abc',
+                $e->getMessage()
+            );
+        }
     }
 
     public function testSetParam()
     {
-        $this->runDatabase(function ($statementTest) {
-            $statementTest->statement->setParam('abc', 1);
+        $this->statement->setParam('abc', 1);
 
-            $statementTest->assertNotEmpty(
-                $statementTest->statement->getParam('abc')
-            );
-        });
+        $this->assertNotEmpty(
+            $this->statement->getParam('abc')
+        );
     }
 
     public function testGetParams()
     {
-        $this->runDatabase(function ($statementTest) {
-            $statementTest->assertEmpty(
-                $statementTest->statement->getParams()
-            );
-        });
+        $this->assertEmpty(
+            $this->statement->getParams()
+        );
     }
 
     public function testSetParams()
     {
-        $this->runDatabase(function ($statementTest) {
-            $statementTest->statement->setParams(array('abc' => 1));
+        $this->statement->setParams(array('abc' => 1));
 
-            $statementTest->assertNotEmpty(
-                $statementTest->statement->getParams()
-            );
-        });
+        $this->assertNotEmpty(
+            $this->statement->getParams()
+        );
     }
 
     public function testBindVarsType()
     {
-        $this->runDatabase(function ($statementTest) {
-            $statement = new ReflectionMethod($statementTest->statement, 'bindVarsType');
+        $statement = new ReflectionMethod($this->statement, 'bindVarsType');
 
-            $statement->setAccessible(true);
+        $statement->setAccessible(true);
 
-            $type = $statement->invoke($statementTest->statement, true);
+        $type = $statement->invoke($this->statement, true);
 
-            $statementTest->assertTrue(
-                $type == \PDO::PARAM_BOOL
-            );
+        $this->assertTrue(
+            $type == \PDO::PARAM_BOOL
+        );
 
-            $type = $statement->invoke($statementTest->statement, 1);
+        $type = $statement->invoke($this->statement, 1);
 
-            $statementTest->assertTrue(
-                $type == \PDO::PARAM_INT
-            );
+        $this->assertTrue(
+            $type == \PDO::PARAM_INT
+        );
 
-            $type = $statement->invoke($statementTest->statement, NULL);
+        $type = $statement->invoke($this->statement, NULL);
 
-            $statementTest->assertTrue(
-                $type == \PDO::PARAM_NULL
-            );
+        $this->assertTrue(
+            $type == \PDO::PARAM_NULL
+        );
 
-            $type = $statement->invoke($statementTest->statement, 'abc');
+        $type = $statement->invoke($this->statement, 'abc');
 
-            $statementTest->assertTrue(
-                $type == \PDO::PARAM_STR
-            );
+        $this->assertTrue(
+            $type == \PDO::PARAM_STR
+        );
 
-            $type = $statement->invoke($statementTest->statement, Strings::rand(1000000));
+        $type = $statement->invoke($this->statement, Strings::rand(1000000));
 
-            $statementTest->assertTrue(
-                $type == \PDO::PARAM_LOB
-            );
-        });
+        $this->assertTrue(
+            $type == \PDO::PARAM_LOB
+        );
     }
 
     public function testBindParam()
     {
-        $this->runDatabase(function ($statementTest) {
-            $param = 'abc';
+        $param = 'abc';
 
-            $value = 1;
+        $value = 1;
 
-            $statementTest->pdoStatement->shouldReceive('bindParam')
-                ->once()
-                ->with($param, $value, \PDO::PARAM_INT);
+        $this->pdoStatement->shouldReceive('bindParam')
+            ->once()
+            ->with($param, $value, \PDO::PARAM_INT);
 
-            $statementTest->statement->bindParam($param, $value);
-        });
+        $this->statement->bindParam($param, $value);
     }
 
     public function testBindParamWithDefaultVarsType()
     {
-        $this->runDatabase(function ($statementTest) {
-            $param = 'abc';
+        $param = 'abc';
 
-            $value = 1;
+        $value = 1;
 
-            $bindVarsType = new ReflectionMethod($statementTest->statement, 'bindVarsType');
+        $bindVarsType = new ReflectionMethod($this->statement, 'bindVarsType');
 
-            $bindVarsType->setAccessible(true);
+        $bindVarsType->setAccessible(true);
 
-            $defaultType = $bindVarsType->invoke($statementTest->statement, $value);
+        $defaultType = $bindVarsType->invoke($this->statement, $value);
 
-            $statementTest->pdoStatement->shouldReceive('bindParam')
-                ->once()
-                ->with($param, $value, \PDO::PARAM_INT);
+        $this->pdoStatement->shouldReceive('bindParam')
+            ->once()
+            ->with($param, $value, \PDO::PARAM_INT);
 
-            $statementTest->statement->bindParam($param, $value, $defaultType);
-        });
+        $this->statement->bindParam($param, $value, $defaultType);
     }
 
     public function testBindValue()
     {
-        $this->runDatabase(function ($statementTest) {
-            $param = 'abc';
+        $param = 'abc';
 
-            $value = 1;
+        $value = 1;
 
-            $statementTest->pdoStatement->shouldReceive('bindValue')
-                ->once()
-                ->with($param, $value, \PDO::PARAM_INT);
+        $this->pdoStatement->shouldReceive('bindValue')
+            ->once()
+            ->with($param, $value, \PDO::PARAM_INT);
 
-            $statementTest->statement->bindValue($param, $value);
-        });
+        $this->statement->bindValue($param, $value);
     }
 
     public function testBindValueWithDefaultVarsType()
     {
-        $this->runDatabase(function ($statementTest) {
-            $param = 'param1';
+        $param = 'param1';
 
-            $value = 1;
+        $value = 1;
 
-            $bindVarsType = new ReflectionMethod($statementTest->statement, 'bindVarsType');
+        $bindVarsType = new ReflectionMethod($this->statement, 'bindVarsType');
 
-            $bindVarsType->setAccessible(true);
+        $bindVarsType->setAccessible(true);
 
-            $defaultType = $bindVarsType->invoke($statementTest->statement, $value);
+        $defaultType = $bindVarsType->invoke($this->statement, $value);
 
-            $statementTest->pdoStatement->shouldReceive('bindValue')
-                ->once()
-                ->with($param, $value, \PDO::PARAM_INT);
+        $this->pdoStatement->shouldReceive('bindValue')
+            ->once()
+            ->with($param, $value, \PDO::PARAM_INT);
 
-            $statementTest->statement->bindValue($param, $value, $defaultType);
-        });
+        $this->statement->bindValue($param, $value, $defaultType);
     }
 
     public function testBindingWithSimpleArray()
     {
-        $this->runDatabase(function ($statementTest) {
-            $params = array(
-                'param1' => 'value1',
-                'param2' => 'value2'
-            );
+        $params = array(
+            'param1' => 'value1',
+            'param2' => 'value2'
+        );
 
-            // Set up expectations for bindParam method
-            $statementTest->pdoStatement->shouldReceive('bindParam')
-                ->with(1, 'value1', \PDO::PARAM_STR)
-                ->once();
+        // Set up expectations for bindParam method
+        $this->pdoStatement->shouldReceive('bindParam')
+            ->with(1, 'value1', \PDO::PARAM_STR)
+            ->once();
 
-            $statementTest->pdoStatement->shouldReceive('bindParam')
-                ->with(2, 'value2', \PDO::PARAM_STR)
-                ->once();
+        $this->pdoStatement->shouldReceive('bindParam')
+            ->with(2, 'value2', \PDO::PARAM_STR)
+            ->once();
 
-            // Call the binding method with a callback
-            $statementTest->statement->binding('bindParam', $params, function ($params) {
-                $newParams = array();
+        // Call the binding method with a callback
+        $this->statement->binding('bindParam', $params, function ($params) {
+            $newParams = array();
 
-                foreach ($params as $item) {
-                    if (is_array($item)) {
-                        $newParams = array_merge($newParams, $item);
-                    } else {
-                        array_push($newParams, $item);
-                    }
+            foreach ($params as $item) {
+                if (is_array($item)) {
+                    $newParams = array_merge($newParams, $item);
+                } else {
+                    array_push($newParams, $item);
                 }
+            }
 
-                return $newParams;
-            });
+            return $newParams;
         });
     }
 
     public function testBindingWithArrayOfArrays()
     {
-        $this->runDatabase(function ($statementTest) {
-            $params = array(
-                array('param1' => 'value1'),
-                array('param2' => 'value2'),
-            );
+        $params = array(
+            array('param1' => 'value1'),
+            array('param2' => 'value2'),
+        );
 
-            // Expected to be called with the parameters in bindParam
-            $statementTest->pdoStatement->shouldReceive('bindParam')
-                ->with(1, 'value1', \PDO::PARAM_STR)
-                ->once();
+        // Expected to be called with the parameters in bindParam
+        $this->pdoStatement->shouldReceive('bindParam')
+            ->with(1, 'value1', \PDO::PARAM_STR)
+            ->once();
 
-            $statementTest->pdoStatement->shouldReceive('bindParam')
-                ->with(2, 'value2', \PDO::PARAM_STR)
-                ->once();
+        $this->pdoStatement->shouldReceive('bindParam')
+            ->with(2, 'value2', \PDO::PARAM_STR)
+            ->once();
 
-            // Call the binding method with a callback
-            $statementTest->statement->binding('bindParam', $params, function ($params) {
-                $newParams = array();
+        // Call the binding method with a callback
+        $this->statement->binding('bindParam', $params, function ($params) {
+            $newParams = array();
 
-                foreach ($params as $item) {
-                    if (is_array($item)) {
-                        $item = array_values($item);
+            foreach ($params as $item) {
+                if (is_array($item)) {
+                    $item = array_values($item);
 
-                        $newParams = array_merge($newParams, $item);
-                    } else {
-                        array_push($newParams, $item);
-                    }
+                    $newParams = array_merge($newParams, $item);
+                } else {
+                    array_push($newParams, $item);
                 }
+            }
 
-                return $newParams;
-            });
+            return $newParams;
         });
     }
 
     public function testBindParamsWithSimpleArray()
     {
-        $this->runDatabase(function ($statementTest) {
-            $params = array(
-                'param1' => 'value1',
-                'param2' => 'value2',
-            );
+        $params = array(
+            'param1' => 'value1',
+            'param2' => 'value2',
+        );
 
-            // Expected to be called with the parameters in bindParam
-            $statementTest->pdoStatement->shouldReceive('bindParam')
-                ->with(1, 'value1', \PDO::PARAM_STR)
-                ->once();
+        // Expected to be called with the parameters in bindParam
+        $this->pdoStatement->shouldReceive('bindParam')
+            ->with(1, 'value1', \PDO::PARAM_STR)
+            ->once();
 
-            $statementTest->pdoStatement->shouldReceive('bindParam')
-                ->with(2, 'value2', \PDO::PARAM_STR)
-                ->once();
+        $this->pdoStatement->shouldReceive('bindParam')
+            ->with(2, 'value2', \PDO::PARAM_STR)
+            ->once();
 
-            // Call bindParams with a simple associative array
-            $statementTest->statement->bindParams($params);
-        });
+        // Call bindParams with a simple associative array
+        $this->statement->bindParams($params);
     }
 
     public function testBindParamsWithArrayOfArrays()
     {
-        $this->runDatabase(function ($statementTest) {
-            $params = array(
-                array('param1' => 'value1'),
-                array('param2' => 'value2'),
-            );
+        $params = array(
+            array('param1' => 'value1'),
+            array('param2' => 'value2'),
+        );
 
-            // Expected to be called with the parameters in bindParam
-            $statementTest->pdoStatement->shouldReceive('bindParam')
-                ->with(1, 'value1', \PDO::PARAM_STR)
-                ->once();
+        // Expected to be called with the parameters in bindParam
+        $this->pdoStatement->shouldReceive('bindParam')
+            ->with(1, 'value1', \PDO::PARAM_STR)
+            ->once();
 
-            $statementTest->pdoStatement->shouldReceive('bindParam')
-                ->with(2, 'value2', \PDO::PARAM_STR)
-                ->once();
+        $this->pdoStatement->shouldReceive('bindParam')
+            ->with(2, 'value2', \PDO::PARAM_STR)
+            ->once();
 
-            // Call bindParams with an array of arrays
-            $statementTest->statement->bindParams($params);
-        });
+        // Call bindParams with an array of arrays
+        $this->statement->bindParams($params);
     }
 
     public function testBindValuesWithSimpleArray()
     {
-        $this->runDatabase(function ($statementTest) {
-            $params = array(
-                'param1' => 'value1',
-                'param2' => 'value2',
-            );
+        $params = array(
+            'param1' => 'value1',
+            'param2' => 'value2',
+        );
 
-            // Expected to be called with the parameters in bindValue
-            $statementTest->pdoStatement->shouldReceive('bindValue')
-                ->with(1, 'value1', \PDO::PARAM_STR)
-                ->once();
+        // Expected to be called with the parameters in bindValue
+        $this->pdoStatement->shouldReceive('bindValue')
+            ->with(1, 'value1', \PDO::PARAM_STR)
+            ->once();
 
-            $statementTest->pdoStatement->shouldReceive('bindValue')
-                ->with(2, 'value2', \PDO::PARAM_STR)
-                ->once();
+        $this->pdoStatement->shouldReceive('bindValue')
+            ->with(2, 'value2', \PDO::PARAM_STR)
+            ->once();
 
-            // Call bindParams with a simple associative array
-            $statementTest->statement->bindValues($params);
-        });
+        // Call bindParams with a simple associative array
+        $this->statement->bindValues($params);
     }
 
     public function testBindValuesWithArrayOfArrays()
     {
-        $this->runDatabase(function ($statementTest) {
-            $params = array(
-                array('param1' => 'value1'),
-                array('param2' => 'value2'),
-            );
+        $params = array(
+            array('param1' => 'value1'),
+            array('param2' => 'value2'),
+        );
 
-            // Expected to be called with the parameters in bindValue
-            $statementTest->pdoStatement->shouldReceive('bindValue')
-                ->with(1, 'value1', \PDO::PARAM_STR)
-                ->once();
+        // Expected to be called with the parameters in bindValue
+        $this->pdoStatement->shouldReceive('bindValue')
+            ->with(1, 'value1', \PDO::PARAM_STR)
+            ->once();
 
-            $statementTest->pdoStatement->shouldReceive('bindValue')
-                ->with(2, 'value2', \PDO::PARAM_STR)
-                ->once();
+        $this->pdoStatement->shouldReceive('bindValue')
+            ->with(2, 'value2', \PDO::PARAM_STR)
+            ->once();
 
-            // Call bindParams with an array of arrays
-            $statementTest->statement->bindValues($params);
-        });
+        // Call bindParams with an array of arrays
+        $this->statement->bindValues($params);
     }
 
     public function testExecuteWithoutParams()
     {
-        $this->runDatabase(function ($statementTest) {
-            // Set up the expectation for execute method
-            $statementTest->pdoStatement->shouldReceive('execute')->once();
+        // Set up the expectation for execute method
+        $this->pdoStatement->shouldReceive('execute')->once();
 
-            // Set up the expectation for debugDumpParams method
-            $statementTest->pdoStatement->shouldReceive('debugDumpParams')
-                ->never();
+        // Set up the expectation for debugDumpParams method
+        $this->pdoStatement->shouldReceive('debugDumpParams')
+            ->never();
 
-            // Call the execute method
-            $result = $statementTest->statement->execute();
+        // Call the execute method
+        $result = $this->statement->execute();
 
-            // Verify that the result is an instance of Result
-            $statementTest->assertInstanceOf('Wilkques\Database\Connections\PDO\Result', $result);
-        });
+        // Verify that the result is an instance of Result
+        $this->assertInstanceOf('Wilkques\Database\Connections\PDO\Result', $result);
     }
 
     public function testExecuteWithParams()
     {
-        $this->runDatabase(function ($statementTest) {
-            $params = array('param1' => 'value1');
+        $params = array('param1' => 'value1');
 
-            // Set up the expectation for execute method
-            $statementTest->pdoStatement->shouldReceive('execute')->once();
+        // Set up the expectation for execute method
+        $this->pdoStatement->shouldReceive('execute')->once();
 
-            // Set up the expectation for debugDumpParams method
-            $statementTest->pdoStatement->shouldReceive('debugDumpParams')
-                ->never();
+        // Set up the expectation for debugDumpParams method
+        $this->pdoStatement->shouldReceive('debugDumpParams')
+            ->never();
 
-            // Call the execute method with parameters
-            $result = $statementTest->statement->execute($params);
+        // Call the execute method with parameters
+        $result = $this->statement->execute($params);
 
-            // Verify that the result is an instance of Result
-            $statementTest->assertInstanceOf('Wilkques\Database\Connections\PDO\Result', $result);
-        });
+        // Verify that the result is an instance of Result
+        $this->assertInstanceOf('Wilkques\Database\Connections\PDO\Result', $result);
     }
 
     public function testExecuteWithDebugMode()
     {
-        $this->runDatabase(function ($statementTest) {
-            $params = array('param1' => 'value1');
+        $params = array('param1' => 'value1');
 
-            // Enable debug mode
-            $statementTest->statement->debug(true);
+        // Enable debug mode
+        $this->statement->debug(true);
 
-            // Set up the expectation for debugDumpParams method
-            $statementTest->pdoStatement->shouldReceive('debugDumpParams')
-                ->once();
+        // Set up the expectation for debugDumpParams method
+        $this->pdoStatement->shouldReceive('debugDumpParams')
+            ->once();
 
-            // Set up the expectation for execute method
-            $statementTest->pdoStatement->shouldReceive('execute')
-                ->with(Mockery::on(function ($param) use ($params) {
-                    return $param === $params; // Ensure the parameter matches $params
-                }))
-                ->once();
+        // Set up the expectation for execute method
+        $this->pdoStatement->shouldReceive('execute')
+            ->with(Mockery::on(function ($param) use ($params) {
+                return $param === $params; // Ensure the parameter matches $params
+            }))
+            ->once();
 
-            // Call the execute method with parameters
-            $result = $statementTest->statement->execute($params);
+        // Call the execute method with parameters
+        $result = $this->statement->execute($params);
 
-            // Verify that the result is an instance of Result
-            $statementTest->assertInstanceOf('Wilkques\Database\Connections\PDO\Result', $result);
-        });
+        // Verify that the result is an instance of Result
+        $this->assertInstanceOf('Wilkques\Database\Connections\PDO\Result', $result);
     }
 
     public function testMagicCallDebugMethod()
     {
-        $this->runDatabase(function ($statementTest) {
-            $statementTest->statement->debug();
+        $this->statement->debug();
 
-            $statementTest->assertTrue($statementTest->statement->getDebug());
-        });
+        $this->assertTrue($this->statement->getDebug());
     }
 
     public function testMagicCallParamsMethod()
     {
-        $this->runDatabase(function ($statementTest) {
-            $statementTest->statement->params(array('param1' => 'value1'));
+        $this->statement->params(array('param1' => 'value1'));
 
-            $statementTest->assertEquals(
-                array('param1' => 'value1'),
-                $statementTest->statement->getParams()
-            );
-        });
+        $this->assertEquals(
+            array('param1' => 'value1'),
+            $this->statement->getParams()
+        );
     }
 
     public function testMagicCallNonExistentMethod()
     {
-        $this->runDatabase(function ($statementTest) {
-            try {
-                // Call the magic method __call with a method that does not exist
-                $statementTest->statement->nonExistentMethod();
-            } catch (\RuntimeException $e) {
-                $statementTest->assertEquals(
-                    'Method: nonExistentMethod Not exists',
-                    $e->getMessage()
-                );
-            }
-        });
+        try {
+            // Call the magic method __call with a method that does not exist
+            $this->statement->nonExistentMethod();
+        } catch (\RuntimeException $e) {
+            $this->assertEquals(
+                'Method: nonExistentMethod Not exists',
+                $e->getMessage()
+            );
+        }
     }
 }

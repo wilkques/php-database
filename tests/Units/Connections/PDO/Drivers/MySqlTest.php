@@ -9,42 +9,29 @@ use Wilkques\Database\Tests\BaseTestCase;
 class MySqlTest extends BaseTestCase
 {
     /** @var MySql */
-    private $connection;
+    protected $connection;
 
-    private function init()
+    protected function init()
     {
         $dir = dirname(dirname(dirname(dirname(__DIR__))));
 
         $this->configLoad($dir);
     }
 
-    /**
-     * @return MySql
-     */
-    private function connection()
+    protected function connection()
     {
-        $mysql = \container()->get('Wilkques\Database\Connections\PDO\Drivers\MySql');
+        $host = $this->getConfigItem('DB_HOST');
 
-        if (!$mysql) {
-            $host = $this->getConfigItem('DB_HOST');
+        $username = $this->getConfigItem('DB_USER');
 
-            $username = $this->getConfigItem('DB_USER');
+        $password = $this->getConfigItem('DB_PASSWORD');
 
-            $password = $this->getConfigItem('DB_PASSWORD');
+        $database = $this->getConfigItem('DB_NAME_1');
 
-            $database = $this->getConfigItem('DB_NAME_1');
-
-            $connection = MySql::connect($host, $username, $password, $database);
-
-            \container()->singleton('Wilkques\Database\Connections\PDO\Drivers\MySql', $connection->newConnection());
-
-            return \container('Wilkques\Database\Connections\PDO\Drivers\MySql');
-        }
-
-        return $mysql;
+        $this->connection = MySql::connect($host, $username, $password, $database);
     }
 
-    private function setupDatabase()
+    protected function setupDatabase()
     {
         $sql = "CREATE TABLE users_for_test (
             `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -52,30 +39,26 @@ class MySqlTest extends BaseTestCase
             PRIMARY KEY ( `id` ) 
         );";
 
-        $this->connection()->exec($sql);
+        $this->connection->exec($sql);
     }
 
-    private function cleanupDatabase()
+    protected function cleanupDatabase()
     {
-        $this->connection()->exec("DROP TABLE IF EXISTS users_for_test");
+        $this->connection->exec("DROP TABLE IF EXISTS users_for_test");
     }
 
     public function testSetAttribute()
     {
-        $this->init();
-
-        $this->connection()->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+        $this->connection->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
 
         $this->assertTrue(
-            $this->connection() instanceof MySql
+            $this->connection instanceof MySql
         );
     }
 
     public function testQuery()
     {
-        $this->init();
-
-        $result = $this->connection()->query('SELECT 1');
+        $result = $this->connection->query('SELECT 1');
 
         $this->assertEquals(
             array(1 => 1),
@@ -85,9 +68,7 @@ class MySqlTest extends BaseTestCase
 
     public function testPrepare()
     {
-        $this->init();
-
-        $result = $this->connection()->prepare('SELECT 1')->execute();
+        $result = $this->connection->prepare('SELECT 1')->execute();
 
         $this->assertEquals(
             array(1 => 1),
@@ -97,9 +78,7 @@ class MySqlTest extends BaseTestCase
 
     public function testConnection()
     {
-        $this->init();
-
-        $pdo = $this->connection()->connection();
+        $pdo = $this->connection->connection();
 
         $this->assertTrue(
             $pdo instanceof \PDO
@@ -108,9 +87,7 @@ class MySqlTest extends BaseTestCase
 
     public function testBeginTransaction()
     {
-        $this->init();
-
-        $connection = $this->connection();
+        $connection = $this->connection;
 
         $connection->beginTransaction();
 
@@ -122,60 +99,39 @@ class MySqlTest extends BaseTestCase
         $connection->commit();
     }
 
-    private function runDatabase($callback)
-    {
-        $this->init();
-
-        $this->connection = $this->connection();
-
-        $this->cleanupDatabase();
-
-        $this->setupDatabase();
-
-        call_user_func($callback, $this);
-
-        $this->cleanupDatabase();
-    }
-
     public function testCommit()
     {
-        $this->runDatabase(function ($mysqlTest) {
-            $mysqlTest->connection->beginTransaction();
+        $this->connection->beginTransaction();
 
-            $mysqlTest->connection->exec("INSERT INTO users_for_test (info) VALUES (?)", array('Commit Test'));
+        $this->connection->exec("INSERT INTO users_for_test (info) VALUES (?)", array('Commit Test'));
 
-            $mysqlTest->connection->commit();
+        $this->connection->commit();
 
-            $result = $mysqlTest->connection->exec("SELECT * FROM users_for_test WHERE info = ?", array('Commit Test'));
+        $result = $this->connection->exec("SELECT * FROM users_for_test WHERE info = ?", array('Commit Test'));
 
-            $row = $result->fetch();
+        $row = $result->fetch();
 
-            $mysqlTest->assertNotEmpty($row, 'Data should be present after commit.');
-        });
+        $this->assertNotEmpty($row, 'Data should be present after commit.');
     }
 
     public function testRollback()
     {
-        $this->runDatabase(function ($mysqlTest) {
-            $mysqlTest->connection->beginTransaction();
+        $this->connection->beginTransaction();
 
-            $mysqlTest->connection->exec("INSERT INTO users_for_test (info) VALUES (?)", array('Rollback Test'));
+        $this->connection->exec("INSERT INTO users_for_test (info) VALUES (?)", array('Rollback Test'));
 
-            $mysqlTest->connection->rollback();
+        $this->connection->rollback();
 
-            $result = $mysqlTest->connection->exec("SELECT * FROM users_for_test WHERE info = ?", array('Rollback Test'));
+        $result = $this->connection->exec("SELECT * FROM users_for_test WHERE info = ?", array('Rollback Test'));
 
-            $row = $result->fetch();
+        $row = $result->fetch();
 
-            $mysqlTest->assertEmpty($row, 'Data should not be present after rollback.');
-        });
+        $this->assertEmpty($row, 'Data should not be present after rollback.');
     }
 
     public function testInTransaction()
     {
-        $this->init();
-
-        $connection = $this->connection();
+        $connection = $this->connection;
 
         $connection->beginTransaction();
 
@@ -188,43 +144,37 @@ class MySqlTest extends BaseTestCase
 
     public function testGetLastInsertId()
     {
-        $this->runDatabase(function ($mysqlTest) {
-            $mysqlTest->connection->exec("INSERT INTO users_for_test (info) VALUES (?)", array('Jane Doe'));
+        $this->connection->exec("INSERT INTO users_for_test (info) VALUES (?)", array('Jane Doe'));
 
-            $lastInsertId = $mysqlTest->connection->getLastInsertId();
+        $lastInsertId = $this->connection->getLastInsertId();
 
-            $result = $mysqlTest->connection->exec("SELECT id FROM users_for_test WHERE info = ?", array('Jane Doe'));
+        $result = $this->connection->exec("SELECT id FROM users_for_test WHERE info = ?", array('Jane Doe'));
 
-            $row = $result->fetch();
+        $row = $result->fetch();
 
-            $mysqlTest->assertNotEmpty($row, 'Data should be present in the database.');
+        $this->assertNotEmpty($row, 'Data should be present in the database.');
 
-            $mysqlTest->assertEquals($row['id'], $lastInsertId, 'The last insert ID should match the ID returned by getLastInsertId.');
-        });
+        $this->assertEquals($row['id'], $lastInsertId, 'The last insert ID should match the ID returned by getLastInsertId.');
     }
 
     public function testGetLastInsertIdWithSequence()
     {
-        $this->runDatabase(function ($mysqlTest) {
-            $mysqlTest->connection->exec("INSERT INTO users_for_test (info) VALUES (?)", array('Jane Doe'));
+        $this->connection->exec("INSERT INTO users_for_test (info) VALUES (?)", array('Jane Doe'));
 
-            $lastInsertId = $mysqlTest->connection->getLastInsertId('users_id_seq');
+        $lastInsertId = $this->connection->getLastInsertId('users_id_seq');
 
-            $result = $mysqlTest->connection->exec("SELECT id FROM users_for_test WHERE info = ?", array('Jane Doe'));
+        $result = $this->connection->exec("SELECT id FROM users_for_test WHERE info = ?", array('Jane Doe'));
 
-            $row = $result->fetch();
+        $row = $result->fetch();
 
-            $mysqlTest->assertNotEmpty($row, 'Data should be present in the database.');
+        $this->assertNotEmpty($row, 'Data should be present in the database.');
 
-            $mysqlTest->assertEquals($row['id'], $lastInsertId, 'The last insert ID should match the ID returned by getLastInsertId.');
-        });
+        $this->assertEquals($row['id'], $lastInsertId, 'The last insert ID should match the ID returned by getLastInsertId.');
     }
 
     public function testNewConnection()
     {
-        $this->init();
-
-        $connection = $this->connection();
+        $connection = $this->connection;
 
         $connection->newConnection();
 
@@ -233,7 +183,7 @@ class MySqlTest extends BaseTestCase
 
     public function testReConnection()
     {
-        $connection = $this->connection();
+        $connection = $this->connection;
 
         $connection->reConnection();
 
@@ -242,65 +192,57 @@ class MySqlTest extends BaseTestCase
 
     public function testRun()
     {
-        $this->runDatabase(function ($mysqlTest) {
-            $connection = new ReflectionMethod($mysqlTest->connection, 'run');
+        $connection = new ReflectionMethod($this->connection, 'run');
 
-            $connection->setAccessible(true);
+        $connection->setAccessible(true);
 
-            $connection->invoke($mysqlTest->connection, "INSERT INTO users_for_test (info) VALUES (?)", array('Test User'));
+        $connection->invoke($this->connection, "INSERT INTO users_for_test (info) VALUES (?)", array('Test User'));
 
-            $result = $connection->invoke($mysqlTest->connection, "SELECT * FROM users_for_test WHERE info = ?", array('Test User'));
+        $result = $connection->invoke($this->connection, "SELECT * FROM users_for_test WHERE info = ?", array('Test User'));
 
-            $row = $result->fetch();
+        $row = $result->fetch();
 
-            $mysqlTest->assertNotEmpty($row, 'Data should be present in the database after running a query.');
-        });
+        $this->assertNotEmpty($row, 'Data should be present in the database after running a query.');
     }
 
     public function testExec()
     {
-        $this->runDatabase(function ($mysqlTest) {
-            $mysqlTest->connection->exec("INSERT INTO users_for_test (info) VALUES (?)", array('Test User'));
+        $this->connection->exec("INSERT INTO users_for_test (info) VALUES (?)", array('Test User'));
 
-            $result = $mysqlTest->connection->exec("SELECT * FROM users_for_test WHERE info = ?", array('Test User'));
+        $result = $this->connection->exec("SELECT * FROM users_for_test WHERE info = ?", array('Test User'));
 
-            $row = $result->fetch();
+        $row = $result->fetch();
 
-            $mysqlTest->assertNotEmpty($row, 'Data should be present in the database after running a query.');
-        });
+        $this->assertNotEmpty($row, 'Data should be present in the database after running a query.');
     }
 
     public function testTryAgainIfCausedByLostConnection()
     {
-        $this->runDatabase(function ($mysqlTest) {
-            try {
-                $exception = new \Exception("Connection lost");
+        try {
+            $exception = new \Exception("Connection lost");
 
-                $connection = new ReflectionMethod($mysqlTest->connection, 'tryAgainIfCausedByLostConnection');
+            $connection = new ReflectionMethod($this->connection, 'tryAgainIfCausedByLostConnection');
 
-                $connection->setAccessible(true);
+            $connection->setAccessible(true);
 
-                $connection->invoke($mysqlTest->connection, $exception, "INSERT INTO users_for_test (info) VALUES (?)", array('Test User'));
+            $connection->invoke($this->connection, $exception, "INSERT INTO users_for_test (info) VALUES (?)", array('Test User'));
 
-                $result = $connection->invoke($mysqlTest->connection, "SELECT * FROM users_for_test WHERE info = ?", array('Test User'));
+            $result = $connection->invoke($this->connection, "SELECT * FROM users_for_test WHERE info = ?", array('Test User'));
 
-                $row = $result->fetch();
+            $row = $result->fetch();
 
-                $mysqlTest->assertInstanceOf('PDOStatement', $row, 'The result should be an instance of PDOStatement.');
-            } catch (\Exception $e) {
-                $mysqlTest->assertEquals(
-                    'Connection lost',
-                    $e->getMessage()
-                );
-            }
-        });
+            $this->assertInstanceOf('PDOStatement', $row, 'The result should be an instance of PDOStatement.');
+        } catch (\Exception $e) {
+            $this->assertEquals(
+                'Connection lost',
+                $e->getMessage()
+            );
+        }
     }
 
     public function testReconnectIfMissingConnection()
     {
-        $this->init();
-
-        $connection = $this->connection();
+        $connection = $this->connection;
 
         $connectionMethod = new ReflectionMethod($connection, 'reconnectIfMissingConnection');
 
@@ -313,11 +255,9 @@ class MySqlTest extends BaseTestCase
 
     public function testSelectDatabase()
     {
-        $this->init();
-
         $database = $this->getConfigItem('DB_NAME_2');
 
-        $result = $this->connection()->selectDatabase($database);
+        $result = $this->connection->selectDatabase($database);
 
         $this->assertTrue(
             $result instanceof MySql
