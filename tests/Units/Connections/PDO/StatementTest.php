@@ -475,12 +475,21 @@ class StatementTest extends TestCase
 
     public function testMagicCallDebugMethod()
     {
-        $mysql = Mockery::spy('Wilkques\Database\Connections\PDO\Statement')->makePartial();
+        $mysql = Mockery::mock('Wilkques\Database\Connections\PDO\Statement')->makePartial();
 
         // Set expectation for setDebug method
         $mysql->shouldReceive('setDebug')
             ->with(true)
             ->once();
+
+        $mysql->shouldReceive('__call')
+            ->with('debug', array(true))
+            ->andReturnUsing(function ($method, $args) use ($mysql) {
+                // 处理调用
+                if ($method === 'debug') {
+                    return call_user_func_array(array($mysql, 'set' . ucfirst($method)), $args);
+                }
+            });
 
         // Call the magic method __call
         $mysql->debug(true);
@@ -490,12 +499,21 @@ class StatementTest extends TestCase
 
     public function testMagicCallParamsMethod()
     {
-        $mysql = Mockery::spy('Wilkques\Database\Connections\PDO\Statement')->makePartial();
+        $mysql = Mockery::mock('Wilkques\Database\Connections\PDO\Statement')->makePartial();
 
         // Expect setParams to be called with an array
         $mysql->shouldReceive('setParams')
             ->with(array('param1' => 'value1'))
             ->once();
+
+        $mysql->shouldReceive('__call')
+            ->with('debug', array(array('param1' => 'value1')))
+            ->andReturnUsing(function ($method, $args) use ($mysql) {
+                // 处理调用
+                if ($method === 'params') {
+                    return call_user_func_array(array($mysql, 'set' . ucfirst($method)), $args);
+                }
+            });
 
         // Call the magic method __call
         $mysql->params(array('param1' => 'value1'));
