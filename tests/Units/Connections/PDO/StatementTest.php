@@ -86,7 +86,7 @@ class StatementTest extends TestCase
     public function testDebug()
     {
         $this->runDatabase(function ($statementTest) {
-            $statementTest->statement->debug();
+            $statementTest->statement->setDebug();
 
             $statementTest->assertTrue(
                 $statementTest->statement->getDebug()
@@ -475,50 +475,25 @@ class StatementTest extends TestCase
 
     public function testMagicCallDebugMethod()
     {
-        $mysql = Mockery::mock('Wilkques\Database\Connections\PDO\Statement')->makePartial();
+        $this->runDatabase(function ($statementTest) {
+            $statementTest->statement->debug();
 
-        // Set expectation for setDebug method
-        // $mysql->shouldReceive('setDebug')
-        //     ->with(true)
-        //     ->once();
-
-        $mysql->shouldReceive('__call')
-            ->with('debug', array(true));
-            // ->andReturnUsing(function ($method, $args) use ($mysql) {
-            //     // 处理调用
-            //     if ($method === 'debug') {
-            //         return call_user_func_array(array($mysql, 'set' . ucfirst($method)), $args);
-            //     }
-            // });
-
-        // Call the magic method __call
-        $mysql->debug(true);
-
-        Mockery::close();
+            // Ensure the result is null because non-existent methods are not handled
+            $statementTest->assertTrue($statementTest->statement->getDebug());
+        });
     }
 
     public function testMagicCallParamsMethod()
     {
-        $mysql = Mockery::mock('Wilkques\Database\Connections\PDO\Statement')->makePartial();
+        $this->runDatabase(function ($statementTest) {
+            $statementTest->statement->params(array('param1' => 'value1'));
 
-        // Expect setParams to be called with an array
-        $mysql->shouldReceive('setParams')
-            ->with(array('param1' => 'value1'))
-            ->once();
-
-        $mysql->shouldReceive('__call')
-            ->with('debug', array(array('param1' => 'value1')));
-            // ->andReturnUsing(function ($method, $args) use ($mysql) {
-            //     // 处理调用
-            //     if ($method === 'params') {
-            //         return call_user_func_array(array($mysql, 'set' . ucfirst($method)), $args);
-            //     }
-            // });
-
-        // Call the magic method __call
-        $mysql->params(array('param1' => 'value1'));
-
-        Mockery::close();
+            // Ensure the result is null because non-existent methods are not handled
+            $statementTest->assertEquals(
+                array('param1' => 'value1'),
+                $statementTest->statement->getParams()
+            );
+        });
     }
 
     public function testMagicCallNonExistentMethod()
