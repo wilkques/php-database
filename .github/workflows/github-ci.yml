@@ -89,5 +89,8 @@ jobs:
       - name: Set Config
         run: cp tests/config.php.example tests/config.php
 
+      - name: Fix File Permissions
+        run: chmod +x tests/phpunit
+
       - name: Run test
         run: tests/phpunit
