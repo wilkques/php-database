@@ -1,6 +1,6 @@
 <?php
 
-namespace Wilkques\Database\Tests\Units\Php\Higher;
+namespace Wilkques\Database\Tests\Units\Php\Lower\Connections;
 
 use Mockery;
 use Wilkques\Database\Connections\PDO\Statement;
@@ -8,7 +8,7 @@ use Wilkques\Database\Tests\Units\Connections\PDO\StatementTest as DriversStatem
 
 class StatementTest extends DriversStatementTest
 {
-    protected function setUp(): void
+    protected function setUp()
     {
         $this->pdoStatement = Mockery::mock('PDOStatement');
 
@@ -17,7 +17,7 @@ class StatementTest extends DriversStatementTest
         $this->statement = new Statement($this->pdoStatement, $this->connections);
     }
 
-    protected function tearDown(): void
+    protected function tearDown()
     {
         Mockery::close();
     }

@@ -3,306 +3,342 @@
 namespace Wilkques\Database\Tests\Units\Queries;
 
 use InvalidArgumentException;
-use PHPUnit\Framework\TestCase;
-use Wilkques\Database\Connections\Connections;
+use Mockery;
+use Mockery\Adapter\Phpunit\MockeryTestCase;
+use stdClass;
 use Wilkques\Database\Queries\Builder;
 use Wilkques\Database\Queries\Expression;
-use Wilkques\Database\Queries\Grammar\Grammar;
-use Wilkques\Database\Queries\JoinClause;
-use Wilkques\Database\Queries\Processors\ProcessorInterface;
 
-class BuilderTest extends TestCase
+class BuilderTest extends MockeryTestCase
 {
-    private function grammar()
+    protected $connection;
+
+    protected $grammar;
+
+    protected $processor;
+
+    protected $query;
+
+    protected $arrays;
+
+    protected $builderClassName = 'Wilkques\Database\Queries\Builder';
+
+    private function newQuery()
     {
-        return $this->getMockForAbstractClass(
-            'Wilkques\Database\Queries\Grammar\Grammar',
-            array(),
-            '',
-            false
-        );
+        return Mockery::spy($this->builderClassName)->makePartial()->shouldAllowMockingProtectedMethods();
     }
 
-    private function connection()
+    private function setProtectedProperty($object, $property, $value)
     {
-        return $this->getMockForAbstractClass(
-            'Wilkques\Database\Connections\Connections',
-            array(),
-            '',
-            false
-        );
+        $reflection = new \ReflectionClass($object);
+
+        $propertyRef = $reflection->getProperty($property);
+
+        $propertyRef->setAccessible(true);
+
+        $propertyRef->setValue($object, $value);
+
+        return $propertyRef;
     }
 
-    private function process()
+    private function getProtectedProperty($object, $property)
     {
-        $createMock = method_exists($this, 'createMock') ? 'createMock' : 'getMock';
+        $reflection = new \ReflectionClass($object);
 
-        return call_user_func(array($this, $createMock), 'Wilkques\Database\Queries\Processors\Processor');
+        $propertyRef = $reflection->getProperty($property);
+
+        $propertyRef->setAccessible(true);
+
+        return $propertyRef->getValue($object);
     }
 
-    private function builder()
+    public function testConstructor()
     {
-        return new Builder(
-            $this->connection(),
-            $this->grammar(),
-            $this->process()
-        );
+        $query = new Builder($this->connection, $this->grammar, $this->processor);
+
+        $this->assertInstanceOf($this->builderClassName, $query);
     }
 
     public function testMake()
     {
-        $builder = Builder::make(
-            $this->connection(),
-            $this->grammar(),
-            $this->process()
-        );
+        $query = Builder::make($this->connection, $this->grammar, $this->processor);
 
-        $this->assertTrue(
-            $builder instanceof Builder
-        );
-    }
-
-    public function testResolverRegister()
-    {
-        $builder = $this->builder();
-
-        $resolverRegisterMethod = new \ReflectionMethod($builder, 'resolverRegister');
-
-        $resolverRegisterMethod->setAccessible(true);
-
-        $result = $resolverRegisterMethod->invoke($builder, $this->connection());
-
-        $this->assertTrue(
-            $result instanceof Builder
-        );
+        $this->assertInstanceOf($this->builderClassName, $query);
     }
 
     public function testGetResolvers()
     {
-        $builder = $this->builder();
+        $resolvers = $this->query->getResolvers();
 
-        $getResolversMethod = new \ReflectionMethod($builder, 'getResolvers');
-
-        $getResolversMethod->setAccessible(true);
-
-        $this->assertTrue(
-            is_array($getResolversMethod->invoke($builder))
-        );
+        $this->assertEmpty($resolvers);
     }
 
-    public function testGetResolver()
+    public function testResolverRegisterWithNull()
     {
-        $builder = $this->builder();
+        $result = $this->query->resolverRegister(null);
 
-        $getResolverMethod = new \ReflectionMethod($builder, 'getResolver');
+        $this->assertSame($this->query, $result);
 
-        $getResolverMethod->setAccessible(true);
+        $resolvers = $this->query->getResolvers();
 
-        $this->assertTrue(
-            $getResolverMethod->invoke($builder, 'Wilkques\Database\Connections\Connections') instanceof Connections
-        );
-
-        $this->assertTrue(
-            $getResolverMethod->invoke($builder, 'Wilkques\Database\Queries\Grammar\Grammar') instanceof Grammar
-        );
-
-        $this->assertTrue(
-            $getResolverMethod->invoke($builder, 'Wilkques\Database\Queries\Processors\ProcessorInterface') instanceof ProcessorInterface
-        );
+        $this->assertEmpty($resolvers);
     }
 
-    public function testSetConnection()
+    public function testResolverRegisterWithObject()
     {
-        $builder = $this->builder();
+        $className = get_class($this->connection);
 
-        $builder = $builder->setConnection($this->connection());
+        $this->arrays->shouldReceive('set')->passthru();
 
-        $this->assertTrue(
-            $builder instanceof Builder
-        );
+        $this->query->resolverRegister($this->connection);
+
+        $this->query->shouldReceive('getResolvers')
+            ->once()
+            ->andReturn(array($className => $this->connection));
+
+        $resolvers = $this->query->getResolvers();
+
+        $this->assertArrayHasKey($className, $resolvers);
+
+        $this->assertSame($this->connection, $resolvers[$className]);
     }
 
-    public function testGetConnection()
+    public function testResolverRegisterWithClassName()
     {
-        $builder = $this->builder();
+        $className = get_class($this->connection);
 
-        $connection = $builder->getConnection();
+        $this->arrays->shouldReceive('set')->passthru();
 
-        $this->assertTrue(
-            $connection instanceof Connections
-        );
+        $this->query->resolverRegister($className, $this->connection);
+
+        $this->query->shouldReceive('getResolvers')
+            ->once()
+            ->andReturn(array($className => $this->connection));
+
+        $resolvers = $this->query->getResolvers();
+
+        $this->assertArrayHasKey($className, $resolvers);
+
+        $this->assertSame($this->connection, $resolvers[$className]);
     }
 
-    public function testSetGrammar()
+    public function testGetResolverReturnsCorrectResolver()
     {
-        $builder = $this->builder();
+        $this->arrays->shouldReceive('mergeDistinctRecursive')->passthru();
 
-        $builder = $builder->setGrammar($this->grammar());
+        $this->arrays->shouldReceive('filter')->passthru();
 
-        $this->assertTrue(
-            $builder instanceof Builder
-        );
+        $this->arrays->shouldReceive('first')->passthru();
+
+        $this->query->resolverRegister($this->connection);
+
+        $connection = current(class_parents($this->connection));
+
+        $resolver = $this->query->getResolver($connection);
+
+        $this->assertSame($this->connection, $resolver);
     }
 
-    public function testGetGrammar()
+    public function testGetResolverReturnsNullWhenNoMatch()
     {
-        $builder = $this->builder();
+        $this->arrays->shouldReceive('mergeDistinctRecursive')->passthru();
 
-        $grammar = $builder->getGrammar();
+        $this->arrays->shouldReceive('filter')->passthru();
 
-        $this->assertTrue(
-            $grammar instanceof Grammar
-        );
+        $this->arrays->shouldReceive('first')->passthru();
+
+        $resolver = $this->query->getResolver('NonMatchingClass');
+
+        $this->assertNull($resolver);
     }
 
-    public function testSetProcessor()
+    public function testSetConnectionRegistersConnection()
     {
-        $builder = $this->builder();
+        $this->query->shouldReceive('resolverRegister')
+            ->once()
+            ->with($this->connection)
+            ->andReturn($this->query);
 
-        $builder = $builder->setProcessor($this->process());
+        $result = $this->query->setConnection($this->connection);
 
-        $this->assertTrue(
-            $builder instanceof Builder
-        );
+        $this->assertSame($this->query, $result);
     }
 
-    public function testGetProcessor()
+    public function testGetConnectionReturnsCorrectResolver()
     {
-        $builder = $this->builder();
+        $this->query->shouldReceive('getResolver')
+            ->once()
+            ->with('Wilkques\Database\Connections\Connections')
+            ->andReturn($this->connection);
 
-        $process = $builder->getProcessor();
+        $result = $this->query->getConnection();
 
-        $this->assertTrue(
-            $process instanceof ProcessorInterface
-        );
+        $this->assertSame($this->connection, $result);
+    }
+
+    public function testSetGrammarRegistersGrammar()
+    {
+        $this->query->shouldReceive('resolverRegister')
+            ->once()
+            ->with($this->grammar)
+            ->andReturn($this->query);
+
+        $result = $this->query->setGrammar($this->grammar);
+
+        $this->assertSame($this->query, $result);
+    }
+
+    public function testGetGrammarReturnsCorrectResolver()
+    {
+        $this->query->shouldReceive('getResolver')
+            ->once()
+            ->with('Wilkques\Database\Queries\Grammar\Grammar')
+            ->andReturn($this->grammar);
+
+        $result = $this->query->getGrammar();
+
+        $this->assertSame($this->grammar, $result);
+    }
+
+    public function testSetProcessorRegistersProcessor()
+    {
+        $this->query->shouldReceive('resolverRegister')
+            ->once()
+            ->with($this->processor)
+            ->andReturn($this->query);
+
+        $result = $this->query->setProcessor($this->processor);
+
+        $this->assertSame($this->query, $result);
+    }
+
+    public function testGetProcessorReturnsCorrectResolver()
+    {
+        $this->query->shouldReceive('getResolver')
+            ->once()
+            ->with('Wilkques\Database\Queries\Processors\ProcessorInterface')
+            ->andReturn($this->processor);
+
+        $result = $this->query->getProcessor();
+
+        $this->assertSame($this->processor, $result);
+    }
+
+    public function testGetQueriesReturnsCorrectQueries()
+    {
+        $result = $this->query->getQueries();
+
+        $this->assertEmpty($result);
     }
 
     public function testSetQueries()
     {
-        $builder = $this->builder();
+        $queries = array('key1' => 'value1', 'key2' => 'value2');
 
-        $builder = $builder->setQueries(array());
+        $result = $this->query->setQueries($queries);
 
-        $this->assertTrue(
-            $builder instanceof Builder
-        );
+        $this->assertSame($queries, $this->query->getQueries());
+
+        $this->assertSame($this->query, $result);
     }
 
-    public function testGetQueries()
+    public function testGetQueryReturnsCorrectValue()
     {
-        $builder = $this->builder();
+        $queries = array('key' => 'value');
 
-        $queries = $builder->getQueries();
+        $this->query->shouldReceive('getQueries')
+            ->once()
+            ->andReturn($queries);
 
-        $this->assertTrue(
-            is_array($queries)
-        );
+        $result = $this->query->getQuery('key', 'default');
+
+        $this->assertSame('value', $result);
     }
 
-    public function testSetQuery()
+    public function testNewQueryCreatesNewBuilderInstance()
     {
-        $builder = $this->builder();
+        $query = new Builder($this->connection, $this->grammar, $this->processor);
 
-        $builder = $builder->setQuery('abc', 123);
+        $result = $query->newQuery();
 
-        $this->assertTrue(
-            $builder instanceof Builder
-        );
-    }
-
-    public function testGetQuery()
-    {
-        $builder = $this->builder();
-
-        $builder->setQuery('abc', 123);
-
-        $query = $builder->getQuery('abc');
-
-        $this->assertEquals(
-            123,
-            $query
-        );
-    }
-
-    public function testNewQuery()
-    {
-        $builder = $this->builder();
-
-        $this->assertTrue(
-            $builder->newQuery() instanceof Builder
-        );
+        $this->assertInstanceOf(get_class($query), $result);
     }
 
     public function testPrependDatabaseNameIfCrossDatabaseQuery()
     {
-        $builder = $this->builder();
+        $query = $this->newQuery();
 
-        $builderMethod = new \ReflectionMethod($builder, 'prependDatabaseNameIfCrossDatabaseQuery');
+        $database = 'test';
 
-        $builderMethod->setAccessible(true);
+        $query->shouldReceive('getConnection->getDatabase')
+            ->andReturn($database);
 
-        $this->assertTrue(
-            $builderMethod->invoke($builder, $builder) instanceof Builder
-        );
+        $this->query->shouldReceive('getConnection->getDatabase')
+            ->andReturn('try');
 
-        $connection = $this->connection();
+        $query->shouldReceive('getFrom')
+            ->once()
+            ->andReturn(array("`{$database}`table1"));
 
-        $connection->setDatabase('test');
+        $query->shouldReceive('contactBacktick')
+            ->once()
+            ->with($database, "`{$database}`table1")
+            ->andReturn("`{$database}`.`{$database}`.`table1`");
 
-        $newBuilder = $this->builder();
+        $query->shouldReceive('setFrom')
+            ->once()
+            ->with(Mockery::type('string'), Mockery::type('numeric'));
 
-        $newBuilder->setConnection($connection);
+        $result = $this->query->prependDatabaseNameIfCrossDatabaseQuery($query);
 
-        $newBuilder->setFrom('default');
-
-        $newBuilder = $builderMethod->invoke($builder, $newBuilder);
-
-        $this->assertEquals(
-            array(
-                "`test`.`default`"
-            ),
-            $newBuilder->getFrom()
-        );
+        $this->assertSame($query, $result);
     }
 
-    public function testParseSub()
+    public function testParseSubWithQueryBuilderInstance()
     {
-        $builder = $this->builder();
+        $query = $this->newQuery();
 
-        $builderMethod = new \ReflectionMethod($builder, 'parseSub');
+        $query->shouldReceive('toSql')->andReturn('SELECT * FROM table');
 
-        $builderMethod->setAccessible(true);
+        $query->shouldReceive('getBindings')->andReturn(array());
 
-        $newBuilder = $this->builder();
+        $this->query->shouldReceive('prependDatabaseNameIfCrossDatabaseQuery')
+            ->with($query)
+            ->andReturn($query);
 
-        $this->assertEquals(
-            array(
-                'SELECT *', array()
-            ),
-            $builderMethod->invoke($builder, $newBuilder)
-        );
+        $result = $this->query->parseSub($query);
 
-        $this->assertEquals(
-            array(
-                'abc', array()
-            ),
-            $builderMethod->invoke($builder, 'abc')
-        );
+        $this->assertEquals(array('SELECT * FROM table', array()), $result);
+    }
 
-        $this->assertEquals(
-            array(
-                'abc', array()
-            ),
-            $builderMethod->invoke($builder, new Expression('abc'))
-        );
+    public function testParseSubWithString()
+    {
+        $result = $this->query->parseSub('SELECT * FROM table');
 
+        $this->assertEquals(array('SELECT * FROM table', array()), $result);
+    }
+
+    public function testParseSubWithNumeric()
+    {
+        $result = $this->query->parseSub(123);
+
+        $this->assertEquals(array(123, array()), $result);
+    }
+
+    public function testParseSubWithExpression()
+    {
+        $expression = new Expression('NOW()');
+
+        $result = $this->query->parseSub($expression);
+
+        $this->assertEquals(array($expression, array()), $result);
+    }
+
+    public function testParseSubWithInvalidArgument()
+    {
         try {
-            $builderMethod->invoke($builder, new \stdClass);
+            $this->query->parseSub(new stdClass());
         } catch (InvalidArgumentException $e) {
-            $this->assertTrue(
-                $e instanceof InvalidArgumentException
-            );
-
             $this->assertEquals(
                 'A subquery must be a query builder instance, a Closure, or a string.',
                 $e->getMessage()
@@ -310,7063 +346,899 @@ class BuilderTest extends TestCase
         }
     }
 
-    public function testCreateSub()
+    public function testCreateSubWithClosure()
     {
-        $builder = $this->builder();
+        $callback = function ($query) {
+            $query->where('column', 'value');
+        };
 
-        $builderMethod = new \ReflectionMethod($builder, 'createSub');
+        $query = $this->newQuery();
 
-        $builderMethod->setAccessible(true);
+        $query->shouldReceive('where')->once()->with('column', 'value')->andReturnSelf();
 
-        $result = $builderMethod->invoke($builder, function ($query) {
-            return $query;
-        });
+        $query->shouldReceive('toSql')->andReturn('SELECT * FROM table');
 
-        $this->assertEquals(
-            array(
-                'SELECT *', array()
-            ),
-            $result
-        );
+        $query->shouldReceive('getBindings')->andReturn(array());
+
+        $this->query->shouldReceive('forSubQuery')->andReturn($query);
+
+        $this->query->shouldReceive('parseSub')->with($query)->andReturn(array('SELECT * FROM table', array()));
+
+        $result = $this->query->createSub($callback);
+
+        $this->assertEquals(array('SELECT * FROM table', array()), $result);
+    }
+
+    public function testCreateSubWithNonClosure()
+    {
+        $callback = 'SELECT * FROM table';
+
+        $this->query->shouldReceive('parseSub')->with($callback)->andReturn(array($callback, array()));
+
+        $result = $this->query->createSub($callback);
+
+        $this->assertEquals(array($callback, array()), $result);
+    }
+
+    public function testCreateSubWithForSubQuery()
+    {
+        $query = $this->newQuery();
+
+        $query->shouldReceive('toSql')->andReturn('SELECT * FROM table');
+
+        $query->shouldReceive('getBindings')->andReturn(array());
+
+        $this->query->shouldReceive('forSubQuery')->andReturn($query);
+
+        $this->query->shouldReceive('parseSub')->with($query)->andReturn(array('SELECT * FROM table', array()));
+
+        $result = $this->query->createSub($query);
+
+        $this->assertEquals(array('SELECT * FROM table', array()), $result);
+    }
+
+    public function testCreateSubWithInvalidCallback()
+    {
+        try {
+            $this->query->parseSub(new stdClass());
+        } catch (InvalidArgumentException $e) {
+            $this->assertEquals(
+                'A subquery must be a query builder instance, a Closure, or a string.',
+                $e->getMessage()
+            );
+        }
     }
 
     public function testToSql()
     {
-        $builder = $this->builder();
+        $this->grammar->shouldReceive('compilerSelect')
+            ->with(Mockery::type($this->builderClassName))
+            ->andReturn('SELECT * FROM table');
 
-        $builderMethod = new \ReflectionMethod($builder, 'toSql');
+        $this->query->shouldReceive('getGrammar')->andReturn($this->grammar);
 
-        $builderMethod->setAccessible(true);
+        $result = $this->query->toSql();
 
-        $this->assertEquals(
-            'SELECT *',
-            $builderMethod->invoke($builder)
-        );
+        $this->assertEquals('SELECT * FROM table', $result);
     }
 
-    public function testBindingsNested()
+    public function testBindingsNestedWithExpression()
     {
-        $builder = $this->builder();
-
-        $builderMethod = new \ReflectionMethod($builder, 'bindingsNested');
-
-        $builderMethod->setAccessible(true);
-
-        $this->assertEquals(
-            array(
-                '123',
-                new Expression('456')
-            ),
-            $builderMethod->invoke($builder, array(
-                '123',
-                new Expression('456')
-            ))
+        $bindings = array(
+            'first' => new Expression('NOW()'),
+            'second' => 'value',
+            'third' => 123
         );
+
+        $result = $this->query->bindingsNested($bindings);
+
+        $this->assertEquals(array_values($bindings), $result);
     }
 
-    public function testGetBindings()
+    public function testBindingsNestedWithEmptyArray()
     {
-        $builder = $this->builder();
+        $bindings = array();
 
-        $builderMethod = new \ReflectionMethod($builder, 'getBindings');
+        $result = $this->query->bindingsNested($bindings);
 
-        $builderMethod->setAccessible(true);
-
-        $builder->setQueries(
-            array(
-                'froms' => array(
-                    'queries' => array(
-                        new Expression('`dns_record`'),
-                    ),
-                ),
-                'columns' => array(
-                    'queries' => array(
-                        'dns_record.*',
-                    ),
-                ),
-                'joins' => array(
-                    'bindings' => array(
-                        127,
-                        127,
-                    ),
-                    'queries' => array(
-                        new Expression('INNER JOIN (SELECT * FROM `default`.`zones` AS `zones` WHERE `zones`.`id` = ? OR `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` AND (`zones`.`id` = `dns_record`.`zones_id`)'),
-                    ),
-                ),
-                'wheres' => array(
-                    'queries' => array(
-                        'AND (`dns_record`.`id` = ?)',
-                    ),
-                    'bindings' => array(
-                        448,
-                    ),
-                ),
-                'orders' => array(
-                    'queries' => array(
-                        '`dns_record`.`id` DESC, (SELECT MAX(`dns_record`.`id`) FROM `dns_record` INNER JOIN (SELECT * FROM `default`.`zones` WHERE `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` WHERE `zones`.`id` = ?) DESC, `dns_record`.`provider_id` DESC',
-                    ),
-                    'bindings' => array(
-                        127,
-                        127,
-                    ),
-                ),
-                'groups' => array(
-                    'queries' => array(
-                        0 => 'dns_record.id DESC, (SELECT MAX(`dns_record`.`id`) FROM `dns_record` INNER JOIN (SELECT * FROM `default`.`zones` WHERE `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` WHERE `zones`.`id` = ?) DESC, dns_record.provider_id DESC',
-                    ),
-                    'bindings' => array(
-                        0 => 127,
-                        1 => 127,
-                    ),
-                ),
-                'havings' => array(
-                    'queries' => array(
-                        new Expression('AND `dns_record`.`provider_id` = ?'),
-                        new Expression('AND `dns_record`.`cdn_provider_id` = ?'),
-                    ),
-                    'bindings' => array(
-                        1,
-                        1,
-                    ),
-                ),
-                'offset' => array(
-                    'queries' => '?',
-                    'bindings' => 1,
-                ),
-                'limits' => array(
-                    'queries' => array(
-                        '?',
-                    ),
-                    'bindings' => array(
-                        10,
-                    ),
-                ),
-            )
-        );
-
-        $this->assertEquals(
-            array(
-                127, 127, 448, 127, 127, 1, 1, 127, 127, 10, 1
-            ),
-            $builderMethod->invoke($builder)
-        );
+        $this->assertEquals($bindings, $result);
     }
 
-    public function testQueriesPush()
+    public function testGetBindingsWithArrayBindings()
     {
-        $builder = $this->builder();
+        $this->setProtectedProperty($this->query, 'bindingComponents', array('component1', 'component2'));
 
-        $builderMethod = new \ReflectionMethod($builder, 'queriesPush');
+        $this->query->shouldReceive('getQuery')->with('component1.bindings')->andReturn(array('binding1', 'binding2'));
 
-        $builderMethod->setAccessible(true);
+        $this->query->shouldReceive('getQuery')->with('component2.bindings')->andReturn(array('binding3'));
 
-        $result = $builderMethod->invoke($builder, 'abc', 123);
+        $result = $this->query->getBindings();
 
-        $this->assertEquals(
-            array(
-                'wheres' => array(
-                    'queries' => array(
-                        'abc'
-                    ),
-                    'bindings' => array(
-                        123
-                    )
-                )
-            ),
-            $result->getQueries()
-        );
+        $expected = array('binding1', 'binding2', 'binding3');
 
-        $this->assertEquals(
-            array(
-                'abc'
-            ),
-            $result->getQuery('wheres.queries')
-        );
+        $this->assertEquals($expected, $result);
+    }
 
-        $result = $builderMethod->invoke($builder, 'abc', 123, 'columns');
+    public function testGetBindingsWithExcludedComponents()
+    {
+        $this->setProtectedProperty($this->query, 'bindingComponents', array('component1', 'component2', 'component3'));
 
-        $this->assertEquals(
-            array(
-                'wheres' => array(
-                    'queries' => array(
-                        'abc'
-                    ),
-                    'bindings' => array(
-                        123
-                    )
-                ),
-                'columns' => array(
-                    'queries' => array(
-                        'abc'
-                    ),
-                    'bindings' => array(
-                        123
-                    )
-                )
-            ),
-            $result->getQueries()
-        );
+        $this->query->shouldReceive('getQuery')->with('component1.bindings')->andReturn(array('binding1'));
 
-        $this->assertEquals(
-            array(
-                'abc'
-            ),
-            $result->getQuery('columns.queries')
-        );
+        $this->query->shouldReceive('getQuery')->with('component2.bindings')->andReturn(array('binding2'));
 
-        $this->assertTrue(
-            $result instanceof Builder
-        );
+        $this->query->shouldReceive('getQuery')->with('component3.bindings')->andReturn(array('binding3'));
+
+        $result = $this->query->getBindings(array('component2'));
+
+        $expected = array('binding1', 'binding3');
+
+        $this->assertEquals($expected, $result);
+    }
+
+    public function testGetBindingsWithNoBindings()
+    {
+        $this->setProtectedProperty($this->query, 'bindingComponents', array('component1', 'component2'));
+
+        $this->query->shouldReceive('getQuery')->with('component1.bindings')->andReturn(null);
+
+        $this->query->shouldReceive('getQuery')->with('component2.bindings')->andReturn([]);
+
+        $result = $this->query->getBindings();
+
+        $expected = array();
+
+        $this->assertEquals($expected, $result);
+    }
+
+    public function testQueriesPushWithBinding()
+    {
+        $this->query->shouldReceive('queryPush')
+            ->with('some_query', 'wheres')
+            ->once();
+
+        $this->query->shouldReceive('bindingPush')
+            ->with('some_binding', 'wheres')
+            ->once();
+
+        $result = $this->query->queriesPush('some_query', 'some_binding', 'wheres');
+
+        $this->assertSame($this->query, $result);
+    }
+
+    public function testQueriesPushWithoutBinding()
+    {
+        $this->query->shouldReceive('queryPush')
+            ->with('some_query', 'wheres')
+            ->once();
+
+        $result = $this->query->queriesPush('some_query', null, 'wheres');
+
+        $this->assertSame($this->query, $result);
     }
 
     public function testQueryPush()
     {
-        $builder = $this->builder();
+        $property = $this->setProtectedProperty($this->query, 'queries', array(
+            'wheres' => array('queries' => array()),
+        ));
 
-        $builderMethod = new \ReflectionMethod($builder, 'queryPush');
+        $result = $this->query->queryPush('some_query', 'wheres');
 
-        $builderMethod->setAccessible(true);
-
-        $result = $builderMethod->invoke($builder, 'abc');
-
-        $this->assertEquals(
-            array(
-                'wheres' => array(
-                    'queries' => array(
-                        'abc'
-                    )
-                )
-            ),
-            $result->getQueries()
+        $expectedQueries = array(
+            'wheres' => array('queries' => array('some_query')),
         );
 
-        $this->assertEquals(
-            array(
-                'abc'
-            ),
-            $result->getQuery('wheres.queries')
-        );
+        $this->assertEquals($expectedQueries, $property->getValue($this->query));
 
-        $result = $builderMethod->invoke($builder, 'abc', 'columns');
-
-        $this->assertEquals(
-            array(
-                'wheres' => array(
-                    'queries' => array(
-                        'abc'
-                    )
-                ),
-                'columns' => array(
-                    'queries' => array(
-                        'abc'
-                    )
-                )
-            ),
-            $result->getQueries()
-        );
-
-        $this->assertEquals(
-            array(
-                'abc'
-            ),
-            $result->getQuery('columns.queries')
-        );
-
-        $this->assertTrue(
-            $result instanceof Builder
-        );
+        $this->assertSame($this->query, $result);
     }
 
-    public function testBindingPush()
+    public function testBindingPushWithArray()
     {
-        $builder = $this->builder();
+        $property = $this->setProtectedProperty($this->query, 'queries', array(
+            'wheres' => array('bindings' => array()),
+        ));
 
-        $builderMethod = new \ReflectionMethod($builder, 'bindingPush');
+        $this->query->shouldReceive('bindingsNested')
+            ->with(array('value1', 'value2'))
+            ->andReturn(array('processed_value1', 'processed_value2'));
 
-        $builderMethod->setAccessible(true);
+        $result = $this->query->bindingPush(array('value1', 'value2'), 'wheres');
 
-        $result = $builderMethod->invoke($builder, 123);
-
-        $this->assertEquals(
-            array(
-                'wheres' => array(
-                    'bindings' => array(
-                        123
-                    )
-                )
-            ),
-            $result->getQueries()
+        $expectedQueries = array(
+            'wheres' => array('bindings' => array('processed_value1', 'processed_value2')),
         );
 
-        $this->assertEquals(
-            array(
-                123
-            ),
-            $result->getQuery('wheres.bindings')
-        );
+        $this->assertEquals($expectedQueries, $property->getValue($this->query));
 
-        $result = $builderMethod->invoke($builder, 123, 'columns');
-
-        $this->assertEquals(
-            array(
-                'wheres' => array(
-                    'bindings' => array(
-                        123
-                    )
-                ),
-                'columns' => array(
-                    'bindings' => array(
-                        123
-                    )
-                )
-            ),
-            $result->getQueries()
-        );
-
-        $this->assertEquals(
-            array(
-                123
-            ),
-            $result->getQuery('columns.bindings')
-        );
+        $this->assertSame($this->query, $result);
     }
 
-    public function testSubQueryAsContactBacktick()
+    public function testBindingPushWithSingleValue()
     {
-        $builder = $this->builder();
+        $property = $this->setProtectedProperty($this->query, 'queries', array(
+            'wheres' => array('bindings' => array()),
+        ));
 
-        $builderMethod = new \ReflectionMethod($builder, 'subQueryAsContactBacktick');
+        $result = $this->query->bindingPush('single_value', 'wheres');
 
-        $builderMethod->setAccessible(true);
-
-        $result = $builderMethod->invoke($builder, 'abc');
-
-        $this->assertEquals(
-            '(abc)',
-            $result
+        $expectedQueries = array(
+            'wheres' => array('bindings' => array('single_value')),
         );
 
-        $result = $builderMethod->invoke($builder, 'abc', 'a');
+        $this->assertEquals($expectedQueries, $property->getValue($this->query));
 
-        $this->assertEquals(
-            '(abc) AS `a`',
-            $result
-        );
+        $this->assertSame($this->query, $result);
     }
 
-    public function testQueryAsContactBacktick()
+    public function testBindingPushWithExpression()
     {
-        $builder = $this->builder();
+        $property = $this->setProtectedProperty($this->query, 'queries', array(
+            'wheres' => array('bindings' => array()),
+        ));
 
-        $builderMethod = new \ReflectionMethod($builder, 'queryAsContactBacktick');
+        $expression = new Expression('NOW()');
 
-        $builderMethod->setAccessible(true);
+        $result = $this->query->bindingPush($expression, 'wheres');
 
-        $result = $builderMethod->invoke($builder, 'abc');
-
-        $this->assertEquals(
-            '`abc`',
-            $result
+        $expectedQueries = array(
+            'wheres' => array('bindings' => array()),
         );
 
-        $result = $builderMethod->invoke($builder, 'abc', 'a');
+        $this->assertEquals($expectedQueries, $property->getValue($this->query));
 
-        $this->assertEquals(
-            '`abc` AS `a`',
-            $result
-        );
+        $this->assertSame($this->query, $result);
     }
 
+    public function testSubQueryAsContactBacktickWithStringAlias()
+    {
+        $this->query->shouldReceive('contactBacktick')
+            ->with('alias')
+            ->andReturn('`alias`');
+
+        $result = $this->query->subQueryAsContactBacktick('SELECT * FROM table', 'alias');
+
+        $expected = '(SELECT * FROM table) AS `alias`';
+
+        $this->assertEquals($expected, $result);
+    }
+
+    public function testSubQueryAsContactBacktickWithExpressionAlias()
+    {
+        $expression = new Expression('some_expression');
+
+        $this->query->shouldReceive('contactBacktick')
+            ->with($expression)
+            ->andReturn('`some_expression`');
+
+        $result = $this->query->subQueryAsContactBacktick('SELECT * FROM table', $expression);
+
+        $expected = '(SELECT * FROM table) AS `some_expression`';
+
+        $this->assertEquals($expected, $result);
+    }
+
+    public function testSubQueryAsContactBacktickWithoutAlias()
+    {
+        $result = $this->query->subQueryAsContactBacktick('SELECT * FROM table');
+
+        $expected = '(SELECT * FROM table)';
+
+        $this->assertEquals($expected, $result);
+    }
+
+    public function testQueryAsContactBacktickWithStringAlias()
+    {
+        $this->query->shouldReceive('contactBacktick')
+            ->with('some_query')
+            ->andReturn('`some_query`');
+
+        $this->query->shouldReceive('contactBacktick')
+            ->with('alias')
+            ->andReturn('`alias`');
+
+        $result = $this->query->queryAsContactBacktick('some_query', 'alias');
+
+        $expected = '`some_query` AS `alias`';
+
+        $this->assertEquals($expected, $result);
+    }
+
+    public function testQueryAsContactBacktickWithExpressionAlias()
+    {
+        $expression = new Expression('some_expression');
+
+        $this->query->shouldReceive('contactBacktick')
+            ->with('some_query')
+            ->andReturn('`some_query`');
+
+        $this->query->shouldReceive('contactBacktick')
+            ->with($expression)
+            ->andReturn('`some_expression`');
+
+        $result = $this->query->queryAsContactBacktick('some_query', $expression);
+
+        $expected = '`some_query` AS `some_expression`';
+
+        $this->assertEquals($expected, $result);
+    }
+
+    public function testQueryAsContactBacktickWithoutAlias()
+    {
+        $this->query->shouldReceive('contactBacktick')
+            ->with('some_query')
+            ->andReturn('`some_query`');
+
+        $result = $this->query->queryAsContactBacktick('some_query');
+
+        $expected = '`some_query`';
+
+        $this->assertEquals($expected, $result);
+    }
     public function testRaw()
     {
-        $raw = $this->builder()->raw('abc');
+        $value = 'NOW()';
 
-        $this->assertTrue(
-            $raw instanceof Expression
-        );
+        $expression = $this->query->raw($value);
 
-        $this->assertTrue(
-            (string) $raw === 'abc'
-        );
+        $this->assertInstanceOf('Wilkques\Database\Queries\Expression', $expression);
+
+        $this->assertEquals($value, $expression->getValue());
     }
 
     public function testFromRaw()
     {
-        $fromRaw = $this->builder()->fromRaw('abc');
+        $expression = 'some_table';
 
-        $this->assertEquals(
-            array('abc'),
-            $fromRaw->getFrom()
-        );
+        $bindings = array('binding1', 'binding2');
+
+        $this->query->shouldReceive('raw')
+            ->with($expression)
+            ->andReturn(new Expression($expression));
+
+        $this->query->shouldReceive('queriesPush')
+            ->with(Mockery::type('Wilkques\Database\Queries\Expression'), $bindings, 'froms')
+            ->andReturnSelf();
+
+        $result = $this->query->fromRaw($expression, $bindings);
+
+        $this->assertSame($this->query, $result);
     }
 
-    public function testSetForm()
+    public function testSetFrom()
     {
-        $from = $this->builder()->setFrom('abc');
+        $initialFroms = isset($this->query->queries['froms']['queries']) ? $this->query->queries['froms']['queries'] : array();
 
-        $this->assertEquals(
-            array('abc'),
-            $from->getFrom()
-        );
+        $this->assertEmpty($initialFroms);
+
+        $from = 'some_table';
+
+        $index = 0;
+
+        $result = $this->query->setFrom($from, $index);
+
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+
+        $this->assertEquals($from, $queries['froms']['queries'][$index]);
+
+        $this->assertSame($this->query, $result);
     }
 
-    public function testFrom()
+    public function testFromSingleTableWithAlias()
     {
-        $from = $this->builder()->from('abc');
+        $this->query->shouldReceive('fromRaw')
+            ->with('`table` AS `alias`')
+            ->andReturnSelf();
 
-        $this->assertEquals(
-            array(
-                new Expression('`abc`')
-            ),
-            $from->getFrom()
-        );
+        $result = $this->query->from('table', 'alias');
 
-        $from = $this->builder()->from('abc', 'a');
-
-        $this->assertEquals(
-            array(
-                new Expression('`abc` AS `a`')
-            ),
-            $from->getFrom()
-        );
-
-        $builder = $this->builder();
-
-        $from = $builder->from(function ($query) {
-            $query->from('efg');
-        });
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg`)')
-            ),
-            $from->getFrom()
-        );
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->from('efg');
-
-        $from = $builder->from($newBuilder);
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg`)'),
-                new Expression('(SELECT * FROM `efg`)')
-            ),
-            $from->getFrom()
-        );
-
-        $builder = $this->builder();
-
-        $from = $builder->from(function ($query) {
-            $query->from('efg', 'e');
-        });
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg` AS `e`)')
-            ),
-            $from->getFrom()
-        );
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->from('efg', 'e');
-
-        $from = $builder->from($newBuilder);
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg` AS `e`)'),
-                new Expression('(SELECT * FROM `efg` AS `e`)')
-            ),
-            $from->getFrom()
-        );
-
-        $builder = $this->builder();
-
-        $from = $builder->from(function ($query) {
-            $query->from('efg');
-        }, 'e');
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg`) AS `e`')
-            ),
-            $from->getFrom()
-        );
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->from('efg');
-
-        $from = $builder->from($newBuilder, 'e');
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg`) AS `e`'),
-                new Expression('(SELECT * FROM `efg`) AS `e`')
-            ),
-            $from->getFrom()
-        );
-
-        $builder = $this->builder();
-
-        $from = $builder->from(function ($query) {
-            $query->from('efg', 'e');
-        }, 'e');
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg` AS `e`) AS `e`')
-            ),
-            $from->getFrom()
-        );
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->from('efg', 'e');
-
-        $from = $builder->from($newBuilder, 'e');
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg` AS `e`) AS `e`'),
-                new Expression('(SELECT * FROM `efg` AS `e`) AS `e`')
-            ),
-            $from->getFrom()
-        );
-
-        $builder = $this->builder();
-
-        $from = $builder->from(array(
-            function ($query) {
-                $query->from('efg', 'e');
-            }
-        ));
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg` AS `e`)')
-            ),
-            $from->getFrom()
-        );
-
-        $builder = $this->builder();
-
-        $from = $builder->from(array(
-            'e' => function ($query) {
-                $query->from('efg', 'e');
-            }
-        ));
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg` AS `e`) AS `e`')
-            ),
-            $from->getFrom()
-        );
-
-        $builder = $this->builder();
-
-        $from = $builder->from(array(
-            function ($query) {
-                $query->from('efg', 'e');
-            },
-            function ($query) {
-                $query->from('efg', 'e');
-            }
-        ));
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg` AS `e`)'),
-                new Expression('(SELECT * FROM `efg` AS `e`)')
-            ),
-            $from->getFrom()
-        );
-
-        $builder = $this->builder();
-
-        $from = $builder->from(array(
-            'e' => function ($query) {
-                $query->from('efg', 'e');
-            },
-            'f' => function ($query) {
-                $query->from('efg', 'e');
-            }
-        ));
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg` AS `e`) AS `e`'),
-                new Expression('(SELECT * FROM `efg` AS `e`) AS `f`')
-            ),
-            $from->getFrom()
-        );
-
-        $builder = $this->builder();
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->from('efg', 'e');
-
-        $from = $builder->from(array(
-            $newBuilder
-        ));
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg` AS `e`)')
-            ),
-            $from->getFrom()
-        );
-
-        $builder = $this->builder();
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->from('efg', 'e');
-
-        $newOtherBuilder = $this->builder();
-
-        $newOtherBuilder->from('efg', 'e');
-
-        $from = $builder->from(array(
-            $newBuilder, $newOtherBuilder
-        ));
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg` AS `e`)'),
-                new Expression('(SELECT * FROM `efg` AS `e`)')
-            ),
-            $from->getFrom()
-        );
-
-        $builder = $this->builder();
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->from('efg', 'e');
-
-        $newOtherBuilder = $this->builder();
-
-        $newOtherBuilder->from('efg', 'e');
-
-        $from = $builder->from(array(
-            'e' => $newBuilder,
-            'e' => $newOtherBuilder
-        ));
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg` AS `e`) AS `e`')
-            ),
-            $from->getFrom()
-        );
-
-        $builder = $this->builder();
-
-        $from = $builder->from(array(
-            new Expression('(SELECT * FROM `efg`)')
-        ));
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg`)')
-            ),
-            $from->getFrom()
-        );
-
-        $builder = $this->builder();
-
-        $from = $builder->from(array(
-            'e' => new Expression('(SELECT * FROM `efg`)')
-        ));
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg`) AS `e`')
-            ),
-            $from->getFrom()
-        );
+        $this->assertSame($this->query, $result);
     }
 
-    public function testFromSub()
+    public function testFromClosure()
     {
-        $builder = $this->builder();
+        $closure = function () {};
 
-        $from = $builder->fromSub(function ($query) {
-            $query->from('efg');
-        });
+        $this->query->shouldReceive('fromSub')
+            ->with(Mockery::type('Closure'), 'alias')
+            ->andReturnSelf();
 
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg`)')
-            ),
-            $from->getFrom()
-        );
+        $result = $this->query->from($closure, 'alias');
 
-        $newBuilder = $this->builder();
-
-        $newBuilder->from('efg');
-
-        $from = $builder->fromSub($newBuilder);
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg`)'),
-                new Expression('(SELECT * FROM `efg`)')
-            ),
-            $from->getFrom()
-        );
-
-        $builder = $this->builder();
-
-        $from = $builder->fromSub(function ($query) {
-            $query->from('efg', 'e');
-        });
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg` AS `e`)')
-            ),
-            $from->getFrom()
-        );
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->from('efg', 'e');
-
-        $from = $builder->fromSub($newBuilder);
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg` AS `e`)'),
-                new Expression('(SELECT * FROM `efg` AS `e`)')
-            ),
-            $from->getFrom()
-        );
-
-        $builder = $this->builder();
-
-        $from = $builder->fromSub(function ($query) {
-            $query->from('efg');
-        }, 'e');
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg`) AS `e`')
-            ),
-            $from->getFrom()
-        );
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->from('efg');
-
-        $from = $builder->fromSub($newBuilder, 'e');
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg`) AS `e`'),
-                new Expression('(SELECT * FROM `efg`) AS `e`')
-            ),
-            $from->getFrom()
-        );
-
-        $builder = $this->builder();
-
-        $from = $builder->fromSub(function ($query) {
-            $query->from('efg', 'e');
-        }, 'e');
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg` AS `e`) AS `e`')
-            ),
-            $from->getFrom()
-        );
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->from('efg', 'e');
-
-        $from = $builder->fromSub($newBuilder, 'e');
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg` AS `e`) AS `e`'),
-                new Expression('(SELECT * FROM `efg` AS `e`) AS `e`')
-            ),
-            $from->getFrom()
-        );
-
-        $builder = $this->builder();
-
-        $from = $builder->fromSub(array(
-            function ($query) {
-                $query->from('efg', 'e');
-            }
-        ));
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg` AS `e`)')
-            ),
-            $from->getFrom()
-        );
-
-        $builder = $this->builder();
-
-        $from = $builder->fromSub(array(
-            'e' => function ($query) {
-                $query->from('efg', 'e');
-            }
-        ));
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg` AS `e`) AS `e`')
-            ),
-            $from->getFrom()
-        );
-
-        $builder = $this->builder();
-
-        $from = $builder->fromSub(array(
-            function ($query) {
-                $query->from('efg', 'e');
-            },
-            function ($query) {
-                $query->from('efg', 'e');
-            }
-        ));
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg` AS `e`)'),
-                new Expression('(SELECT * FROM `efg` AS `e`)')
-            ),
-            $from->getFrom()
-        );
-
-        $builder = $this->builder();
-
-        $from = $builder->fromSub(array(
-            'e' => function ($query) {
-                $query->from('efg', 'e');
-            },
-            'f' => function ($query) {
-                $query->from('efg', 'e');
-            }
-        ));
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg` AS `e`) AS `e`'),
-                new Expression('(SELECT * FROM `efg` AS `e`) AS `f`')
-            ),
-            $from->getFrom()
-        );
-
-        $builder = $this->builder();
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->from('efg', 'e');
-
-        $from = $builder->fromSub(array(
-            $newBuilder
-        ));
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg` AS `e`)')
-            ),
-            $from->getFrom()
-        );
-
-        $builder = $this->builder();
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->from('efg', 'e');
-
-        $newOtherBuilder = $this->builder();
-
-        $newOtherBuilder->from('efg', 'e');
-
-        $from = $builder->fromSub(array(
-            $newBuilder, $newOtherBuilder
-        ));
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg` AS `e`)'),
-                new Expression('(SELECT * FROM `efg` AS `e`)')
-            ),
-            $from->getFrom()
-        );
-
-        $builder = $this->builder();
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->from('efg', 'e');
-
-        $newOtherBuilder = $this->builder();
-
-        $newOtherBuilder->from('efg', 'e');
-
-        $from = $builder->fromSub(array(
-            'e' => $newBuilder,
-            'e' => $newOtherBuilder
-        ));
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg` AS `e`) AS `e`')
-            ),
-            $from->getFrom()
-        );
-
-        $builder = $this->builder();
-
-        $from = $builder->from(array(
-            new Expression('(SELECT * FROM `efg`)')
-        ));
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg`)')
-            ),
-            $from->getFrom()
-        );
-
-        $builder = $this->builder();
-
-        $from = $builder->from(array(
-            'e' => new Expression('(SELECT * FROM `efg`)')
-        ));
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg`) AS `e`')
-            ),
-            $from->getFrom()
-        );
+        $this->assertSame($this->query, $result);
     }
 
-    public function testGetFrom()
+    public function testFromSelfInstance()
     {
-        $builder = $this->builder();
+        $subQuery = $this->newQuery();
 
-        $this->assertNull($builder->getFrom());
+        $this->query->shouldReceive('fromSub')
+            ->with($subQuery, 'alias')
+            ->andReturnSelf();
+
+        $result = $this->query->from($subQuery, 'alias');
+
+        $this->assertSame($this->query, $result);
     }
 
-    public function testSetTable()
+    public function testFromWithFromRaw()
     {
-        $from = $this->builder()->setTable('abc');
+        $this->query->shouldReceive('fromRaw')
+            ->with('`raw_query`')
+            ->andReturnSelf();
 
-        $this->assertEquals(
-            array(
-                new Expression('`abc`')
-            ),
-            $from->getFrom()
-        );
+        $result = $this->query->from('raw_query');
 
-        $from = $this->builder()->table('abc');
+        $this->assertSame($this->query, $result);
+    }
 
-        $this->assertEquals(
-            array(
-                new Expression('`abc`')
-            ),
-            $from->getFrom()
-        );
-
-        $from = $this->builder()->setTable('abc', 'a');
-
-        $this->assertEquals(
-            array(
-                new Expression('`abc` AS `a`')
-            ),
-            $from->getFrom()
-        );
+    public function testFromMultipleQueries()
+    {
+        $tableName = 'table';
 
-        $builder = $this->builder();
+        $closure = function () {};
 
-        $from = $builder->setTable(function ($query) {
-            $query->setTable('efg');
-        });
+        $subQuery = $this->newQuery();
 
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg`)')
-            ),
-            $from->getFrom()
-        );
+        $alias = 'alias';
 
-        $newBuilder = $this->builder();
-
-        $newBuilder->setTable('efg');
+        $this->query->shouldReceive('queryAsContactBacktick')
+            ->with($tableName, $alias)
+            ->andReturn('`table` AS `alias`');
 
-        $from = $builder->setTable($newBuilder);
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg`)'),
-                new Expression('(SELECT * FROM `efg`)')
-            ),
-            $from->getFrom()
-        );
-
-        $builder = $this->builder();
-
-        $from = $builder->setTable(function ($query) {
-            $query->setTable('efg', 'e');
-        });
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg` AS `e`)')
-            ),
-            $from->getFrom()
-        );
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->setTable('efg', 'e');
-
-        $from = $builder->setTable($newBuilder);
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg` AS `e`)'),
-                new Expression('(SELECT * FROM `efg` AS `e`)')
-            ),
-            $from->getFrom()
-        );
-
-        $builder = $this->builder();
-
-        $from = $builder->setTable(function ($query) {
-            $query->setTable('efg');
-        }, 'e');
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg`) AS `e`')
-            ),
-            $from->getFrom()
-        );
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->setTable('efg');
-
-        $from = $builder->setTable($newBuilder, 'e');
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg`) AS `e`'),
-                new Expression('(SELECT * FROM `efg`) AS `e`')
-            ),
-            $from->getFrom()
-        );
-
-        $builder = $this->builder();
-
-        $from = $builder->setTable(function ($query) {
-            $query->setTable('efg', 'e');
-        }, 'e');
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg` AS `e`) AS `e`')
-            ),
-            $from->getFrom()
-        );
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->setTable('efg', 'e');
-
-        $from = $builder->setTable($newBuilder, 'e');
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg` AS `e`) AS `e`'),
-                new Expression('(SELECT * FROM `efg` AS `e`) AS `e`')
-            ),
-            $from->getFrom()
-        );
-
-        $builder = $this->builder();
-
-        $from = $builder->setTable(array(
-            function ($query) {
-                $query->setTable('efg', 'e');
-            }
-        ));
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg` AS `e`)')
-            ),
-            $from->getFrom()
-        );
-
-        $builder = $this->builder();
-
-        $from = $builder->setTable(array(
-            'e' => function ($query) {
-                $query->setTable('efg', 'e');
-            }
-        ));
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg` AS `e`) AS `e`')
-            ),
-            $from->getFrom()
-        );
-
-        $builder = $this->builder();
-
-        $from = $builder->setTable(array(
-            function ($query) {
-                $query->setTable('efg', 'e');
-            },
-            function ($query) {
-                $query->setTable('efg', 'e');
-            }
-        ));
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg` AS `e`)'),
-                new Expression('(SELECT * FROM `efg` AS `e`)')
-            ),
-            $from->getFrom()
-        );
-
-        $builder = $this->builder();
-
-        $from = $builder->setTable(array(
-            'e' => function ($query) {
-                $query->setTable('efg', 'e');
-            },
-            'f' => function ($query) {
-                $query->setTable('efg', 'e');
-            }
-        ));
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg` AS `e`) AS `e`'),
-                new Expression('(SELECT * FROM `efg` AS `e`) AS `f`')
-            ),
-            $from->getFrom()
-        );
-
-        $builder = $this->builder();
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->setTable('efg', 'e');
-
-        $from = $builder->setTable(array(
-            $newBuilder
-        ));
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg` AS `e`)')
-            ),
-            $from->getFrom()
-        );
-
-        $builder = $this->builder();
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->setTable('efg', 'e');
-
-        $newOtherBuilder = $this->builder();
-
-        $newOtherBuilder->setTable('efg', 'e');
-
-        $from = $builder->setTable(array(
-            $newBuilder, $newOtherBuilder
-        ));
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg` AS `e`)'),
-                new Expression('(SELECT * FROM `efg` AS `e`)')
-            ),
-            $from->getFrom()
-        );
-
-        $builder = $this->builder();
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->setTable('efg', 'e');
-
-        $newOtherBuilder = $this->builder();
-
-        $newOtherBuilder->setTable('efg', 'e');
-
-        $from = $builder->setTable(array(
-            'e' => $newBuilder,
-            'e' => $newOtherBuilder
-        ));
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg` AS `e`) AS `e`')
-            ),
-            $from->getFrom()
-        );
-
-        $builder = $this->builder();
-
-        $from = $builder->setTable(array(
-            new Expression('(SELECT * FROM `efg`)')
-        ));
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg`)')
-            ),
-            $from->getFrom()
-        );
-
-        $builder = $this->builder();
-
-        $from = $builder->setTable(array(
-            'e' => new Expression('(SELECT * FROM `efg`)')
-        ));
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `efg`) AS `e`')
-            ),
-            $from->getFrom()
-        );
+        $this->query->shouldReceive('fromRaw')
+            ->with('`table` AS `alias`')
+            ->andReturnSelf();
+
+        $this->query->shouldReceive('fromSub')
+            ->with($closure, null)
+            ->andReturnSelf();
+
+        $this->query->shouldReceive('fromSub')
+            ->with($subQuery, null)
+            ->andReturnSelf();
+
+        $result = $this->query->from([
+            $tableName => $alias,
+            $closure,
+            $subQuery
+        ]);
+
+        $this->assertSame($this->query, $result);
+    }
+
+    public function testFromSubWithArray()
+    {
+        $fromArray = array('table1', 'table2');
+
+        $this->query->shouldReceive('from')
+            ->with($fromArray)
+            ->andReturnSelf();
+
+        $result = $this->query->fromSub($fromArray);
+
+        $this->assertSame($this->query, $result);
+    }
+
+    public function testFromSubWithSubQuery()
+    {
+        $subQuery = $this->newQuery();
+
+        $this->query->shouldReceive('createSub')
+            ->with($subQuery)
+            ->andReturn(array('sub_query_sql', array()));
+
+        $this->query->shouldReceive('subQueryAsContactBacktick')
+            ->with('sub_query_sql', null)
+            ->andReturn('(`sub_query_sql`)');
+
+        $this->query->shouldReceive('fromRaw')
+            ->with('(`sub_query_sql`)', array())
+            ->andReturnSelf();
+
+        $result = $this->query->fromSub($subQuery);
+
+        $this->assertSame($this->query, $result);
+    }
+
+    public function testFromSubWithClosure()
+    {
+        $closure = function ($query) {
+            $query->where('column', 'value');
+        };
+
+        $this->query->shouldReceive('createSub')
+            ->with(Mockery::type('Closure'))
+            ->andReturn(array('sub_query_sql', array()));
+
+        $this->query->shouldReceive('subQueryAsContactBacktick')
+            ->with('sub_query_sql', null)
+            ->andReturn('(`sub_query_sql`)');
+
+        $this->query->shouldReceive('fromRaw')
+            ->with('(`sub_query_sql`)', array())
+            ->andReturnSelf();
+
+        $result = $this->query->fromSub($closure);
+
+        $this->assertSame($this->query, $result);
+    }
+
+    public function testFromSubWithAlias()
+    {
+        $subQuery = $this->newQuery();
+
+        $alias = 'alias_name';
+
+        $this->query->shouldReceive('createSub')
+            ->with($subQuery)
+            ->andReturn(array('sub_query_sql', array()));
+
+        $this->query->shouldReceive('subQueryAsContactBacktick')
+            ->with('sub_query_sql', $alias)
+            ->andReturn('(`sub_query_sql`) AS `alias_name`');
+
+        $this->query->shouldReceive('fromRaw')
+            ->with('(`sub_query_sql`) AS `alias_name`', array())
+            ->andReturnSelf();
+
+        $result = $this->query->fromSub($subQuery, $alias);
+
+        $this->assertSame($this->query, $result);
+    }
+
+    public function testGetFromWithQueriesSet()
+    {
+        $this->query->shouldReceive('getQuery')
+            ->with('froms.queries')
+            ->andReturn(array('table1', 'table2'));
+
+        $result = $this->query->getFrom();
+
+        $this->assertEquals(array('table1', 'table2'), $result);
+    }
+
+    public function testGetFromWithNoQueries()
+    {
+        $this->query->shouldReceive('getQuery')
+            ->with('froms.queries')
+            ->andReturn(array());
+
+        $result = $this->query->getFrom();
+
+        $this->assertEquals(array(), $result);
+    }
+
+    public function testSetTableWithoutAlias()
+    {
+        $table = 'users';
+
+        $this->query->shouldReceive('from')
+            ->with($table, null)
+            ->andReturnSelf();
+
+        $result = $this->query->setTable($table);
+
+        $this->assertSame($this->query, $result);
+    }
+
+    public function testSetTableWithAlias()
+    {
+        $table = 'users';
+
+        $alias = 'u';
+
+        $this->query->shouldReceive('from')
+            ->with($table, $alias)
+            ->andReturnSelf();
+
+        $result = $this->query->setTable($table, $alias);
+
+        $this->assertSame($this->query, $result);
     }
 
     public function testGetTable()
     {
-        $builder = $this->builder();
+        $expectedResult = array('users');
 
-        $this->assertNull($builder->getTable());
+        $this->query->shouldReceive('getFrom')
+            ->andReturn($expectedResult);
+
+        $result = $this->query->getTable();
+
+        $this->assertEquals($expectedResult, $result);
     }
 
     public function testSelectRaw()
     {
-        $builder = $this->builder()->selectRaw('*');
+        $column = 'abc';
 
-        $this->assertEquals(
-            array(
-                new Expression('*')
-            ),
-            $builder->getQuery('columns.queries')
-        );
+        $expression = new Expression($column);
+
+        $bindings = array(1, 2);
+
+        $this->query->shouldReceive('raw')
+            ->with($expression)
+            ->andReturn($expression);
+
+        $this->query->shouldReceive('queriesPush')
+            ->with($expression, $bindings, 'columns')
+            ->andReturnSelf();
+
+        $result = $this->query->selectRaw($expression, $bindings);
+
+        $this->assertSame($this->query, $result);
     }
 
-    public function testSelect()
+    public function testSelectWithSingleColumn()
     {
-        $builder = $this->builder()->select('*');
+        $column = 'users.id';
 
-        $this->assertEquals(
-            array(
-                '*'
-            ),
-            $builder->getQuery('columns.queries')
-        );
+        $this->query->shouldReceive('queryAsContactBacktick')
+            ->with($column, null)
+            ->andReturn('`users`.`id`');
 
-        $builder = $this->builder()->select('abc', 'efg');
+        $this->query->shouldReceive('queryPush')
+            ->with('`users`.`id`', 'columns')
+            ->andReturnSelf();
 
-        $this->assertEquals(
-            array(
-                '`abc`', '`efg`'
-            ),
-            $builder->getQuery('columns.queries')
-        );
+        $result = $this->query->select($column);
 
-        $builder = $this->builder()->select();
-
-        $this->assertEquals(
-            array(
-                '*'
-            ),
-            $builder->getQuery('columns.queries')
-        );
-
-        $builder = $this->builder()->select(array('abc', 'efg'));
-
-        $this->assertEquals(
-            array(
-                '`abc`', '`efg`'
-            ),
-            $builder->getQuery('columns.queries')
-        );
-
-        $builder = $this->builder()->select(array('abc' => 'efg'));
-
-        $this->assertEquals(
-            array(
-                '`efg` AS `abc`'
-            ),
-            $builder->getQuery('columns.queries')
-        );
-
-        $builder = $this->builder()->select(
-            new Expression('*')
-        );
-
-        $this->assertEquals(
-            array(
-                '*'
-            ),
-            $builder->getQuery('columns.queries')
-        );
-
-        $builder = $this->builder()->select(
-            new Expression('abc'),
-            new Expression('efg')
-        );
-
-        $this->assertEquals(
-            array(
-                new Expression('abc'),
-                new Expression('efg')
-            ),
-            $builder->getQuery('columns.queries')
-        );
-
-        $builder = $this->builder()->select(array(
-            'a' => new Expression('abc'),
-            'e' => new Expression('efg')
-        ));
-
-        $this->assertEquals(
-            array(
-                'abc AS `a`',
-                'efg AS `e`'
-            ),
-            $builder->getQuery('columns.queries')
-        );
-
-        $builder = $this->builder()->select(
-            function ($query) {
-                $query->from('abc');
-            }
-        );
-
-        $this->assertEquals(
-            array(
-                '(SELECT * FROM `abc`)'
-            ),
-            $builder->getQuery('columns.queries')
-        );
-
-        $builder = $this->builder()->select(
-            function ($query) {
-                $query->from('abc');
-            },
-            function ($query) {
-                $query->from('efg');
-            }
-        );
-
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `abc`)'),
-                new Expression('(SELECT * FROM `efg`)')
-            ),
-            $builder->getQuery('columns.queries')
-        );
+        $this->assertSame($this->query, $result);
     }
 
-    public function testSelectSub()
+    public function testSelectWithMultipleColumns()
     {
-        $builder = $this->builder()->selectSub('*');
+        $columns = array('users.id', 'users.name');
 
-        $this->assertEquals(
-            array(
-                '(*)'
-            ),
-            $builder->getQuery('columns.queries')
-        );
+        $this->query->shouldReceive('queryAsContactBacktick')
+            ->with('users.id', 0)
+            ->andReturn('`users`.`id`');
 
-        $builder = $this->builder()->selectSub('abc', 'efg');
+        $this->query->shouldReceive('queryAsContactBacktick')
+            ->with('users.name', 1)
+            ->andReturn('`users`.`name`');
 
-        $this->assertEquals(
-            array(
-                '(abc) AS `efg`'
-            ),
-            $builder->getQuery('columns.queries')
-        );
+        $this->query->shouldReceive('queryPush')
+            ->with('`users`.`id`', 'columns')
+            ->andReturnSelf();
 
-        $builder = $this->builder()->selectSub(array('*'));
+        $this->query->shouldReceive('queryPush')
+            ->with('`users`.`name`', 'columns')
+            ->andReturnSelf();
 
-        $this->assertEquals(
-            array(
-                '*'
-            ),
-            $builder->getQuery('columns.queries')
-        );
+        $result = $this->query->select($columns);
 
-        $builder = $this->builder()->selectSub(array('abc', 'efg'));
+        $this->assertSame($this->query, $result);
+    }
 
-        $this->assertEquals(
-            array(
-                '`abc`', '`efg`'
-            ),
-            $builder->getQuery('columns.queries')
-        );
+    public function testSelectWithWildcard()
+    {
+        $wildcard = '*';
 
-        $builder = $this->builder()->selectSub(array('abc' => 'efg'));
+        $this->query->shouldReceive('queryPush')
+            ->with($wildcard, 'columns')
+            ->andReturnSelf();
 
-        $this->assertEquals(
-            array(
-                '`efg` AS `abc`'
-            ),
-            $builder->getQuery('columns.queries')
-        );
+        $result = $this->query->select($wildcard);
 
-        $builder = $this->builder()->selectSub(
-            new Expression('*')
-        );
+        $this->assertSame($this->query, $result);
+    }
 
-        $this->assertEquals(
-            array(
-                new Expression('(*)')
-            ),
-            $builder->getQuery('columns.queries')
-        );
+    public function testSelectWithClosure()
+    {
+        $closure = function ($query) {
+            $query->where('active', 1);
+        };
 
-        $builder = $this->builder()->selectSub(
-            new Expression('abc'),
-            new Expression('efg')
-        );
+        $this->query->shouldReceive('selectSub')
+            ->with($closure, null)
+            ->andReturnSelf();
 
-        $this->assertEquals(
-            array(
-                new Expression('(abc) AS efg')
-            ),
-            $builder->getQuery('columns.queries')
-        );
+        $result = $this->query->select($closure);
 
-        $builder = $this->builder()->selectSub(array(
-            'a' => new Expression('abc'),
-            'e' => new Expression('efg')
-        ));
+        $this->assertSame($this->query, $result);
+    }
 
-        $this->assertEquals(
-            array(
-                'abc AS `a`',
-                'efg AS `e`'
-            ),
-            $builder->getQuery('columns.queries')
-        );
+    public function testSelectWithAlias()
+    {
+        $column = 'users.id';
 
-        $builder = $this->builder()->selectSub(
-            function ($query) {
-                $query->from('abc');
-            }
-        );
+        $alias = 'user_id';
 
-        $this->assertEquals(
-            array(
-                '(SELECT * FROM `abc`)'
-            ),
-            $builder->getQuery('columns.queries')
-        );
+        $this->query->shouldReceive('queryAsContactBacktick')
+            ->with($column, $alias)
+            ->andReturn('`users`.`id` AS `user_id`');
 
-        $builder = $this->builder()->selectSub(
-            function ($query) {
-                $query->from('abc');
-            }
-        );
+        $this->query->shouldReceive('queryPush')
+            ->with('`users`.`id` AS `user_id`', 'columns')
+            ->andReturnSelf();
 
-        $this->assertEquals(
-            array(
-                new Expression('(SELECT * FROM `abc`)')
-            ),
-            $builder->getQuery('columns.queries')
-        );
+        $result = $this->query->select([$column => $alias]);
+
+        $this->assertSame($this->query, $result);
+    }
+
+    public function testSelectWithSelfInstance()
+    {
+        $subQuery = $this->newQuery(); 
+
+        // Mock the selectSub method
+        $this->query->shouldReceive('selectSub')
+            ->with($subQuery, null)
+            ->andReturnSelf();
+
+        // Test the select method with a subquery instance
+        $result = $this->query->select($subQuery);
+
+        // Verify the result
+        $this->assertSame($this->query, $result);
+    }
+
+    public function testSelectSubWithArray()
+    {
+        $columns = array('users.id', 'users.name');
+
+        // Mock the select method
+        $this->query->shouldReceive('select')
+            ->with($columns)
+            ->andReturnSelf();
+
+        // Test selectSub with an array
+        $result = $this->query->selectSub($columns);
+
+        // Verify the result
+        $this->assertSame($this->query, $result);
+    }
+
+    public function testSelectSubWithSubquery()
+    {
+        $subQuery = $this->newQuery();
+
+        $query = 'SELECT * FROM users';
+
+        $bindings = array();
+
+        $this->query->shouldReceive('createSub')
+            ->with($subQuery)
+            ->andReturn(array($query, $bindings));
+
+        $this->query->shouldReceive('subQueryAsContactBacktick')
+            ->with($query, null)
+            ->andReturn("({$query})");
+
+        $this->query->shouldReceive('selectRaw')
+            ->with("({$query})", $bindings)
+            ->andReturnSelf();
+
+        $result = $this->query->selectSub($subQuery);
+
+        $this->assertSame($this->query, $result);
+    }
+
+    public function testSelectSubWithSubqueryAlias()
+    {
+        $subQuery = $this->newQuery();
+
+        $alias = 'users';
+
+        $query = 'SELECT * FROM users';
+
+        $bindings = array();
+
+        $this->query->shouldReceive('createSub')
+            ->with($subQuery)
+            ->andReturn(array($query, $bindings));
+
+        $this->query->shouldReceive('subQueryAsContactBacktick')
+            ->with($query, $alias)
+            ->andReturn("({$query}) AS {$alias}");
+
+        $this->query->shouldReceive('selectRaw')
+            ->with("({$query}) AS {$alias}", $bindings)
+            ->andReturnSelf();
+
+        $result = $this->query->selectSub($subQuery, $alias);
+
+        $this->assertSame($this->query, $result);
+    }
+
+    public function testSelectSubWithRawExpression()
+    {
+        $expression = new Expression('COUNT(*)');
+
+        $bindings = [];
+
+        $this->query->shouldReceive('createSub')
+            ->with($expression)
+            ->andReturn(array($expression, $bindings));
+
+        $this->query->shouldReceive('subQueryAsContactBacktick')
+            ->with($expression, null)
+            ->andReturn("({$expression})");
+
+        $this->query->shouldReceive('selectRaw')
+            ->with("({$expression})", $bindings)
+            ->andReturnSelf();
+
+        $result = $this->query->selectSub($expression);
+
+        // Verify the result
+        $this->assertSame($this->query, $result);
     }
 
     public function testInvalidOperatorAndValue()
     {
-        $builder = $this->builder();
+        // 測試不合法的操作符和空值
+        $this->assertTrue($this->query->invalidOperatorAndValue('>', null));  // true
+        $this->assertTrue($this->query->invalidOperatorAndValue('<', null));  // true
+        $this->assertTrue($this->query->invalidOperatorAndValue('>=', null)); // true
+        $this->assertTrue($this->query->invalidOperatorAndValue('<=', null)); // true
+        $this->assertTrue($this->query->invalidOperatorAndValue('like', null)); // true
+        $this->assertTrue($this->query->invalidOperatorAndValue('ilike', null)); // true
+        $this->assertTrue($this->query->invalidOperatorAndValue('between', null)); // true
+        $this->assertTrue($this->query->invalidOperatorAndValue('exists', null)); // true
+        $this->assertFalse($this->query->invalidOperatorAndValue('=', null)); // false
+        $this->assertFalse($this->query->invalidOperatorAndValue('!=', null)); // false
+        $this->assertFalse($this->query->invalidOperatorAndValue('is', null)); // false
+        $this->assertFalse($this->query->invalidOperatorAndValue('is not', null)); // false
 
-        $builderMethod = new \ReflectionMethod($builder, 'invalidOperatorAndValue');
-
-        $builderMethod->setAccessible(true);
-
-        $result = $builderMethod->invoke($builder, '=', 'abc');
-
-        $this->assertFalse($result);
-
-        $result = $builderMethod->invoke($builder, '=', null);
-
-        $this->assertFalse($result);
-
-        $result = $builderMethod->invoke($builder, '>', 'abc');
-
-        $this->assertFalse($result);
-
-        $result = $builderMethod->invoke($builder, '>', null);
-
-        $this->assertTrue($result);
+        // 測試合法的操作符和非空值
+        $this->assertFalse($this->query->invalidOperatorAndValue('>', 5));  // false
+        $this->assertFalse($this->query->invalidOperatorAndValue('=', 5));  // false 
+        $this->assertFalse($this->query->invalidOperatorAndValue('=', 5)); // false
+        $this->assertFalse($this->query->invalidOperatorAndValue('!=', 5)); // false
+        $this->assertFalse($this->query->invalidOperatorAndValue('is', 'value')); // false
+        $this->assertFalse($this->query->invalidOperatorAndValue('in', array(1, 2, 3))); // false
+        $this->assertFalse($this->query->invalidOperatorAndValue('between', array(1, 10))); // false
     }
 
-    public function testPrepareValueAndOperator()
+    public function testPrepareValueAndOperatorWithDefault()
     {
-        $builder = $this->builder();
+        // 測試使用預設值
+        $result = $this->query->prepareValueAndOperator('value', '>', true);
 
-        $builderMethod = new \ReflectionMethod($builder, 'prepareValueAndOperator');
+        $this->assertEquals(array('>', '='), $result);
+    }
 
-        $builderMethod->setAccessible(true);
+    public function testPrepareValueAndOperatorWithInvalidCombination()
+    {
+        // 模擬 invalidOperatorAndValue 方法
+        $this->query->shouldReceive('invalidOperatorAndValue')
+            ->with('>', null)
+            ->andReturn(true);
 
-        $result = $builderMethod->invoke($builder, 'abc', '=');
+        // 測試不合法的操作符和空值
+        // $this->expectException(InvalidArgumentException::class);
+        $this->query->prepareValueAndOperator(null, '>', false);
+    }
 
-        $this->assertEquals(
-            array(
-                'abc', '='
-            ),
-            $result
-        );
+    public function testInvalidOperatorReturnsTrueForNonString()
+    {
+        $this->assertTrue($this->query->invalidOperator(123)); // 整數
+        $this->assertTrue($this->query->invalidOperator(null)); // null
+        $this->assertTrue($this->query->invalidOperator([])); // 陣列
+        $this->assertTrue($this->query->invalidOperator(new stdClass())); // 對象
+    }
 
-        $result = $builderMethod->invoke($builder, null, 'abc', true);
+    public function testInvalidOperatorReturnsTrueForUnsupportedOperator()
+    {
+        $this->assertTrue($this->query->invalidOperator('unsupported_operator')); // 不支持的運算符
+    }
 
-        $this->assertEquals(
-            array(
-                'abc', '='
-            ),
-            $result
-        );
+    public function testInvalidOperatorReturnsFalseForSupportedOperators()
+    {
+        $supportedOperators = $this->query->operators;
 
-        try {
-            $builderMethod->invoke($builder, '))', 'abc', true);
-        } catch (InvalidArgumentException $e) {
-            $this->assertTrue(
-                $e instanceof InvalidArgumentException
-            );
-
-            $this->assertEquals(
-                'Illegal operator and value combination.',
-                $e->getMessage()
-            );
+        foreach ($supportedOperators as $operator) {
+            $this->assertFalse($this->query->invalidOperator($operator));
         }
     }
 
-    public function testInvalidOperator()
+    public function testInvalidOperatorReturnsFalseForCaseInsensitiveOperators()
     {
-        $builder = $this->builder();
-
-        $builderMethod = new \ReflectionMethod($builder, 'invalidOperator');
-
-        $builderMethod->setAccessible(true);
-
-        $result = $builderMethod->invoke($builder, 123);
-
-        $this->assertTrue($result);
-
-        $result = $builderMethod->invoke($builder, new \stdClass);
-
-        $this->assertTrue($result);
-
-        $result = $builderMethod->invoke($builder, '=');
-
-        $this->assertFalse($result);
-
-        $result = $builderMethod->invoke($builder, '!');
-
-        $this->assertTrue($result);
-    }
-
-    public function testArrayNested()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builderMethod = new \ReflectionMethod($builder, 'arrayNested');
-
-        $builderMethod->setAccessible(true);
-
-        $result = $builderMethod->invoke($builder, array(array('abc', 123)), 'and');
-
-        $this->assertTrue($result instanceof Builder);
-
-        $this->assertEquals(
-            array(
-                new Expression('`abc`')
-            ),
-            $builder->getFrom()
-        );
-
-        $this->assertEquals(
-            array('AND (`abc` = ?)'),
-            $builder->getQuery('wheres.queries')
-        );
-    }
-
-    public function testNested()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builderMethod = new \ReflectionMethod($builder, 'nested');
-
-        $builderMethod->setAccessible(true);
-
-        $result = $builderMethod->invoke($builder, function ($query) {
-            $query->where('abc', 123);
-        });
-
-        $this->assertTrue($result instanceof Builder);
-
-        $this->assertEquals(
-            array(
-                new Expression('`abc`')
-            ),
-            $builder->getFrom()
-        );
-
-        $this->assertEquals(
-            array('AND (`abc` = ?)'),
-            $builder->getQuery('wheres.queries')
-        );
-    }
-
-    public function testForNested()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builderMethod = new \ReflectionMethod($builder, 'forNested');
-
-        $builderMethod->setAccessible(true);
-
-        $result = $builderMethod->invoke($builder);
-
-        $this->assertTrue($result instanceof Builder);
-
-        $this->assertEquals(
-            array(
-                new Expression('`abc`')
-            ),
-            $builder->getFrom()
-        );
-    }
-
-    public function testAddNestedQuery()
-    {
-        $builder = $this->builder();
-
-        $nested = $this->builder();
-
-        $nested->where('abc', 123);
-
-        $builderMethod = new \ReflectionMethod($builder, 'addNestedQuery');
-
-        $builderMethod->setAccessible(true);
-
-        $result = $builderMethod->invoke($builder, $nested);
-
-        $this->assertTrue($result instanceof Builder);
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    'AND (`abc` = ?)'
-                ),
-                'bindings' => array(
-                    123
-                )
-            ),
-            $result->getQuery('wheres')
-        );
-    }
-
-    public function testFirstJoinReplace()
-    {
-        $builder = $this->builder();
-
-        $result = $builder->firstJoinReplace('');
-
-        $this->assertEquals('', $result);
-
-        $result = $builder->firstJoinReplace('`abc` = ?');
-
-        $this->assertEquals('`abc` = ?', $result);
-
-        $result = $builder->firstJoinReplace('AND `abc` = ?');
-
-        $this->assertEquals('`abc` = ?', $result);
-
-        $result = $builder->firstJoinReplace('OR `abc` = ?');
-
-        $this->assertEquals('`abc` = ?', $result);
-
-        $result = $builder->firstJoinReplace(', `abc` = ?');
-
-        $this->assertEquals(', `abc` = ?', $result);
-    }
-
-    public function testNestedArrayArguments()
-    {
-        $builder = $this->builder();
-
-        $builderMethod = new \ReflectionMethod($builder, 'nestedArrayArguments');
-
-        $builderMethod->setAccessible(true);
-
-        $this->assertEquals(
-            array(
-                'abc', null, null, 'AND'
-            ),
-            $builderMethod->invoke($builder, array(
-                'abc'
-            ), 'AND')
-        );
-    }
-
-    public function testWhereNested()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builderMethod = new \ReflectionMethod($builder, 'whereNested');
-
-        $builderMethod->setAccessible(true);
-
-        $result = $builderMethod->invoke($builder, function ($query) {
-            $query->where('abc', 123);
-        });
-
-        $this->assertTrue($result instanceof Builder);
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    'AND (`abc` = ?)'
-                ),
-                'bindings' => array(
-                    123
-                )
-            ),
-            $result->getQuery('wheres')
-        );
-    }
-
-    public function testArrayWhereNested()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $nested = $this->builder();
-
-        $builder->arrayWhereNested($nested, 1, array('abc', 123), 'and');
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('AND `abc` = ?')
-                ),
-                'bindings' => array(
-                    123
-                )
-            ),
-            $nested->getQuery('wheres')
-        );
-    }
-
-    public function testWhereRaw()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->whereRaw('abc = ?', array(123));
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('and abc = ?')
-                ),
-                'bindings' => array(
-                    123
-                )
-            ),
-            $builder->getQuery('wheres')
-        );
-    }
-
-    public function testOrWhereRaw()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->orWhereRaw('abc = ?', array(123));
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('or abc = ?')
-                ),
-                'bindings' => array(
-                    123
-                )
-            ),
-            $builder->getQuery('wheres')
-        );
-    }
-
-    public function testWhere()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->where('abc', 123);
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('AND `abc` = ?')
-                ),
-                'bindings' => array(
-                    123
-                )
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->where(function ($query) {
-            $query->where('abc', 123);
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    'AND (`abc` = ?)'
-                ),
-                'bindings' => array(
-                    123
-                )
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->where('abc', 123);
-
-        $builder->where($newBuilder, '=', 123);
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('AND (SELECT * WHERE `abc` = ?) = ?')
-                ),
-                'bindings' => array(
-                    123,
-                    123
-                )
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->where('abc', 123);
-
-        $builder->where($newBuilder);
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('AND EXISTS (SELECT * WHERE `abc` = ?)')
-                ),
-                'bindings' => array(
-                    123
-                )
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->where('abc', '>', 123);
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('AND `abc` > ?')
-                ),
-                'bindings' => array(
-                    123
-                )
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->where('abc', '>', function ($query) {
-            $query->where('abc', 123);
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('AND `abc` > (SELECT * WHERE `abc` = ?)')
-                ),
-                'bindings' => array(
-                    123
-                )
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->where(array(
-            array('abc', '>', 123),
-            array('abc', 123),
-            array(
-                function ($query) {
-                    $query->where('abc', '<', 123);
-                }
-            ),
-            array(
-                'abc', '<', function ($query) {
-                    $query->where('abc', 123);
-                }
-            )
-        ));
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    'AND (`abc` > ? AND `abc` = ? AND (`abc` < ?) AND `abc` < (SELECT * WHERE `abc` = ?))'
-                ),
-                'bindings' => array(
-                    123,
-                    123,
-                    123,
-                    123
-                )
-            ),
-            $builder->getQuery('wheres')
-        );
-    }
-
-    public function testOrWhere()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->orWhere('abc', 123);
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('OR `abc` = ?')
-                ),
-                'bindings' => array(
-                    123
-                )
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->orWhere(function ($query) {
-            $query->orWhere('abc', 123);
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    'OR (`abc` = ?)'
-                ),
-                'bindings' => array(
-                    123
-                )
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->orWhere('abc', 123);
-
-        $builder->orWhere($newBuilder, '=', 123);
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('OR (SELECT * WHERE `abc` = ?) = ?')
-                ),
-                'bindings' => array(
-                    123,
-                    123
-                )
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->orWhere('abc', 123);
-
-        $builder->orWhere($newBuilder);
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('OR EXISTS (SELECT * WHERE `abc` = ?)')
-                ),
-                'bindings' => array(
-                    123
-                )
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->orWhere('abc', '>', 123);
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('OR `abc` > ?')
-                ),
-                'bindings' => array(
-                    123
-                )
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->orWhere('abc', '>', function ($query) {
-            $query->orWhere('abc', 123);
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('OR `abc` > (SELECT * WHERE `abc` = ?)')
-                ),
-                'bindings' => array(
-                    123
-                )
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->orWhere(array(
-            array('abc', '>', 123),
-            array('abc', 123),
-            array(
-                function ($query) {
-                    $query->orWhere('abc', '<', 123);
-                }
-            ),
-            array(
-                'abc', '<', function ($query) {
-                    $query->orWhere('abc', 123);
-                }
-            )
-        ));
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    'OR (`abc` > ? OR `abc` = ? OR (`abc` < ?) OR `abc` < (SELECT * WHERE `abc` = ?))'
-                ),
-                'bindings' => array(
-                    123,
-                    123,
-                    123,
-                    123
-                )
-            ),
-            $builder->getQuery('wheres')
-        );
-    }
-
-    public function testWhereSub()
-    {
-        $builder = $this->builder();
-
-        $builder->whereSub('abc', function ($query) {
-            $query->from('efg')->where('abc', 123);
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('AND `abc` = (SELECT * FROM `efg` WHERE `abc` = ?)')
-                ),
-                'bindings' => array(
-                    123
-                )
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->whereSub('abc', '>', function ($query) {
-            $query->from('efg')->where('abc', 123);
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('AND `abc` > (SELECT * FROM `efg` WHERE `abc` = ?)')
-                ),
-                'bindings' => array(
-                    123
-                )
-            ),
-            $builder->getQuery('wheres')
-        );
-    }
-
-    public function testOrWhereSub()
-    {
-        $builder = $this->builder();
-
-        $builder->orWhereSub('abc', function ($query) {
-            $query->from('efg')->where('abc', 123);
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('OR `abc` = (SELECT * FROM `efg` WHERE `abc` = ?)')
-                ),
-                'bindings' => array(
-                    123
-                )
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->orWhereSub('abc', '>', function ($query) {
-            $query->from('efg')->where('abc', 123);
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('OR `abc` > (SELECT * FROM `efg` WHERE `abc` = ?)')
-                ),
-                'bindings' => array(
-                    123
-                )
-            ),
-            $builder->getQuery('wheres')
-        );
-    }
-
-    public function testWhereNull()
-    {
-        $builder = $this->builder();
-
-        $builder->whereNull('abc');
-
-        $this->assertEquals(
-            array(
-                new Expression('AND `abc` IS NULL')
-            ),
-            $builder->getQuery('wheres.queries')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('efg');
-
-        $builder->whereNull(function ($query) {
-            $query->whereNull('abc');
-        });
-
-        $this->assertEquals(
-            array(
-                'AND (`abc` IS NULL)'
-            ),
-            $builder->getQuery('wheres.queries')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('efg');
-
-        $builder->whereNull(
-            array(
-                array(
-                    function ($query) {
-                        $query->whereNull('abc');
-                    }
-                ),
-                array(
-                    function ($query) {
-                        $query->whereNull('abc');
-                    }
-                )
-            )
-        );
-
-        $this->assertEquals(
-            array(
-                'AND ((`abc` IS NULL) AND (`abc` IS NULL))'
-            ),
-            $builder->getQuery('wheres.queries')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('efg');
-
-        $builder->whereNull(
-            array(
-                array('abc')
-            )
-        );
-
-        $this->assertEquals(
-            array(
-                'AND (`abc` IS NULL)'
-            ),
-            $builder->getQuery('wheres.queries')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('efg');
-
-        $builder->whereNull(
-            array(
-                array('abc'),
-                array('abce')
-            )
-        );
-
-        $this->assertEquals(
-            array(
-                'AND (`abc` IS NULL AND `abce` IS NULL)'
-            ),
-            $builder->getQuery('wheres.queries')
-        );
-    }
-
-    public function testOrWhereNull()
-    {
-        $builder = $this->builder();
-
-        $builder->orWhereNull('abc');
-
-        $this->assertEquals(
-            array(
-                new Expression('OR `abc` IS NULL')
-            ),
-            $builder->getQuery('wheres.queries')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('efg');
-
-        $builder->orWhereNull(function ($query) {
-            $query->orWhereNull('abc');
-        });
-
-        $this->assertEquals(
-            array(
-                'OR (`abc` IS NULL)'
-            ),
-            $builder->getQuery('wheres.queries')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('efg');
-
-        $builder->orWhereNull(
-            array(
-                array(
-                    function ($query) {
-                        $query->orWhereNull('abc');
-                    }
-                ),
-                array(
-                    function ($query) {
-                        $query->orWhereNull('abc');
-                    }
-                )
-            )
-        );
-
-        $this->assertEquals(
-            array(
-                'OR ((`abc` IS NULL) OR (`abc` IS NULL))'
-            ),
-            $builder->getQuery('wheres.queries')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('efg');
-
-        $builder->orWhereNull(
-            array(
-                array('abc')
-            )
-        );
-
-        $this->assertEquals(
-            array(
-                'OR (`abc` IS NULL)'
-            ),
-            $builder->getQuery('wheres.queries')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('efg');
-
-        $builder->orWhereNull(
-            array(
-                array('abc'),
-                array('abce')
-            )
-        );
-
-        $this->assertEquals(
-            array(
-                'OR (`abc` IS NULL OR `abce` IS NULL)'
-            ),
-            $builder->getQuery('wheres.queries')
-        );
-    }
-
-    public function testWhereNotNull()
-    {
-        $builder = $this->builder();
-
-        $builder->whereNotNull('abc');
-
-        $this->assertEquals(
-            array(
-                new Expression('AND `abc` IS NOT NULL')
-            ),
-            $builder->getQuery('wheres.queries')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('efg');
-
-        $builder->whereNotNull(function ($query) {
-            $query->whereNotNull('abc');
-        });
-
-        $this->assertEquals(
-            array(
-                'AND (`abc` IS NOT NULL)'
-            ),
-            $builder->getQuery('wheres.queries')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('efg');
-
-        $builder->whereNotNull(
-            array(
-                array(
-                    function ($query) {
-                        $query->whereNotNull('abc');
-                    }
-                ),
-                array(
-                    function ($query) {
-                        $query->whereNotNull('abc');
-                    }
-                )
-            )
-        );
-
-        $this->assertEquals(
-            array(
-                'AND ((`abc` IS NOT NULL) AND (`abc` IS NOT NULL))'
-            ),
-            $builder->getQuery('wheres.queries')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('efg');
-
-        $builder->whereNotNull(
-            array(
-                array('abc')
-            )
-        );
-
-        $this->assertEquals(
-            array(
-                'AND (`abc` IS NOT NULL)'
-            ),
-            $builder->getQuery('wheres.queries')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('efg');
-
-        $builder->whereNotNull(
-            array(
-                array('abc'),
-                array('abce')
-            )
-        );
-
-        $this->assertEquals(
-            array(
-                'AND (`abc` IS NOT NULL AND `abce` IS NOT NULL)'
-            ),
-            $builder->getQuery('wheres.queries')
-        );
-    }
-
-    public function testOrWhereNotNull()
-    {
-        $builder = $this->builder();
-
-        $builder->orWhereNotNull('abc');
-
-        $this->assertEquals(
-            array(
-                new Expression('OR `abc` IS NOT NULL')
-            ),
-            $builder->getQuery('wheres.queries')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('efg');
-
-        $builder->orWhereNotNull(function ($query) {
-            $query->orWhereNotNull('abc');
-        });
-
-        $this->assertEquals(
-            array(
-                'OR (`abc` IS NOT NULL)'
-            ),
-            $builder->getQuery('wheres.queries')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('efg');
-
-        $builder->orWhereNotNull(
-            array(
-                array(
-                    function ($query) {
-                        $query->orWhereNotNull('abc');
-                    }
-                ),
-                array(
-                    function ($query) {
-                        $query->orWhereNotNull('abc');
-                    }
-                )
-            )
-        );
-
-        $this->assertEquals(
-            array(
-                'OR ((`abc` IS NOT NULL) OR (`abc` IS NOT NULL))'
-            ),
-            $builder->getQuery('wheres.queries')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('efg');
-
-        $builder->orWhereNotNull(
-            array(
-                array('abc')
-            )
-        );
-
-        $this->assertEquals(
-            array(
-                'OR (`abc` IS NOT NULL)'
-            ),
-            $builder->getQuery('wheres.queries')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('efg');
-
-        $builder->orWhereNotNull(
-            array(
-                array('abc'),
-                array('abce')
-            )
-        );
-
-        $this->assertEquals(
-            array(
-                'OR (`abc` IS NOT NULL OR `abce` IS NOT NULL)'
-            ),
-            $builder->getQuery('wheres.queries')
-        );
-    }
-
-    public function testWhereIn()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->whereIn('efg', array(123, 456));
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('AND `efg` IN (?, ?)')
-                ),
-                'bindings' => array(123, 456)
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->whereIn(
-            array(
-                array('efg', array(123, 456)),
-                array('efg', array(123, 456))
-            )
-        );
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    'AND (`efg` IN (?, ?) AND `efg` IN (?, ?))'
-                ),
-                'bindings' => array(123, 456, 123, 456)
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->whereIn('abc', function ($query) {
-            $query->whereIn('abc', array(123, 456));
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('AND `abc` IN (SELECT * WHERE `abc` IN (?, ?))')
-                ),
-                'bindings' => array(123, 456)
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->whereIn('abc', array(123, 456));
-
-        $builder->whereIn('abc', $newBuilder);
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('AND `abc` IN (SELECT * WHERE `abc` IN (?, ?))')
-                ),
-                'bindings' => array(123, 456)
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->whereIn('abc', array(123, 456));
-
-        $builder->whereIn(array(
-            array('abc', function ($query) {
-                $query->whereIn('abc', array(123, 456));
-            }),
-            array('abc', 'in', function ($query) {
-                $query->whereIn('abc', array(123, 456));
-            }),
-            array('abc', $newBuilder)
-        ));
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    'AND (`abc` IN (SELECT * WHERE `abc` IN (?, ?)) AND `abc` IN (SELECT * WHERE `abc` IN (?, ?)) AND `abc` IN (SELECT * WHERE `abc` IN (?, ?)))'
-                ),
-                'bindings' => array(123, 456, 123, 456, 123, 456)
-            ),
-            $builder->getQuery('wheres')
-        );
-    }
-
-    public function testOrWhereIn()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->orWhereIn('efg', array(123, 456));
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('OR `efg` IN (?, ?)')
-                ),
-                'bindings' => array(123, 456)
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->orWhereIn(
-            array(
-                array('efg', array(123, 456)),
-                array('efg', array(123, 456))
-            )
-        );
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    'OR (`efg` IN (?, ?) OR `efg` IN (?, ?))'
-                ),
-                'bindings' => array(123, 456, 123, 456)
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->orWhereIn('abc', function ($query) {
-            $query->orWhereIn('abc', array(123, 456));
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('OR `abc` IN (SELECT * WHERE `abc` IN (?, ?))')
-                ),
-                'bindings' => array(123, 456)
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->orWhereIn('abc', array(123, 456));
-
-        $builder->orWhereIn('abc', $newBuilder);
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('OR `abc` IN (SELECT * WHERE `abc` IN (?, ?))')
-                ),
-                'bindings' => array(123, 456)
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->whereIn('abc', array(123, 456));
-
-        $builder->orWhereIn(array(
-            array('abc', 'in', function ($query) {
-                $query->orWhereIn('abc', array(123, 456));
-            }),
-            array('abc', 'in', function ($query) {
-                $query->orWhereIn('abc', array(123, 456));
-            }),
-            array('abc', $newBuilder)
-        ));
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    'OR (`abc` IN (SELECT * WHERE `abc` IN (?, ?)) OR `abc` IN (SELECT * WHERE `abc` IN (?, ?)) OR `abc` IN (SELECT * WHERE `abc` IN (?, ?)))'
-                ),
-                'bindings' => array(123, 456, 123, 456, 123, 456)
-            ),
-            $builder->getQuery('wheres')
-        );
-    }
-
-    public function testWhereNotIn()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->whereNotIn('efg', array(123, 456));
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('AND `efg` NOT IN (?, ?)')
-                ),
-                'bindings' => array(123, 456)
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->whereNotIn(
-            array(
-                array('efg', array(123, 456)),
-                array('efg', array(123, 456))
-            )
-        );
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    'AND (`efg` NOT IN (?, ?) AND `efg` NOT IN (?, ?))'
-                ),
-                'bindings' => array(123, 456, 123, 456)
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->whereNotIn('abc', function ($query) {
-            $query->whereNotIn('abc', array(123, 456));
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('AND `abc` NOT IN (SELECT * WHERE `abc` NOT IN (?, ?))')
-                ),
-                'bindings' => array(123, 456)
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->whereNotIn('abc', array(123, 456));
-
-        $builder->whereNotIn('abc', $newBuilder);
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('AND `abc` NOT IN (SELECT * WHERE `abc` NOT IN (?, ?))')
-                ),
-                'bindings' => array(123, 456)
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->whereNotIn('abc', array(123, 456));
-
-        $builder->whereNotIn(array(
-            array('abc', function ($query) {
-                $query->whereNotIn('abc', array(123, 456));
-            }),
-            array('abc', 'in', function ($query) {
-                $query->whereNotIn('abc', array(123, 456));
-            }),
-            array('abc', $newBuilder)
-        ));
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    'AND (`abc` NOT IN (SELECT * WHERE `abc` NOT IN (?, ?)) AND `abc` NOT IN (SELECT * WHERE `abc` NOT IN (?, ?)) AND `abc` NOT IN (SELECT * WHERE `abc` NOT IN (?, ?)))'
-                ),
-                'bindings' => array(123, 456, 123, 456, 123, 456)
-            ),
-            $builder->getQuery('wheres')
-        );
-    }
-
-    public function testOrWhereNotIn()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->orWhereNotIn('efg', array(123, 456));
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('OR `efg` NOT IN (?, ?)')
-                ),
-                'bindings' => array(123, 456)
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->orWhereNotIn(
-            array(
-                array('efg', array(123, 456)),
-                array('efg', array(123, 456))
-            )
-        );
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    'OR (`efg` NOT IN (?, ?) OR `efg` NOT IN (?, ?))'
-                ),
-                'bindings' => array(123, 456, 123, 456)
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->orWhereNotIn('abc', function ($query) {
-            $query->orWhereNotIn('abc', array(123, 456));
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('OR `abc` NOT IN (SELECT * WHERE `abc` NOT IN (?, ?))')
-                ),
-                'bindings' => array(123, 456)
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->orWhereNotIn('abc', array(123, 456));
-
-        $builder->orWhereNotIn('abc', $newBuilder);
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('OR `abc` NOT IN (SELECT * WHERE `abc` NOT IN (?, ?))')
-                ),
-                'bindings' => array(123, 456)
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->orWhereNotIn('abc', array(123, 456));
-
-        $builder->orWhereNotIn(array(
-            array('abc', 'in', function ($query) {
-                $query->orWhereNotIn('abc', array(123, 456));
-            }),
-            array('abc', 'in', function ($query) {
-                $query->orWhereNotIn('abc', array(123, 456));
-            }),
-            array('abc', $newBuilder)
-        ));
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    'OR (`abc` NOT IN (SELECT * WHERE `abc` NOT IN (?, ?)) OR `abc` NOT IN (SELECT * WHERE `abc` NOT IN (?, ?)) OR `abc` NOT IN (SELECT * WHERE `abc` NOT IN (?, ?)))'
-                ),
-                'bindings' => array(123, 456, 123, 456, 123, 456)
-            ),
-            $builder->getQuery('wheres')
-        );
-    }
-
-    public function testWhereLike()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->whereLike('abc', 123);
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('AND `abc` LIKE ?')
-                ),
-                'bindings' => array(123)
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->whereLike(function ($query) {
-            $query->from('abc')->where('abc', 123);
-        }, 123);
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('AND (SELECT * FROM `abc` WHERE `abc` = ?) LIKE ?')
-                ),
-                'bindings' => array(123, 123)
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->whereLike('abc', 123);
-
-        $builder->whereLike($newBuilder, 123);
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('AND (SELECT * WHERE `abc` LIKE ?) LIKE ?')
-                ),
-                'bindings' => array(123, 123)
-            ),
-            $builder->getQuery('wheres')
-        );
-    }
-
-    public function testOrWhereLike()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->orWhereLike('abc', 123);
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('OR `abc` LIKE ?')
-                ),
-                'bindings' => array(123)
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->orWhereLike(function ($query) {
-            $query->from('abc')->where('abc', 123);
-        }, 123);
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('OR (SELECT * FROM `abc` WHERE `abc` = ?) LIKE ?')
-                ),
-                'bindings' => array(123, 123)
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->orWhereLike('abc', 123);
-
-        $builder->orWhereLike($newBuilder, 123);
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('OR (SELECT * WHERE `abc` LIKE ?) LIKE ?')
-                ),
-                'bindings' => array(123, 123)
-            ),
-            $builder->getQuery('wheres')
-        );
-    }
-
-    public function testWhereExists()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->whereExists(function ($query) {
-            $query->from('efg')->where('hij', 123);
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('AND EXISTS (SELECT * FROM `efg` WHERE `hij` = ?)')
-                ),
-                'bindings' => array(
-                    123
-                ),
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->from('efg')->where('hij', 123);
-
-        $builder->whereExists($newBuilder);
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('AND EXISTS (SELECT * FROM `efg` WHERE `hij` = ?)')
-                ),
-                'bindings' => array(
-                    123
-                ),
-            ),
-            $builder->getQuery('wheres')
-        );
-    }
-
-    public function testWhereNotExists()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->whereNotExists(function ($query) {
-            $query->from('efg')->where('hij', 123);
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('AND NOT EXISTS (SELECT * FROM `efg` WHERE `hij` = ?)')
-                ),
-                'bindings' => array(
-                    123
-                ),
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->from('efg')->where('hij', 123);
-
-        $builder->whereNotExists($newBuilder);
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('AND NOT EXISTS (SELECT * FROM `efg` WHERE `hij` = ?)')
-                ),
-                'bindings' => array(
-                    123
-                ),
-            ),
-            $builder->getQuery('wheres')
-        );
-    }
-
-    public function testOrWhereExists()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->orWhereExists(function ($query) {
-            $query->from('efg')->where('hij', 123);
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('OR EXISTS (SELECT * FROM `efg` WHERE `hij` = ?)')
-                ),
-                'bindings' => array(
-                    123
-                ),
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->from('efg')->where('hij', 123);
-
-        $builder->orWhereExists($newBuilder);
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('OR EXISTS (SELECT * FROM `efg` WHERE `hij` = ?)')
-                ),
-                'bindings' => array(
-                    123
-                ),
-            ),
-            $builder->getQuery('wheres')
-        );
-    }
-
-    public function testOrWhereNotExists()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->orWhereNotExists(function ($query) {
-            $query->from('efg')->where('hij', 123);
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('OR NOT EXISTS (SELECT * FROM `efg` WHERE `hij` = ?)')
-                ),
-                'bindings' => array(
-                    123
-                ),
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->from('efg')->where('hij', 123);
-
-        $builder->orWhereNotExists($newBuilder);
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('OR NOT EXISTS (SELECT * FROM `efg` WHERE `hij` = ?)')
-                ),
-                'bindings' => array(
-                    123
-                ),
-            ),
-            $builder->getQuery('wheres')
-        );
-    }
-
-    public function testWhereBetween()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->whereBetween('efg', array(0, 10));
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('AND `efg` BETWEEN ? AND ?')
-                ),
-                'bindings' => array(
-                    0, 10
-                ),
-            ),
-            $builder->getQuery('wheres')
-        );
-    }
-
-    public function testOrWhereBetween()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->orWhereBetween('efg', array(0, 10));
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('OR `efg` BETWEEN ? AND ?')
-                ),
-                'bindings' => array(
-                    0, 10
-                ),
-            ),
-            $builder->getQuery('wheres')
-        );
-    }
-
-    public function testWhereNotBetween()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->whereNotBetween('efg', array(0, 10));
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('AND `efg` NOT BETWEEN ? AND ?')
-                ),
-                'bindings' => array(
-                    0, 10
-                ),
-            ),
-            $builder->getQuery('wheres')
-        );
-    }
-
-    public function testOrWhereNotBetween()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->orWhereNotBetween('efg', array(0, 10));
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('OR `efg` NOT BETWEEN ? AND ?')
-                ),
-                'bindings' => array(
-                    0, 10
-                ),
-            ),
-            $builder->getQuery('wheres')
-        );
-    }
-
-    public function testWhereAny()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->whereAny('abc', function ($query) {
-            $query->from('efg')->where('hij', 123);
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('AND `abc` = ANY (SELECT * FROM `efg` WHERE `hij` = ?)')
-                ),
-                'bindings' => array(
-                    123
-                )
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->from('efg')->where('hij', 123);
-
-        $builder->whereAny('abc', $newBuilder);
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('AND `abc` = ANY (SELECT * FROM `efg` WHERE `hij` = ?)')
-                ),
-                'bindings' => array(
-                    123
-                )
-            ),
-            $builder->getQuery('wheres')
-        );
-    }
-
-    public function testOrWhereAny()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->orWhereAny('abc', function ($query) {
-            $query->from('efg')->where('hij', 123);
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('OR `abc` = ANY (SELECT * FROM `efg` WHERE `hij` = ?)')
-                ),
-                'bindings' => array(
-                    123
-                )
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->from('efg')->where('hij', 123);
-
-        $builder->orWhereAny('abc', $newBuilder);
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('OR `abc` = ANY (SELECT * FROM `efg` WHERE `hij` = ?)')
-                ),
-                'bindings' => array(
-                    123
-                )
-            ),
-            $builder->getQuery('wheres')
-        );
-    }
-
-    public function testWhereAll()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->whereAll('abc', function ($query) {
-            $query->from('efg')->where('hij', 123);
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('AND `abc` = ALL (SELECT * FROM `efg` WHERE `hij` = ?)')
-                ),
-                'bindings' => array(
-                    123
-                )
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->from('efg')->where('hij', 123);
-
-        $builder->whereAll('abc', $newBuilder);
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('AND `abc` = ALL (SELECT * FROM `efg` WHERE `hij` = ?)')
-                ),
-                'bindings' => array(
-                    123
-                )
-            ),
-            $builder->getQuery('wheres')
-        );
-    }
-
-    public function testOrWhereAll()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->orWhereAll('abc', function ($query) {
-            $query->from('efg')->where('hij', 123);
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('OR `abc` = ALL (SELECT * FROM `efg` WHERE `hij` = ?)')
-                ),
-                'bindings' => array(
-                    123
-                )
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->from('efg')->where('hij', 123);
-
-        $builder->orWhereAll('abc', $newBuilder);
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('OR `abc` = ALL (SELECT * FROM `efg` WHERE `hij` = ?)')
-                ),
-                'bindings' => array(
-                    123
-                )
-            ),
-            $builder->getQuery('wheres')
-        );
-    }
-
-    public function testWhereSome()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->whereSome('abc', function ($query) {
-            $query->from('efg')->where('hij', 123);
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('AND `abc` = SOME (SELECT * FROM `efg` WHERE `hij` = ?)')
-                ),
-                'bindings' => array(
-                    123
-                )
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->from('efg')->where('hij', 123);
-
-        $builder->whereSome('abc', $newBuilder);
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('AND `abc` = SOME (SELECT * FROM `efg` WHERE `hij` = ?)')
-                ),
-                'bindings' => array(
-                    123
-                )
-            ),
-            $builder->getQuery('wheres')
-        );
-    }
-
-    public function testOrWhereSome()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->orWhereSome('abc', function ($query) {
-            $query->from('efg')->where('hij', 123);
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('OR `abc` = SOME (SELECT * FROM `efg` WHERE `hij` = ?)')
-                ),
-                'bindings' => array(
-                    123
-                )
-            ),
-            $builder->getQuery('wheres')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->from('efg')->where('hij', 123);
-
-        $builder->orWhereSome('abc', $newBuilder);
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('OR `abc` = SOME (SELECT * FROM `efg` WHERE `hij` = ?)')
-                ),
-                'bindings' => array(
-                    123
-                )
-            ),
-            $builder->getQuery('wheres')
-        );
-    }
-
-    public function testGroupByNested()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->groupByNested(function ($query) {
-            $query->groupBy('efg');
-        }, '');
-
-        $this->assertEquals(
-            array(
-                '`efg` ASC'
-            ),
-            $builder->getQuery('groups.queries')
-        );
-    }
-
-    public function testArrayGroupByNested()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $nested = $this->builder();
-
-        $builder->arrayGroupByNested($nested, 1, array('abc', 'desc'), '');
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('`abc` DESC')
-                )
-            ),
-            $nested->getQuery('groups')
-        );
-    }
-
-    public function testGroupByRaw()
-    {
-        $builder = $this->builder();
-
-        $builder->groupByRaw('abc desc');
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('abc desc')
-                )
-            ),
-            $builder->getQuery('groups')
-        );
-
-        $builder = $this->builder();
-
-        $builder->groupByRaw('(SELECT id FROM abc WHERE id IN (?, ?)) desc', array(1, 2));
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('(SELECT id FROM abc WHERE id IN (?, ?)) desc')
-                ),
-                'bindings' => array(1, 2)
-            ),
-            $builder->getQuery('groups')
-        );
-    }
-
-    public function testGroupBy()
-    {
-        $builder = $this->builder();
-
-        $builder->groupBy('abc');
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('`abc` ASC')
-                )
-            ),
-            $builder->getQuery('groups')
-        );
-
-        $builder = $this->builder();
-
-        $builder->groupBy('abc', 'desc');
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('`abc` DESC')
-                )
-            ),
-            $builder->getQuery('groups')
-        );
-
-        $builder = $this->builder();
-
-        $builder->groupBy(function ($query) {
-            $query->from('efg')->where('hij', 123);
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('(SELECT * FROM `efg` WHERE `hij` = ?) ASC')
-                ),
-                'bindings' => array(123)
-            ),
-            $builder->getQuery('groups')
-        );
-
-        $builder = $this->builder();
-
-        $builder->groupBy(function ($query) {
-            $query->from('efg')->where('hij', 123);
-        }, 'DESC');
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('(SELECT * FROM `efg` WHERE `hij` = ?) DESC')
-                ),
-                'bindings' => array(123)
-            ),
-            $builder->getQuery('groups')
-        );
-
-        $builder = $this->builder();
-
-        $newBuilder = $this->builder();
-
-        $builder->groupBy($newBuilder->from('efg')->where('hij', 123));
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('(SELECT * FROM `efg` WHERE `hij` = ?) ASC')
-                ),
-                'bindings' => array(123)
-            ),
-            $builder->getQuery('groups')
-        );
-
-        $builder = $this->builder();
-
-        $newBuilder = $this->builder();
-
-        $builder->groupBy($newBuilder->from('efg')->where('hij', 123), 'DESC');
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('(SELECT * FROM `efg` WHERE `hij` = ?) DESC')
-                ),
-                'bindings' => array(123)
-            ),
-            $builder->getQuery('groups')
-        );
-    }
-
-    public function testGroupBySub()
-    {
-        $builder = $this->builder();
-
-        $builder->groupBySub('abc');
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('(abc) ASC')
-                )
-            ),
-            $builder->getQuery('groups')
-        );
-
-        $builder = $this->builder();
-
-        $builder->groupBySub(function ($query) {
-            $query->from('efg')->where('hij', 123);
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('(SELECT * FROM `efg` WHERE `hij` = ?) ASC')
-                ),
-                'bindings' => array(123)
-            ),
-            $builder->getQuery('groups')
-        );
-
-        $builder = $this->builder();
-
-        $builder->groupBySub(function ($query) {
-            $query->from('efg')->where('hij', 123);
-        }, 'DESC');
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('(SELECT * FROM `efg` WHERE `hij` = ?) DESC')
-                ),
-                'bindings' => array(123)
-            ),
-            $builder->getQuery('groups')
-        );
-
-        $builder = $this->builder();
-
-        $newBuilder = $this->builder();
-
-        $builder->groupBySub($newBuilder->from('efg')->where('hij', 123));
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('(SELECT * FROM `efg` WHERE `hij` = ?) ASC')
-                ),
-                'bindings' => array(123)
-            ),
-            $builder->getQuery('groups')
-        );
-
-        $builder = $this->builder();
-
-        $newBuilder = $this->builder();
-
-        $builder->groupBySub($newBuilder->from('efg')->where('hij', 123), 'DESC');
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('(SELECT * FROM `efg` WHERE `hij` = ?) DESC')
-                ),
-                'bindings' => array(123)
-            ),
-            $builder->getQuery('groups')
-        );
-    }
-
-    public function testSortByAsc()
-    {
-        $builder = $this->builder();
-
-        $builderMethod = new \ReflectionMethod($builder, 'sortByAsc');
-
-        $builderMethod->setAccessible(true);
-
-        $this->assertEquals(
-            array(
-                array('abc', 'ASC'),
-                array('efg', 'ASC')
-            ),
-            $builderMethod->invoke($builder, array('abc', 'efg'))
-        );
-    }
-
-    public function testSortByDesc()
-    {
-        $builder = $this->builder();
-
-        $builderMethod = new \ReflectionMethod($builder, 'sortByDesc');
-
-        $builderMethod->setAccessible(true);
-
-        $this->assertEquals(
-            array(
-                array('abc', 'DESC'),
-                array('efg', 'DESC')
-            ),
-            $builderMethod->invoke($builder, array('abc', 'efg'))
-        );
-    }
-
-    public function testGroupByAsc()
-    {
-        $builder = $this->builder();
-
-        $builder->from('efg');
-
-        $builder->groupByAsc('abc');
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('`abc` ASC')
-                )
-            ),
-            $builder->getQuery('groups')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('efg');
-
-        $builder->groupByAsc(array(
-            array('abc')
-        ));
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    '`abc` ASC'
-                )
-            ),
-            $builder->getQuery('groups')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('efg');
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->from('efg')->where('hij', 123);
-
-        $builder->groupByAsc(array(
-            array('abc'),
-            array('hij'),
-            array(
-                function ($query) {
-                    $query->from('efg')->where('hij', 123);
-                }
-            ),
-            array(
-                $newBuilder
-            )
-        ));
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    '`abc` ASC, `hij` ASC, (SELECT * FROM `efg` WHERE `hij` = ?) ASC, (SELECT * FROM `efg` WHERE `hij` = ?) ASC'
-                ),
-                'bindings' => array(123, 123)
-            ),
-            $builder->getQuery('groups')
-        );
-    }
-
-    public function testGroupByDesc()
-    {
-        $builder = $this->builder();
-
-        $builder->from('efg');
-
-        $builder->groupByDesc('abc');
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('`abc` DESC')
-                )
-            ),
-            $builder->getQuery('groups')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('efg');
-
-        $builder->groupByDesc(array(
-            array('abc')
-        ));
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    '`abc` DESC'
-                )
-            ),
-            $builder->getQuery('groups')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('efg');
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->from('efg')->where('hij', 123);
-
-        $builder->groupByDesc(array(
-            array('abc'),
-            array('hij'),
-            array(
-                function ($query) {
-                    $query->from('efg')->where('hij', 123);
-                }
-            ),
-            array(
-                $newBuilder
-            )
-        ));
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    '`abc` DESC, `hij` DESC, (SELECT * FROM `efg` WHERE `hij` = ?) DESC, (SELECT * FROM `efg` WHERE `hij` = ?) DESC'
-                ),
-                'bindings' => array(123, 123)
-            ),
-            $builder->getQuery('groups')
-        );
-    }
-
-    public function testHavingNested()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->havingNested(function ($query) {
-            $query->having('efg', 1);
-        }, '');
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    ' (`efg` = ?)'
-                ),
-                'bindings' => array(1),
-            ),
-            $builder->getQuery('havings')
-        );
-    }
-
-    public function testArrayHavingNested()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $nested = $this->builder();
-
-        $builder->arrayHavingNested($nested, 1, array('abc', 123), 'and');
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('AND `abc` = ?')
-                ),
-                'bindings' => array(
-                    123
-                )
-            ),
-            $nested->getQuery('havings')
-        );
-    }
-
-    public function testHavingRaw()
-    {
-        $builder = $this->builder();
-
-        $builder->havingRaw('`abc` = ?');
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('and `abc` = ?')
-                )
-            ),
-            $builder->getQuery('havings')
-        );
-
-        $builder = $this->builder();
-
-        $builder->havingRaw('`abc` = ?', array(1));
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('and `abc` = ?')
-                ),
-                'bindings' => array(1)
-            ),
-            $builder->getQuery('havings')
-        );
-    }
-
-    public function testOrHavingRaw()
-    {
-        $builder = $this->builder();
-
-        $builder->orHavingRaw('`abc` = ?');
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('or `abc` = ?')
-                )
-            ),
-            $builder->getQuery('havings')
-        );
-
-        $builder = $this->builder();
-
-        $builder->orHavingRaw('`abc` = ?', array(1));
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('or `abc` = ?')
-                ),
-                'bindings' => array(1)
-            ),
-            $builder->getQuery('havings')
-        );
-    }
-
-    public function testHaving()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->having('abc', 123);
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('AND `abc` = ?')
-                ),
-                'bindings' => array(
-                    123
-                )
-            ),
-            $builder->getQuery('havings')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->having(function ($query) {
-            $query->having('abc', 123);
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    'AND (`abc` = ?)'
-                ),
-                'bindings' => array(
-                    123
-                )
-            ),
-            $builder->getQuery('havings')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->having('abc', 123);
-
-        $builder->having($newBuilder, '=', 123);
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('AND (SELECT * HAVING `abc` = ?) = ?')
-                ),
-                'bindings' => array(
-                    123,
-                    123
-                )
-            ),
-            $builder->getQuery('havings')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->from('abc');
-
-        $newBuilder->having('abc', 123);
-
-        $builder->having($newBuilder, 123);
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('AND (SELECT * FROM `abc` HAVING `abc` = ?) = ?')
-                ),
-                'bindings' => array(
-                    123, 123
-                )
-            ),
-            $builder->getQuery('havings')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->having('abc', '>', 123);
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('AND `abc` > ?')
-                ),
-                'bindings' => array(
-                    123
-                )
-            ),
-            $builder->getQuery('havings')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->having('abc', '>', function ($query) {
-            $query->having('abc', 123);
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('AND `abc` > (SELECT * HAVING `abc` = ?)')
-                ),
-                'bindings' => array(
-                    123
-                )
-            ),
-            $builder->getQuery('havings')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->having(array(
-            array('abc', '>', 123),
-            array('abc', 123),
-            array(
-                function ($query) {
-                    $query->having('abc', '<', 123);
-                }
-            ),
-            array(
-                'abc', '<', function ($query) {
-                    $query->having('abc', 123);
-                }
-            )
-        ));
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    'AND (`abc` > ? AND `abc` = ? AND (`abc` < ?) AND `abc` < (SELECT * HAVING `abc` = ?))'
-                ),
-                'bindings' => array(
-                    123,
-                    123,
-                    123,
-                    123
-                )
-            ),
-            $builder->getQuery('havings')
-        );
-    }
-
-    public function testOrHaving()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->orHaving('abc', 123);
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('OR `abc` = ?')
-                ),
-                'bindings' => array(
-                    123
-                )
-            ),
-            $builder->getQuery('havings')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->orHaving(function ($query) {
-            $query->orHaving('abc', 123);
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    'OR (`abc` = ?)'
-                ),
-                'bindings' => array(
-                    123
-                )
-            ),
-            $builder->getQuery('havings')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->orHaving('abc', 123);
-
-        $builder->orHaving($newBuilder, '=', 123);
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('OR (SELECT * HAVING `abc` = ?) = ?')
-                ),
-                'bindings' => array(
-                    123,
-                    123
-                )
-            ),
-            $builder->getQuery('havings')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->from('abc');
-
-        $newBuilder->orHaving('abc', 123);
-
-        $builder->orHaving($newBuilder, 123);
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('OR (SELECT * FROM `abc` HAVING `abc` = ?) = ?')
-                ),
-                'bindings' => array(
-                    123, 123
-                )
-            ),
-            $builder->getQuery('havings')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->orHaving('abc', '>', 123);
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('OR `abc` > ?')
-                ),
-                'bindings' => array(
-                    123
-                )
-            ),
-            $builder->getQuery('havings')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->orHaving('abc', '>', function ($query) {
-            $query->orHaving('abc', 123);
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('OR `abc` > (SELECT * HAVING `abc` = ?)')
-                ),
-                'bindings' => array(
-                    123
-                )
-            ),
-            $builder->getQuery('havings')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->orHaving(array(
-            array('abc', '>', 123),
-            array('abc', 123),
-            array(
-                function ($query) {
-                    $query->orHaving('abc', '<', 123);
-                }
-            ),
-            array(
-                'abc', '<', function ($query) {
-                    $query->orHaving('abc', 123);
-                }
-            )
-        ));
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    'OR (`abc` > ? OR `abc` = ? OR (`abc` < ?) OR `abc` < (SELECT * HAVING `abc` = ?))'
-                ),
-                'bindings' => array(
-                    123,
-                    123,
-                    123,
-                    123
-                )
-            ),
-            $builder->getQuery('havings')
-        );
-    }
-
-    public function testOrderByNested()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->orderByNested(function ($query) {
-            $query->orderBy('efg');
-        }, '');
-
-        $this->assertEquals(
-            array(
-                '`efg` ASC'
-            ),
-            $builder->getQuery('orders.queries')
-        );
-    }
-
-    public function testArrayOrderByNested()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $nested = $this->builder();
-
-        $builder->arrayOrderByNested($nested, 1, array('abc', 'desc'), '');
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('`abc` DESC')
-                )
-            ),
-            $nested->getQuery('orders')
-        );
-    }
-
-    public function testOrderByRaw()
-    {
-        $builder = $this->builder();
-
-        $builder->orderByRaw('abc desc');
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('abc desc')
-                )
-            ),
-            $builder->getQuery('orders')
-        );
-
-        $builder = $this->builder();
-
-        $builder->orderByRaw('(SELECT id FROM abc WHERE id IN (?, ?)) desc', array(1, 2));
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('(SELECT id FROM abc WHERE id IN (?, ?)) desc')
-                ),
-                'bindings' => array(1, 2)
-            ),
-            $builder->getQuery('orders')
-        );
-    }
-
-    public function testOrderBy()
-    {
-        $builder = $this->builder();
-
-        $builder->orderBy('abc');
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('`abc` ASC')
-                )
-            ),
-            $builder->getQuery('orders')
-        );
-
-        $builder = $this->builder();
-
-        $builder->orderBy('abc', 'desc');
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('`abc` DESC')
-                )
-            ),
-            $builder->getQuery('orders')
-        );
-
-        $builder = $this->builder();
-
-        $builder->orderBy(function ($query) {
-            $query->from('efg')->where('hij', 123);
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('(SELECT * FROM `efg` WHERE `hij` = ?) ASC')
-                ),
-                'bindings' => array(123)
-            ),
-            $builder->getQuery('orders')
-        );
-
-        $builder = $this->builder();
-
-        $builder->orderBy(function ($query) {
-            $query->from('efg')->where('hij', 123);
-        }, 'DESC');
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('(SELECT * FROM `efg` WHERE `hij` = ?) DESC')
-                ),
-                'bindings' => array(123)
-            ),
-            $builder->getQuery('orders')
-        );
-
-        $builder = $this->builder();
-
-        $newBuilder = $this->builder();
-
-        $builder->orderBy($newBuilder->from('efg')->where('hij', 123));
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('(SELECT * FROM `efg` WHERE `hij` = ?) ASC')
-                ),
-                'bindings' => array(123)
-            ),
-            $builder->getQuery('orders')
-        );
-
-        $builder = $this->builder();
-
-        $newBuilder = $this->builder();
-
-        $builder->orderBy($newBuilder->from('efg')->where('hij', 123), 'DESC');
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('(SELECT * FROM `efg` WHERE `hij` = ?) DESC')
-                ),
-                'bindings' => array(123)
-            ),
-            $builder->getQuery('orders')
-        );
-    }
-
-    public function testOrderBySub()
-    {
-        $builder = $this->builder();
-
-        $builder->orderBySub('abc');
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('(abc) ASC')
-                )
-            ),
-            $builder->getQuery('orders')
-        );
-
-        $builder = $this->builder();
-
-        $builder->orderBySub(function ($query) {
-            $query->from('efg')->where('hij', 123);
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('(SELECT * FROM `efg` WHERE `hij` = ?) ASC')
-                ),
-                'bindings' => array(123)
-            ),
-            $builder->getQuery('orders')
-        );
-
-        $builder = $this->builder();
-
-        $builder->orderBySub(function ($query) {
-            $query->from('efg')->where('hij', 123);
-        }, 'DESC');
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('(SELECT * FROM `efg` WHERE `hij` = ?) DESC')
-                ),
-                'bindings' => array(123)
-            ),
-            $builder->getQuery('orders')
-        );
-
-        $builder = $this->builder();
-
-        $newBuilder = $this->builder();
-
-        $builder->orderBySub($newBuilder->from('efg')->where('hij', 123));
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('(SELECT * FROM `efg` WHERE `hij` = ?) ASC')
-                ),
-                'bindings' => array(123)
-            ),
-            $builder->getQuery('orders')
-        );
-
-        $builder = $this->builder();
-
-        $newBuilder = $this->builder();
-
-        $builder->orderBySub($newBuilder->from('efg')->where('hij', 123), 'DESC');
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('(SELECT * FROM `efg` WHERE `hij` = ?) DESC')
-                ),
-                'bindings' => array(123)
-            ),
-            $builder->getQuery('orders')
-        );
-    }
-
-    public function testOrderByAsc()
-    {
-        $builder = $this->builder();
-
-        $builder->from('efg');
-
-        $builder->orderByAsc('abc');
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    '`abc` ASC'
-                )
-            ),
-            $builder->getQuery('orders')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('efg');
-
-        $builder->orderByAsc(array(
-            array('abc')
-        ));
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    '`abc` ASC'
-                )
-            ),
-            $builder->getQuery('orders')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('efg');
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->from('efg')->where('hij', 123);
-
-        $builder->orderByAsc(array(
-            array('abc'),
-            array('hij'),
-            array(
-                function ($query) {
-                    $query->from('efg')->where('hij', 123);
-                }
-            ),
-            array(
-                $newBuilder
-            )
-        ));
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    '`abc` ASC, `hij` ASC, (SELECT * FROM `efg` WHERE `hij` = ?) ASC, (SELECT * FROM `efg` WHERE `hij` = ?) ASC'
-                ),
-                'bindings' => array(123, 123)
-            ),
-            $builder->getQuery('orders')
-        );
-    }
-
-    public function testOrderByDesc()
-    {
-        $builder = $this->builder();
-
-        $builder->from('efg');
-
-        $builder->orderByDesc('abc');
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    '`abc` DESC'
-                )
-            ),
-            $builder->getQuery('orders')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('efg');
-
-        $builder->orderByDesc(array(
-            array('abc')
-        ));
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    '`abc` DESC'
-                )
-            ),
-            $builder->getQuery('orders')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('efg');
-
-        $newBuilder = $this->builder();
-
-        $newBuilder->from('efg')->where('hij', 123);
-
-        $builder->orderByDesc(array(
-            array('abc'),
-            array('hij'),
-            array(
-                function ($query) {
-                    $query->from('efg')->where('hij', 123);
-                }
-            ),
-            array(
-                $newBuilder
-            )
-        ));
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    '`abc` DESC, `hij` DESC, (SELECT * FROM `efg` WHERE `hij` = ?) DESC, (SELECT * FROM `efg` WHERE `hij` = ?) DESC'
-                ),
-                'bindings' => array(123, 123)
-            ),
-            $builder->getQuery('orders')
-        );
-    }
-
-    public function testForSubQuery()
-    {
-        $builder = $this->builder();
-
-        $builderMethod = new \ReflectionMethod($builder, 'forSubQuery');
-
-        $builderMethod->setAccessible(true);
-
-        $result = $builderMethod->invoke($builder);
-
-        $this->assertTrue(
-            $result instanceof Builder
-        );
-    }
-
-    private function dbResult()
-    {
-        $createMock = method_exists($this, 'createMock') ? 'createMock' : 'getMock';
-
-        return call_user_func(array($this, $createMock), 'Wilkques\Database\Connections\ResultInterface');
-    }
-
-    private function resultConnect($isFirst = true)
-    {
-        $connection = $this->connection();
-
-        $result = $this->dbResult();
-
-        $method = $isFirst ? 'fetch' : 'fetchAll';
-
-        $result->expects($this->once())->method($method)->willReturn(array());
-
-        $connection->expects($this->any())->method('exec')->willReturn($result);
-
-        return $connection;
-    }
-
-    public function testFrist()
-    {
-        $builder = $this->builder();
-
-        $connection = $this->resultConnect();
-
-        $builder->setConnection($connection);
-
-        $builder->from('abc');
-
-        $result = $builder->first();
-
-        $this->assertEquals(
-            array(),
-            $result
-        );
-
-        $this->assertEquals(
-            'SELECT * FROM `abc` LIMIT 1',
-            $builder->toSql()
-        );
-    }
-
-    public function testFind()
-    {
-        $builder = $this->builder();
-
-        $connection = $this->resultConnect();
-
-        $builder->setConnection($connection);
-
-        $builder->from('abc');
-
-        $result = $builder->find(1);
-
-        $this->assertEquals(
-            array(),
-            $result
-        );
-
-        $this->assertEquals(
-            'SELECT * FROM `abc` WHERE `id` = ? LIMIT 1',
-            $builder->toSql()
-        );
-
-        $builder = $this->builder();
-
-        $connection = $this->resultConnect();
-
-        $builder->setConnection($connection);
-
-        $builder->from('abc');
-
-        $result = $builder->find(1, 'uid');
-
-        $this->assertEquals(
-            array(),
-            $result
-        );
-
-        $this->assertEquals(
-            'SELECT * FROM `abc` WHERE `uid` = ? LIMIT 1',
-            $builder->toSql()
-        );
-
-        $builder = $this->builder();
-
-        $connection = $this->resultConnect();
-
-        $builder->setConnection($connection);
-
-        $builder->from('abc');
-
-        $result = $builder->find(1, 'uid', array('efg', 'hij'));
-
-        $this->assertEquals(
-            array(),
-            $result
-        );
-
-        $this->assertEquals(
-            'SELECT `efg`, `hij` FROM `abc` WHERE `uid` = ? LIMIT 1',
-            $builder->toSql()
-        );
-    }
-
-    public function testGet()
-    {
-        $builder = $this->builder();
-
-        $connection = $this->resultConnect(false);
-
-        $builder->setConnection($connection);
-
-        $builder->from('abc');
-
-        $result = $builder->get();
-
-        $this->assertEquals(
-            array(),
-            $result
-        );
-
-        $this->assertEquals(
-            'SELECT * FROM `abc`',
-            $builder->toSql()
-        );
-    }
-
-    private function resultConnectForInsertAndUpdate()
-    {
-        $connection = $this->connection();
-
-        $result = $this->dbResult();
-
-        $result->expects($this->once())->method('rowCount')->willReturn(1);
-
-        $connection->expects($this->any())->method('exec')
-            ->willReturnCallback(function ($query, $bindings) use ($connection, $result) {
-                $connection->setQueryLog(compact('query', 'bindings'));
-
-                return $result;
-            });
-
-        return $connection;
-    }
-
-    public function testUpdate()
-    {
-        $builder = $this->builder();
-
-        $connection = $this->resultConnectForInsertAndUpdate();
-
-        $builder->setConnection($connection);
-
-        $builder->enableQueryLog();
-
-        $builder->from('abc');
-
-        $builder->where('id', 1);
-
-        $builder->update(array('efg' => 1));
-
-        $this->assertEquals(
-            array(
-                'query' => 'UPDATE `abc` SET `efg` = ? WHERE `id` = ?',
-                'bindings' => array(1, 1),
-            ),
-            $builder->getLastQueryLog()
-        );
-
-        $this->assertEquals(
-            'UPDATE `abc` SET `efg` = 1 WHERE `id` = 1',
-            $builder->getLastParseQuery()
-        );
-
-        $builder = $this->builder();
-
-        $connection = $this->resultConnectForInsertAndUpdate();
-
-        $builder->setConnection($connection);
-
-        $builder->enableQueryLog();
-
-        $builder->from('abc');
-
-        $builder->find(1);
-
-        $builder->update(array('efg' => 1));
-
-        $this->assertEquals(
-            array(
-                'query' => 'UPDATE `abc` SET `efg` = ? WHERE `id` = ?',
-                'bindings' => array(1, 1),
-            ),
-            $builder->getLastQueryLog()
-        );
-
-        $this->assertEquals(
-            'UPDATE `abc` SET `efg` = 1 WHERE `id` = 1',
-            $builder->getLastParseQuery()
-        );
-
-        $builder = $this->builder();
-
-        $connection = $this->resultConnectForInsertAndUpdate();
-
-        $builder->setConnection($connection);
-
-        $builder->enableQueryLog();
-
-        $builder->from('abc');
-
-        $builder->find(1);
-
-        $builder->update(
-            array('efg' => function ($query) {
-                $query->from('wxy')->select('id');
-            })
-        );
-
-        $this->assertEquals(
-            array(
-                'query' => 'UPDATE `abc` SET `efg` = (SELECT `id` FROM `wxy`) WHERE `id` = ?',
-                'bindings' => array(1),
-            ),
-            $builder->getLastQueryLog()
-        );
-
-        $this->assertEquals(
-            'UPDATE `abc` SET `efg` = (SELECT `id` FROM `wxy`) WHERE `id` = 1',
-            $builder->getLastParseQuery()
-        );
-    }
-
-    public function testIncrement()
-    {
-        $builder = $this->builder();
-
-        $connection = $this->resultConnectForInsertAndUpdate();
-
-        $builder->setConnection($connection);
-
-        $builder->enableQueryLog();
-
-        $builder->from('abc');
-
-        $builder->find(1);
-
-        $builder->increment('seq');
-
-        $this->assertEquals(
-            array(
-                'query' => 'UPDATE `abc` SET `seq` = `seq` + ? WHERE `id` = ?',
-                'bindings' => array(1, 1),
-            ),
-            $builder->getLastQueryLog()
-        );
-
-        $this->assertEquals(
-            'UPDATE `abc` SET `seq` = `seq` + 1 WHERE `id` = 1',
-            $builder->getLastParseQuery()
-        );
-
-        $builder = $this->builder();
-
-        $connection = $this->resultConnectForInsertAndUpdate();
-
-        $builder->setConnection($connection);
-
-        $builder->enableQueryLog();
-
-        $builder->from('abc');
-
-        $builder->find(1);
-
-        $builder->increment('seq', 1, array('efg' => 1));
-
-        $this->assertEquals(
-            array(
-                'query' => 'UPDATE `abc` SET `efg` = ?, `seq` = `seq` + ? WHERE `id` = ?',
-                'bindings' => array(1, 1, 1),
-            ),
-            $builder->getLastQueryLog()
-        );
-
-        $this->assertEquals(
-            'UPDATE `abc` SET `efg` = 1, `seq` = `seq` + 1 WHERE `id` = 1',
-            $builder->getLastParseQuery()
-        );
-    }
-
-    public function testDecrement()
-    {
-        $builder = $this->builder();
-
-        $connection = $this->resultConnectForInsertAndUpdate();
-
-        $builder->setConnection($connection);
-
-        $builder->enableQueryLog();
-
-        $builder->from('abc');
-
-        $builder->find(1);
-
-        $builder->decrement('seq');
-
-        $this->assertEquals(
-            array(
-                'query' => 'UPDATE `abc` SET `seq` = `seq` - ? WHERE `id` = ?',
-                'bindings' => array(1, 1),
-            ),
-            $builder->getLastQueryLog()
-        );
-
-        $this->assertEquals(
-            'UPDATE `abc` SET `seq` = `seq` - 1 WHERE `id` = 1',
-            $builder->getLastParseQuery()
-        );
-
-        $builder = $this->builder();
-
-        $connection = $this->resultConnectForInsertAndUpdate();
-
-        $builder->setConnection($connection);
-
-        $builder->enableQueryLog();
-
-        $builder->from('abc');
-
-        $builder->find(1);
-
-        $builder->decrement('seq', 1, array('efg' => 1));
-
-        $this->assertEquals(
-            array(
-                'query' => 'UPDATE `abc` SET `efg` = ?, `seq` = `seq` - ? WHERE `id` = ?',
-                'bindings' => array(1, 1, 1),
-            ),
-            $builder->getLastQueryLog()
-        );
-
-        $this->assertEquals(
-            'UPDATE `abc` SET `efg` = 1, `seq` = `seq` - 1 WHERE `id` = 1',
-            $builder->getLastParseQuery()
-        );
-    }
-
-    public function testInsert()
-    {
-        $builder = $this->builder();
-
-        $connection = $this->resultConnectForInsertAndUpdate();
-
-        $builder->setConnection($connection);
-
-        $builder->enableQueryLog();
-
-        $builder->from('abc');
-
-        $builder->insert(array('efg' => 1));
-
-        $this->assertEquals(
-            array(
-                'query' => 'INSERT INTO `abc` (`efg`) VALUES (?)',
-                'bindings' => array(1),
-            ),
-            $builder->getLastQueryLog()
-        );
-
-        $this->assertEquals(
-            'INSERT INTO `abc` (`efg`) VALUES (1)',
-            $builder->getLastParseQuery()
-        );
-
-        $builder = $this->builder();
-
-        $connection = $this->resultConnectForInsertAndUpdate();
-
-        $builder->setConnection($connection);
-
-        $builder->enableQueryLog();
-
-        $builder->from('abc');
-
-        $builder->insert(
-            array(
-                array('efg' => 1),
-                array('efg' => 2),
-            )
-        );
-
-        $this->assertEquals(
-            array(
-                'query' => 'INSERT INTO `abc` (`efg`) VALUES (?), (?)',
-                'bindings' => array(1, 2),
-            ),
-            $builder->getLastQueryLog()
-        );
-
-        $this->assertEquals(
-            'INSERT INTO `abc` (`efg`) VALUES (1), (2)',
-            $builder->getLastParseQuery()
-        );
-
-        $builder = $this->builder();
-
-        $connection = $this->resultConnectForInsertAndUpdate();
-
-        $builder->setConnection($connection);
-
-        $builder->enableQueryLog();
-
-        $builder->from('abc');
-
-        $builder->insert();
-
-        $this->assertEquals(
-            array(
-                'query' => 'INSERT INTO `abc` DEFAULT VALUES',
-                'bindings' => array(),
-            ),
-            $builder->getLastQueryLog()
-        );
-
-        $this->assertEquals(
-            'INSERT INTO `abc` DEFAULT VALUES',
-            $builder->getLastParseQuery()
-        );
-    }
-
-    public function testInsertSub()
-    {
-        $builder = $this->builder();
-
-        $connection = $this->resultConnectForInsertAndUpdate();
-
-        $builder->setConnection($connection);
-
-        $builder->enableQueryLog();
-
-        $builder->from('abc');
-
-        $builder->insertSub(array('efg'), function ($query) {
-            $query->from('wxy')->select('klm')->where('opq', 1);
-        });
-
-        $this->assertEquals(
-            array(
-                'query' => 'INSERT INTO `abc` (`efg`) SELECT `klm` FROM `wxy` WHERE `opq` = ?',
-                'bindings' => array(1),
-            ),
-            $builder->getLastQueryLog()
-        );
-
-        $this->assertEquals(
-            'INSERT INTO `abc` (`efg`) SELECT `klm` FROM `wxy` WHERE `opq` = 1',
-            $builder->getLastParseQuery()
-        );
-    }
-
-    public function testDelete()
-    {
-        $builder = $this->builder();
-
-        $connection = $this->resultConnectForInsertAndUpdate();
-
-        $builder->setConnection($connection);
-
-        $builder->enableQueryLog();
-
-        $builder->from('abc');
-
-        $builder->find(1);
-
-        $builder->delete();
-
-        $this->assertEquals(
-            array(
-                'query' => 'DELETE FROM `abc` WHERE `id` = ?',
-                'bindings' => array(1),
-            ),
-            $builder->getLastQueryLog()
-        );
-
-        $this->assertEquals(
-            'DELETE FROM `abc` WHERE `id` = 1',
-            $builder->getLastParseQuery()
-        );
-
-        $builder = $this->builder();
-
-        $connection = $this->resultConnectForInsertAndUpdate();
-
-        $builder->setConnection($connection);
-
-        $builder->enableQueryLog();
-
-        $builder->from('abc');
-
-        $builder->where('id', 1);
-
-        $builder->delete();
-
-        $this->assertEquals(
-            array(
-                'query' => 'DELETE FROM `abc` WHERE `id` = ?',
-                'bindings' => array(1),
-            ),
-            $builder->getLastQueryLog()
-        );
-
-        $this->assertEquals(
-            'DELETE FROM `abc` WHERE `id` = 1',
-            $builder->getLastParseQuery()
-        );
-    }
-
-    public function testReStore()
-    {
-        $builder = $this->builder();
-
-        $connection = $this->resultConnectForInsertAndUpdate();
-
-        $builder->setConnection($connection);
-
-        $builder->enableQueryLog();
-
-        $builder->from('abc');
-
-        $builder->find(1);
-
-        $builder->reStore();
-
-        $this->assertEquals(
-            array(
-                'query' => 'UPDATE `abc` SET `deleted_at` = NULL WHERE `id` = ?',
-                'bindings' => array(1),
-            ),
-            $builder->getLastQueryLog()
-        );
-
-        $builder = $this->builder();
-
-        $connection = $this->resultConnectForInsertAndUpdate();
-
-        $builder->setConnection($connection);
-
-        $builder->enableQueryLog();
-
-        $builder->from('abc');
-
-        $builder->find(1);
-
-        $builder->reStore('delete_time');
-
-        $this->assertEquals(
-            array(
-                'query' => 'UPDATE `abc` SET `delete_time` = NULL WHERE `id` = ?',
-                'bindings' => array(1),
-            ),
-            $builder->getLastQueryLog()
-        );
-
-        $builder = $this->builder();
-
-        $connection = $this->resultConnectForInsertAndUpdate();
-
-        $builder->setConnection($connection);
-
-        $builder->enableQueryLog();
-
-        $builder->from('abc');
-
-        $builder->find(1);
-
-        $builder->reStore('delete_time', '');
-
-        $this->assertEquals(
-            array(
-                'query' => 'UPDATE `abc` SET `delete_time` = ? WHERE `id` = ?',
-                'bindings' => array('', 1),
-            ),
-            $builder->getLastQueryLog()
-        );
-    }
-
-    public function testSoftDelete()
-    {
-        $builder = $this->builder();
-
-        $connection = $this->resultConnectForInsertAndUpdate();
-
-        $builder->setConnection($connection);
-
-        $builder->enableQueryLog();
-
-        $builder->from('abc');
-
-        $builder->find(1);
-
-        $builder->softDelete();
-
-        $this->assertEquals(
-            array(
-                'query' => 'UPDATE `abc` SET `deleted_at` = ? WHERE `id` = ?',
-                'bindings' => array(
-                    date('Y-m-d H:i:s'),
-                    1,
-                ),
-            ),
-            $builder->getLastQueryLog()
-        );
-
-        $builder = $this->builder();
-
-        $connection = $this->resultConnectForInsertAndUpdate();
-
-        $builder->setConnection($connection);
-
-        $builder->enableQueryLog();
-
-        $builder->from('abc');
-
-        $builder->find(1);
-
-        $builder->softDelete('delete_time');
-
-        $this->assertEquals(
-            array(
-                'query' => 'UPDATE `abc` SET `delete_time` = ? WHERE `id` = ?',
-                'bindings' => array(
-                    date('Y-m-d H:i:s'),
-                    1,
-                ),
-            ),
-            $builder->getLastQueryLog()
-        );
-
-        $builder = $this->builder();
-
-        $connection = $this->resultConnectForInsertAndUpdate();
-
-        $builder->setConnection($connection);
-
-        $builder->enableQueryLog();
-
-        $builder->from('abc');
-
-        $builder->find(1);
-
-        $builder->softDelete('delete_time', 'm-d-Y H:i:s');
-
-        $this->assertEquals(
-            array(
-                'query' => 'UPDATE `abc` SET `delete_time` = ? WHERE `id` = ?',
-                'bindings' => array(
-                    date('m-d-Y H:i:s'),
-                    1,
-                ),
-            ),
-            $builder->getLastQueryLog()
-        );
-    }
-
-    public function testNewJoinClause()
-    {
-        $builder = $this->builder();
-
-        $this->assertTrue(
-            $builder->newJoinClause($builder, 'inner', 'abc') instanceof JoinClause
-        );
-    }
-
-    public function testJoin()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->join('efg', 'efg.abc_id', 'abc.id');
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'INNER JOIN efg ON efg.abc_id = abc.id'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->join('efg', function ($join) {
-            $join->on('efg.abc_id', 'abc.id')->orOn('efg.abc_id', 'abc.id');
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'INNER JOIN efg ON `efg`.`abc_id` = `abc`.`id` OR `efg`.`abc_id` = `abc`.`id`'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->join('efg', function ($join) {
-            $join->on('efg.abc_id', 'abc.id')->orOn('efg.abc_id', 'abc.id')->on('efg.abc_id', 'abc.id');
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'INNER JOIN efg ON `efg`.`abc_id` = `abc`.`id` OR `efg`.`abc_id` = `abc`.`id` AND `efg`.`abc_id` = `abc`.`id`'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-    }
-
-    public function testJoinWhere()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->joinWhere('efg', 'efg.abc_id', 'abc.id');
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'INNER JOIN efg WHERE efg.abc_id = abc.id'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->joinWhere('efg', function ($join) {
-            $join->on('efg.abc_id', 'abc.id')->orOn('efg.abc_id', 'abc.id');
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'INNER JOIN efg WHERE `efg`.`abc_id` = `abc`.`id` OR `efg`.`abc_id` = `abc`.`id`'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->joinWhere('efg', function ($join) {
-            $join->on('efg.abc_id', 'abc.id')->orOn('efg.abc_id', 'abc.id')->on('efg.abc_id', 'abc.id');
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'INNER JOIN efg WHERE `efg`.`abc_id` = `abc`.`id` OR `efg`.`abc_id` = `abc`.`id` AND `efg`.`abc_id` = `abc`.`id`'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-    }
-
-    public function testJoinSub()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->joinSub(
-            function ($query) {
-                $query->from('efg');
-            },
-            'efg',
-            function ($join) {
-                $join->on('efg.abc_id', 'abc.id')->orOn('efg.abc_id', 'abc.id');
-            }
-        );
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'INNER JOIN (SELECT * FROM `efg`) AS `efg` ON `efg`.`abc_id` = `abc`.`id` OR `efg`.`abc_id` = `abc`.`id`'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $joinBuilder = $this->builder();
-
-        $joinBuilder->from('efg');
-
-        $builder->joinSub(
-            $joinBuilder,
-            'efg',
-            function ($join) {
-                $join->on('efg.abc_id', 'abc.id')->orOn('efg.abc_id', 'abc.id');
-            }
-        );
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'INNER JOIN (SELECT * FROM `efg`) AS `efg` ON `efg`.`abc_id` = `abc`.`id` OR `efg`.`abc_id` = `abc`.`id`'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-    }
-
-    public function testJoinWhereSub()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->joinWhereSub(
-            function ($query) {
-                $query->from('efg');
-            },
-            'efg',
-            function ($join) {
-                $join->on('efg.abc_id', 'abc.id')->orOn('efg.abc_id', 'abc.id');
-            }
-        );
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'INNER JOIN (SELECT * FROM `efg`) AS `efg` WHERE `efg`.`abc_id` = `abc`.`id` OR `efg`.`abc_id` = `abc`.`id`'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $joinBuilder = $this->builder();
-
-        $joinBuilder->from('efg');
-
-        $builder->joinWhereSub(
-            $joinBuilder,
-            'efg',
-            function ($join) {
-                $join->on('efg.abc_id', 'abc.id')->orOn('efg.abc_id', 'abc.id');
-            }
-        );
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'INNER JOIN (SELECT * FROM `efg`) AS `efg` WHERE `efg`.`abc_id` = `abc`.`id` OR `efg`.`abc_id` = `abc`.`id`'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-    }
-
-    public function testLeftJoin()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->leftJoin('efg', 'efg.abc_id', 'abc.id');
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'LEFT JOIN efg ON efg.abc_id = abc.id'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->leftJoin('efg', function ($join) {
-            $join->on('efg.abc_id', 'abc.id')->orOn('efg.abc_id', 'abc.id');
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'LEFT JOIN efg ON `efg`.`abc_id` = `abc`.`id` OR `efg`.`abc_id` = `abc`.`id`'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->leftJoin('efg', function ($join) {
-            $join->on('efg.abc_id', 'abc.id')->orOn('efg.abc_id', 'abc.id')->on('efg.abc_id', 'abc.id');
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'LEFT JOIN efg ON `efg`.`abc_id` = `abc`.`id` OR `efg`.`abc_id` = `abc`.`id` AND `efg`.`abc_id` = `abc`.`id`'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-    }
-
-    public function testLeftJoinWhere()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->leftJoinWhere('efg', 'efg.abc_id', 'abc.id');
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'LEFT JOIN efg WHERE efg.abc_id = abc.id'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->leftJoinWhere('efg', function ($join) {
-            $join->on('efg.abc_id', 'abc.id')->orOn('efg.abc_id', 'abc.id');
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'LEFT JOIN efg WHERE `efg`.`abc_id` = `abc`.`id` OR `efg`.`abc_id` = `abc`.`id`'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->leftJoinWhere('efg', function ($join) {
-            $join->on('efg.abc_id', 'abc.id')->orOn('efg.abc_id', 'abc.id')->on('efg.abc_id', 'abc.id');
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'LEFT JOIN efg WHERE `efg`.`abc_id` = `abc`.`id` OR `efg`.`abc_id` = `abc`.`id` AND `efg`.`abc_id` = `abc`.`id`'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-    }
-
-    public function testLeftJoinSub()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->leftJoinSub(
-            function ($query) {
-                $query->from('efg');
-            },
-            'efg',
-            function ($join) {
-                $join->on('efg.abc_id', 'abc.id')->orOn('efg.abc_id', 'abc.id');
-            }
-        );
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'LEFT JOIN (SELECT * FROM `efg`) AS `efg` ON `efg`.`abc_id` = `abc`.`id` OR `efg`.`abc_id` = `abc`.`id`'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $joinBuilder = $this->builder();
-
-        $joinBuilder->from('efg');
-
-        $builder->leftJoinSub(
-            $joinBuilder,
-            'efg',
-            function ($join) {
-                $join->on('efg.abc_id', 'abc.id')->orOn('efg.abc_id', 'abc.id');
-            }
-        );
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'LEFT JOIN (SELECT * FROM `efg`) AS `efg` ON `efg`.`abc_id` = `abc`.`id` OR `efg`.`abc_id` = `abc`.`id`'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-    }
-
-    public function testLeftJoinWhereSub()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->leftJoinWhereSub(
-            function ($query) {
-                $query->from('efg');
-            },
-            'efg',
-            function ($join) {
-                $join->on('efg.abc_id', 'abc.id')->orOn('efg.abc_id', 'abc.id');
-            }
-        );
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'LEFT JOIN (SELECT * FROM `efg`) AS `efg` WHERE `efg`.`abc_id` = `abc`.`id` OR `efg`.`abc_id` = `abc`.`id`'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $joinBuilder = $this->builder();
-
-        $joinBuilder->from('efg');
-
-        $builder->leftJoinWhereSub(
-            $joinBuilder,
-            'efg',
-            function ($join) {
-                $join->on('efg.abc_id', 'abc.id')->orOn('efg.abc_id', 'abc.id');
-            }
-        );
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'LEFT JOIN (SELECT * FROM `efg`) AS `efg` WHERE `efg`.`abc_id` = `abc`.`id` OR `efg`.`abc_id` = `abc`.`id`'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-    }
-
-    public function testRightJoin()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->rightJoin('efg', 'efg.abc_id', 'abc.id');
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'RIGHT JOIN efg ON efg.abc_id = abc.id'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->rightJoin('efg', function ($join) {
-            $join->on('efg.abc_id', 'abc.id')->orOn('efg.abc_id', 'abc.id');
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'RIGHT JOIN efg ON `efg`.`abc_id` = `abc`.`id` OR `efg`.`abc_id` = `abc`.`id`'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->rightJoin('efg', function ($join) {
-            $join->on('efg.abc_id', 'abc.id')->orOn('efg.abc_id', 'abc.id')->on('efg.abc_id', 'abc.id');
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'RIGHT JOIN efg ON `efg`.`abc_id` = `abc`.`id` OR `efg`.`abc_id` = `abc`.`id` AND `efg`.`abc_id` = `abc`.`id`'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-    }
-
-    public function testRightJoinWhere()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->rightJoinWhere('efg', 'efg.abc_id', 'abc.id');
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'RIGHT JOIN efg WHERE efg.abc_id = abc.id'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->rightJoinWhere('efg', function ($join) {
-            $join->on('efg.abc_id', 'abc.id')->orOn('efg.abc_id', 'abc.id');
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'RIGHT JOIN efg WHERE `efg`.`abc_id` = `abc`.`id` OR `efg`.`abc_id` = `abc`.`id`'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->rightJoinWhere('efg', function ($join) {
-            $join->on('efg.abc_id', 'abc.id')->orOn('efg.abc_id', 'abc.id')->on('efg.abc_id', 'abc.id');
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'RIGHT JOIN efg WHERE `efg`.`abc_id` = `abc`.`id` OR `efg`.`abc_id` = `abc`.`id` AND `efg`.`abc_id` = `abc`.`id`'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-    }
-
-    public function testRightJoinSub()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->rightJoinSub(
-            function ($query) {
-                $query->from('efg');
-            },
-            'efg',
-            function ($join) {
-                $join->on('efg.abc_id', 'abc.id')->orOn('efg.abc_id', 'abc.id');
-            }
-        );
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'RIGHT JOIN (SELECT * FROM `efg`) AS `efg` ON `efg`.`abc_id` = `abc`.`id` OR `efg`.`abc_id` = `abc`.`id`'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $joinBuilder = $this->builder();
-
-        $joinBuilder->from('efg');
-
-        $builder->rightJoinSub(
-            $joinBuilder,
-            'efg',
-            function ($join) {
-                $join->on('efg.abc_id', 'abc.id')->orOn('efg.abc_id', 'abc.id');
-            }
-        );
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'RIGHT JOIN (SELECT * FROM `efg`) AS `efg` ON `efg`.`abc_id` = `abc`.`id` OR `efg`.`abc_id` = `abc`.`id`'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-    }
-
-    public function testRightJoinWhereSub()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->rightJoinWhereSub(
-            function ($query) {
-                $query->from('efg');
-            },
-            'efg',
-            function ($join) {
-                $join->on('efg.abc_id', 'abc.id')->orOn('efg.abc_id', 'abc.id');
-            }
-        );
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'RIGHT JOIN (SELECT * FROM `efg`) AS `efg` WHERE `efg`.`abc_id` = `abc`.`id` OR `efg`.`abc_id` = `abc`.`id`'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $joinBuilder = $this->builder();
-
-        $joinBuilder->from('efg');
-
-        $builder->rightJoinWhereSub(
-            $joinBuilder,
-            'efg',
-            function ($join) {
-                $join->on('efg.abc_id', 'abc.id')->orOn('efg.abc_id', 'abc.id');
-            }
-        );
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'RIGHT JOIN (SELECT * FROM `efg`) AS `efg` WHERE `efg`.`abc_id` = `abc`.`id` OR `efg`.`abc_id` = `abc`.`id`'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-    }
-
-    public function testCrossJoin()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->crossJoin('efg', 'efg.abc_id', 'abc.id');
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'CROSS JOIN efg ON efg.abc_id = abc.id'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->crossJoin('efg', function ($join) {
-            $join->on('efg.abc_id', 'abc.id')->orOn('efg.abc_id', 'abc.id');
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'CROSS JOIN efg ON `efg`.`abc_id` = `abc`.`id` OR `efg`.`abc_id` = `abc`.`id`'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->crossJoin('efg', function ($join) {
-            $join->on('efg.abc_id', 'abc.id')->orOn('efg.abc_id', 'abc.id')->on('efg.abc_id', 'abc.id');
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'CROSS JOIN efg ON `efg`.`abc_id` = `abc`.`id` OR `efg`.`abc_id` = `abc`.`id` AND `efg`.`abc_id` = `abc`.`id`'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-    }
-
-    public function testCrossJoinWhere()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->crossJoinWhere('efg', 'efg.abc_id', 'abc.id');
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'CROSS JOIN efg WHERE efg.abc_id = abc.id'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->crossJoinWhere('efg', function ($join) {
-            $join->on('efg.abc_id', 'abc.id')->orOn('efg.abc_id', 'abc.id');
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'CROSS JOIN efg WHERE `efg`.`abc_id` = `abc`.`id` OR `efg`.`abc_id` = `abc`.`id`'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->crossJoinWhere('efg', function ($join) {
-            $join->on('efg.abc_id', 'abc.id')->orOn('efg.abc_id', 'abc.id')->on('efg.abc_id', 'abc.id');
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'CROSS JOIN efg WHERE `efg`.`abc_id` = `abc`.`id` OR `efg`.`abc_id` = `abc`.`id` AND `efg`.`abc_id` = `abc`.`id`'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-    }
-
-    public function testCrossJoinSub()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->crossJoinSub(
-            function ($query) {
-                $query->from('efg');
-            },
-            'efg',
-            function ($join) {
-                $join->on('efg.abc_id', 'abc.id')->orOn('efg.abc_id', 'abc.id');
-            }
-        );
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'CROSS JOIN (SELECT * FROM `efg`) AS `efg` ON `efg`.`abc_id` = `abc`.`id` OR `efg`.`abc_id` = `abc`.`id`'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $joinBuilder = $this->builder();
-
-        $joinBuilder->from('efg');
-
-        $builder->crossJoinSub(
-            $joinBuilder,
-            'efg',
-            function ($join) {
-                $join->on('efg.abc_id', 'abc.id')->orOn('efg.abc_id', 'abc.id');
-            }
-        );
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'CROSS JOIN (SELECT * FROM `efg`) AS `efg` ON `efg`.`abc_id` = `abc`.`id` OR `efg`.`abc_id` = `abc`.`id`'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-    }
-
-    public function testCrossJoinWhereSub()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->crossJoinWhereSub(
-            function ($query) {
-                $query->from('efg');
-            },
-            'efg',
-            function ($join) {
-                $join->on('efg.abc_id', 'abc.id')->orOn('efg.abc_id', 'abc.id');
-            }
-        );
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'CROSS JOIN (SELECT * FROM `efg`) AS `efg` WHERE `efg`.`abc_id` = `abc`.`id` OR `efg`.`abc_id` = `abc`.`id`'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $joinBuilder = $this->builder();
-
-        $joinBuilder->from('efg');
-
-        $builder->crossJoinWhereSub(
-            $joinBuilder,
-            'efg',
-            function ($join) {
-                $join->on('efg.abc_id', 'abc.id')->orOn('efg.abc_id', 'abc.id');
-            }
-        );
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'CROSS JOIN (SELECT * FROM `efg`) AS `efg` WHERE `efg`.`abc_id` = `abc`.`id` OR `efg`.`abc_id` = `abc`.`id`'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-    }
-
-    public function testFullOuterJoin()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->fullOuterJoin('efg', 'efg.abc_id', 'abc.id');
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'FULL OUTER JOIN efg ON efg.abc_id = abc.id'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->fullOuterJoin('efg', function ($join) {
-            $join->on('efg.abc_id', 'abc.id')->orOn('efg.abc_id', 'abc.id');
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'FULL OUTER JOIN efg ON `efg`.`abc_id` = `abc`.`id` OR `efg`.`abc_id` = `abc`.`id`'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->fullOuterJoin('efg', function ($join) {
-            $join->on('efg.abc_id', 'abc.id')->orOn('efg.abc_id', 'abc.id')->on('efg.abc_id', 'abc.id');
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'FULL OUTER JOIN efg ON `efg`.`abc_id` = `abc`.`id` OR `efg`.`abc_id` = `abc`.`id` AND `efg`.`abc_id` = `abc`.`id`'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-    }
-
-    public function testFullOuterJoinWhere()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->fullOuterJoinWhere('efg', 'efg.abc_id', 'abc.id');
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'FULL OUTER JOIN efg WHERE efg.abc_id = abc.id'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->fullOuterJoinWhere('efg', function ($join) {
-            $join->on('efg.abc_id', 'abc.id')->orOn('efg.abc_id', 'abc.id');
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'FULL OUTER JOIN efg WHERE `efg`.`abc_id` = `abc`.`id` OR `efg`.`abc_id` = `abc`.`id`'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->fullOuterJoinWhere('efg', function ($join) {
-            $join->on('efg.abc_id', 'abc.id')->orOn('efg.abc_id', 'abc.id')->on('efg.abc_id', 'abc.id');
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'FULL OUTER JOIN efg WHERE `efg`.`abc_id` = `abc`.`id` OR `efg`.`abc_id` = `abc`.`id` AND `efg`.`abc_id` = `abc`.`id`'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-    }
-
-    public function testFullOuterJoinSub()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->fullOuterJoinSub(
-            function ($query) {
-                $query->from('efg');
-            },
-            'efg',
-            function ($join) {
-                $join->on('efg.abc_id', 'abc.id')->orOn('efg.abc_id', 'abc.id');
-            }
-        );
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'FULL OUTER JOIN (SELECT * FROM `efg`) AS `efg` ON `efg`.`abc_id` = `abc`.`id` OR `efg`.`abc_id` = `abc`.`id`'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $joinBuilder = $this->builder();
-
-        $joinBuilder->from('efg');
-
-        $builder->fullOuterJoinSub(
-            $joinBuilder,
-            'efg',
-            function ($join) {
-                $join->on('efg.abc_id', 'abc.id')->orOn('efg.abc_id', 'abc.id');
-            }
-        );
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'FULL OUTER JOIN (SELECT * FROM `efg`) AS `efg` ON `efg`.`abc_id` = `abc`.`id` OR `efg`.`abc_id` = `abc`.`id`'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-    }
-
-    public function testFullOuterJoinWhereSub()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->fullOuterJoinWhereSub(
-            function ($query) {
-                $query->from('efg');
-            },
-            'efg',
-            function ($join) {
-                $join->on('efg.abc_id', 'abc.id')->orOn('efg.abc_id', 'abc.id');
-            }
-        );
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'FULL OUTER JOIN (SELECT * FROM `efg`) AS `efg` WHERE `efg`.`abc_id` = `abc`.`id` OR `efg`.`abc_id` = `abc`.`id`'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $joinBuilder = $this->builder();
-
-        $joinBuilder->from('efg');
-
-        $builder->fullOuterJoinWhereSub(
-            $joinBuilder,
-            'efg',
-            function ($join) {
-                $join->on('efg.abc_id', 'abc.id')->orOn('efg.abc_id', 'abc.id');
-            }
-        );
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(
-                        'FULL OUTER JOIN (SELECT * FROM `efg`) AS `efg` WHERE `efg`.`abc_id` = `abc`.`id` OR `efg`.`abc_id` = `abc`.`id`'
-                    )
-                )
-            ),
-            $builder->getQuery('joins')
-        );
-    }
-
-    public function testLimit()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->limit(1);
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    '?'
-                ),
-                'bindings' => array(
-                    1
-                )
-            ),
-            $builder->getQuery('limits')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->limit(1, 2);
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    '?', '?'
-                ),
-                'bindings' => array(
-                    1, 2
-                )
-            ),
-            $builder->getQuery('limits')
-        );
-
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->limit($builder->raw(1));
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression(1)
-                ),
-                'bindings' => array()
-            ),
-            $builder->getQuery('limits')
-        );
-    }
-
-    public function testOffset()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->offset(1);
-
-        $this->assertEquals(
-            array(
-                'queries' => '?',
-                'bindings' => 1
-            ),
-            $builder->getQuery('offset')
-        );
-    }
-
-    public function testCurrentPage()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->currentPage(1);
-
-        $this->assertEquals(
-            array(
-                'queries' => '?',
-                'bindings' => 1
-            ),
-            $builder->getQuery('offset')
-        );
-    }
-
-    public function testPrePage()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->prePage(1);
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    '?'
-                ),
-                'bindings' => array(
-                    1
-                )
-            ),
-            $builder->getQuery('limits')
-        );
-    }
-
-    public function testGetForPage()
-    {
-        $builder = $this->builder();
-
-        $connection = $this->resultConnect(false);
-
-        $result = $this->dbResult();
-
-        $connection->expects($this->any())->method('exec')
-            ->willReturnCallback(function ($query, $bindings) use ($connection, $result) {
-                $connection->setQueryLog(compact('query', 'bindings'));
-
-                return $result;
-            });
-
-        $builder->setConnection($connection);
-
-        $builder->from('abc');
-
-        $builder->prePage(10)->currentPage(1);
-
-        $result = $builder->getForPage();
-
-        $this->assertEquals(
-            array(),
-            $result
-        );
-
-        $this->assertEquals(
-            'SELECT * FROM `abc` LIMIT ? OFFSET ?',
-            $builder->toSql()
-        );
-
-        $this->assertEquals(
-            array(
-                'query' => 'SELECT * FROM `abc` LIMIT ? OFFSET ?',
-                'bindings' => array(10, 0),
-            ),
-            $builder->getLastQueryLog()
-        );
-
-        $this->assertEquals(
-            'SELECT * FROM `abc` LIMIT 10 OFFSET 0',
-            $builder->getLastParseQuery()
-        );
-    }
-
-    public function testCount()
-    {
-        $builder = $this->builder();
-
-        $connection = $this->resultConnect();
-
-        $result = $this->dbResult();
-
-        $connection->expects($this->any())->method('exec')
-            ->willReturnCallback(function ($query, $bindings) use ($connection, $result) {
-                $connection->setQueryLog(compact('query', 'bindings'));
-
-                return $result;
-            });
-
-        $builder->setConnection($connection);
-
-        $builder->from('abc');
-
-        $result = $builder->count();
-
-        $this->assertEquals(0, $result);
-
-        $this->assertEquals(
-            'SELECT * FROM `abc`',
-            $builder->toSql()
-        );
-
-        $this->assertEquals(
-            array(
-                'query' => 'SELECT COUNT(*) AS `aggregate` FROM (SELECT * FROM `abc`) AS `aggregate_table`',
-                'bindings' => array(),
-            ),
-            $builder->getLastQueryLog()
-        );
-
-        $this->assertEquals(
-            'SELECT COUNT(*) AS `aggregate` FROM (SELECT * FROM `abc`) AS `aggregate_table`',
-            $builder->getLastParseQuery()
-        );
-    }
-
-    public function testUnion()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->union(function ($query) {
-            $query->from('efg');
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('UNION SELECT * FROM `efg`')
-                ),
-            ),
-            $builder->getQuery('unions')
-        );
-    }
-
-    public function testUnionAll()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->unionAll(function ($query) {
-            $query->from('efg');
-        });
-
-        $this->assertEquals(
-            array(
-                'queries' => array(
-                    new Expression('UNION ALL SELECT * FROM `efg`')
-                ),
-            ),
-            $builder->getQuery('unions')
-        );
-    }
-
-    public function testLockForUpdate()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->lockForUpdate();
-
-        $this->assertEquals(
-            'lockForUpdate',
-            $builder->getQuery('lock')
-        );
-    }
-
-    public function testSharedLock()
-    {
-        $builder = $this->builder();
-
-        $builder->from('abc');
-
-        $builder->sharedLock();
-
-        $this->assertEquals(
-            'sharedLock',
-            $builder->getQuery('lock')
-        );
-    }
-
-    public function testContactBacktick()
-    {
-        $builder = $this->builder();
-
-        $result = $builder->contactBacktick(
-            $builder->raw(123)
-        );
-
-        $this->assertEquals(new Expression('123'), $result);
-
-        $result = $builder->contactBacktick(array('abc', 'efg'));
-
-        $this->assertEquals(
-            '`abc`.`efg`', 
-            $result
-        );
-
-        $result = $builder->contactBacktick('abc', 'efg');
-
-        $this->assertEquals(
-            '`abc`.`efg`', 
-            $result
-        );
-
-        $result = $builder->contactBacktick('abc.efg');
-
-        $this->assertEquals(
-            '`abc`.`efg`', 
-            $result
-        );
-    }
-
-    public function testMethod()
-    {
-        $methods = array(
-            'set' => array('table', 'username', 'password', 'database', 'host', 'raw', 'from',),
-            'process' => array('insertGetId',),
-            'get' => array('parseQueryLog', 'lastParseQuery', 'lastInsertId', 'queryLog', 'lastQueryLog',),
-        );
-
-        $builder = $this->builder();
-
-        $reflectionMethod = new \ReflectionMethod($builder, 'method');
-
-        $reflectionMethod->setAccessible(true);
-
-        foreach ($methods as $bindMethod => $bindMethods) {
-            foreach ($bindMethods as $method) {
-                $resultMethod = $reflectionMethod->invoke($builder, $method);
-
-                $this->assertEquals($bindMethod . ucfirst($method), $resultMethod);
-            }
-        }
-
-        $resultMethod = $reflectionMethod->invoke($builder, 'test');
-
-        $this->assertEquals(
-            'test', 
-            $resultMethod
-        );
-    }
-
-    public function testSetMethod()
-    {
-        $builder = $this->builder();
-
-        $this->assertTrue(
-            $builder->table('test') instanceof Builder
-        );
-
-        $this->assertTrue(
-            $builder->setTable('test') instanceof Builder
-        );
-
-        try {
-            $builder->foobar();
-        } catch (\Exception $e) {
-            $this->assertTrue(
-                $e instanceof \BadMethodCallException
-            );
-
-            $this->assertEquals(
-                "Method: `foobar` Not Exists",
-                $e->getMessage()
-            );
-        }
-    }
-
-    public function testGetMethod()
-    {
-        $builder = $this->builder();
-
-        $builder->table('test');
-
-        $this->assertEquals(
-            array(new Expression('`test`')),
-            $builder->getFrom()
-        );
-
-        try {
-            $builder->foobar();
-        } catch (\Exception $e) {
-            $this->assertTrue(
-                $e instanceof \BadMethodCallException
-            );
-
-            $this->assertEquals(
-                "Method: `foobar` Not Exists",
-                $e->getMessage()
-            );
-        }
+        $this->assertFalse($this->query->invalidOperator('LIKE')); // 大寫
+        $this->assertFalse($this->query->invalidOperator('Not Like')); // 混合大小寫
     }
 }

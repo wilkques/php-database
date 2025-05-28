@@ -1,6 +1,6 @@
 <?php
 
-namespace Wilkques\Database\Tests\Units\Php\Lower;
+namespace Wilkques\Database\Tests\Units\Php\Lower\Connections;
 
 use Wilkques\Database\Tests\Units\Connections\PDO\Drivers\MySqlTest as DriversMySqlTest;
 

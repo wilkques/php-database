@@ -52,6 +52,34 @@ class Grammar
     }
 
     /**
+     * @param string|Expression|...string ...$value
+     * 
+     * @return string
+     */
+    public function contactBacktick($value)
+    {
+        if ($value instanceof Expression) {
+            return (string) $value;
+        }
+
+        if (func_num_args() > 1) {
+            $value = func_get_args();
+        } else if (is_string($value)) {
+            preg_match_all('/(\w+)/', $value, $matches);
+
+            $value = array_pop($matches);
+        }
+
+        $value = Arrays::map($value, function ($value) {
+            $value = trim($value, '`');
+
+            return "`{$value}`";
+        });
+
+        return join(".", $value);
+    }
+
+    /**
      * @param Builder $query
      * 
      * @return string
@@ -377,10 +405,8 @@ class Grammar
         $columns = join(', ', $columns);
 
         if (!$sql) {
-            $self = $this;
-
-            $values = Arrays::map($data, function ($values) use ($self) {
-                return join(', ', $self->arrayNested($values, "?"));
+            $values = Arrays::map($data, function ($values) use ($query) {
+                return join(', ', $query->arrayNested($values, "?"));
             });
 
             $values = join('), (', $values);

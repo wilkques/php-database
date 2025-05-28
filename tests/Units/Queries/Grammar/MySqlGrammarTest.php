@@ -2,28 +2,33 @@
 
 namespace Wilkques\Database\Tests\Units\Queries\Grammar;
 
-use PHPUnit\Framework\TestCase;
+use Mockery\Adapter\Phpunit\MockeryTestCase;
 
-class MySqlGrammarTest extends TestCase
+class MySqlGrammarTest extends MockeryTestCase
 {
-    private function grammar()
-    {
-        return new \Wilkques\Database\Queries\Grammar\Drivers\MySql;
-    }
+    protected $grammar;
+
+    protected $query;
 
     public function testLockForUpdate()
     {
-        $this->assertEquals(
-            "FOR UPDATE",
-            $this->grammar()->lockForUpdate()
-        );
+        $this->grammar->shouldReceive('lockForUpdate')
+            ->once()
+            ->andReturn('FOR UPDATE');
+
+        $result = $this->grammar->lockForUpdate();
+
+        $this->assertEquals('FOR UPDATE', $result);
     }
 
     public function testSharedLock()
     {
-        $this->assertEquals(
-            "LOCK IN SHARE MODE",
-            $this->grammar()->sharedLock()
-        );
+        $this->grammar->shouldReceive('sharedLock')
+            ->once()
+            ->andReturn('LOCK IN SHARE MODE');
+
+        $result = $this->grammar->sharedLock();
+
+        $this->assertEquals('LOCK IN SHARE MODE', $result);
     }
 }

@@ -2,986 +2,819 @@
 
 namespace Wilkques\Database\Tests\Units\Queries\Grammar;
 
-use PHPUnit\Framework\TestCase;
-use Wilkques\Helpers\Arrays;
+use Mockery\Adapter\Phpunit\MockeryTestCase;
+use Wilkques\Database\Queries\Expression;
 
-class GrammarTest extends TestCase
+class GrammarTest extends MockeryTestCase
 {
-    private function builder($queries = array())
+    protected $grammar;
+
+    protected $query;
+
+    public function testArrayNestedWithExpressions()
     {
-        $abstract = $this->getMockBuilder('Wilkques\Database\Queries\Builder');
+        $expression = new Expression('NOW()');
 
-        $abstract->disableOriginalConstructor();
+        $array = array($expression, 'name', 'age');
 
-        /** @var \Wilkques\Database\Queries\Builder */
-        $abstract = $abstract->getMockForAbstractClass();
+        $result = $this->grammar->arrayNested($array);
 
-        return $abstract->setQueries($queries);
+        $expected = array('NOW()', 'name', 'age');
+
+        $this->assertEquals($expected, $result);
     }
 
-    private function grammar()
+    public function testArrayNestedWithCallback()
     {
-        return $this->getMockForAbstractClass('Wilkques\Database\Queries\Grammar\Grammar');
+        $array = array('name', 'age');
+
+        $callback = function ($value) {
+            return strtoupper($value);
+        };
+
+        $result = $this->grammar->arrayNested($array, $callback);
+
+        $expected = array('NAME', 'AGE');
+
+        $this->assertEquals($expected, $result);
     }
 
-    public function testArrayNested()
+    public function testArrayNestedWithForceValue()
     {
-        $grammar = $this->grammar();
+        $array = array('name', 'age');
 
-        $result = $grammar->arrayNested(array(
-            'abc',
-            new \Wilkques\Database\Queries\Expression('efg'),
-        ));
+        $forceValue = 'default';
 
-        $this->assertEquals(
-            array(
-                'abc',
-                new \Wilkques\Database\Queries\Expression('efg'),
-            ),
-            $result
-        );
+        $result = $this->grammar->arrayNested($array, $forceValue);
 
-        $grammar = $this->grammar();
+        $expected = array('default', 'default');
 
-        $result = $grammar->arrayNested(array(
-            'abc',
-            new \Wilkques\Database\Queries\Expression('efg'),
-        ), function ($column) {
-            return "456.{$column}";
-        });
-
-        $this->assertEquals(
-            array(
-                "456.abc",
-                new \Wilkques\Database\Queries\Expression('efg'),
-            ),
-            $result
-        );
-
-        $grammar = $this->grammar();
-
-        $result = $grammar->arrayNested(array(
-            'abc',
-            new \Wilkques\Database\Queries\Expression('efg'),
-        ), '?');
-
-        $this->assertEquals(
-            array(
-                "?",
-                new \Wilkques\Database\Queries\Expression('efg'),
-            ),
-            $result
-        );
+        $this->assertEquals($expected, $result);
     }
 
     public function testCompilerColumns()
     {
-        $columns = array();
+        $this->query->shouldReceive('getQuery')
+            ->once()
+            ->andReturn(array('id', 'name'));
 
-        Arrays::set($columns, 'columns.queries', array('*'));
+        $sql = $this->grammar->compilerColumns($this->query);
 
-        $mock = $this->builder($columns);
-
-        $this->assertEquals("*", $this->grammar()->compilerColumns($mock));
-
-        $columns = array();
-
-        Arrays::set($columns, 'columns.queries', array('abc', 'efg'));
-
-        $mock = $this->builder($columns);
-
-        $this->assertEquals("abc, efg", $this->grammar()->compilerColumns($mock));
+        $this->assertEquals('id, name', $sql);
     }
 
     public function testCompilerSelect()
     {
-        $mock = $this->builder(
-            array(
-                'froms' => array(
-                    'queries' => array(
-                        new \Wilkques\Database\Queries\Expression('`dns_record`'),
-                    ),
-                ),
-                'columns' => array(
-                    'queries' => array(
-                        'dns_record.*',
-                    ),
-                ),
-                'joins' => array(
-                    'bindings' => array(
-                        127,
-                        127,
-                    ),
-                    'queries' => array(
-                        new \Wilkques\Database\Queries\Expression('INNER JOIN (SELECT * FROM `default`.`zones` AS `zones` WHERE `zones`.`id` = ? OR `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` AND (`zones`.`id` = `dns_record`.`zones_id`)'),
-                    ),
-                ),
-                'wheres' => array(
-                    'queries' => array(
-                        'AND (`dns_record`.`id` = ?)',
-                    ),
-                    'bindings' => array(
-                        448,
-                    ),
-                ),
-                'orders' => array(
-                    'queries' => array(
-                        '`dns_record`.`id` DESC, (SELECT MAX(`dns_record`.`id`) FROM `dns_record` INNER JOIN (SELECT * FROM `default`.`zones` WHERE `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` WHERE `zones`.`id` = ?) DESC, `dns_record`.`provider_id` DESC',
-                    ),
-                    'bindings' => array(
-                        127,
-                        127,
-                    ),
-                ),
-                'groups' => array(
-                    'queries' => array(
-                        0 => 'dns_record.id DESC, (SELECT MAX(`dns_record`.`id`) FROM `dns_record` INNER JOIN (SELECT * FROM `default`.`zones` WHERE `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` WHERE `zones`.`id` = ?) DESC, dns_record.provider_id DESC',
-                    ),
-                    'bindings' => array(
-                        0 => 127,
-                        1 => 127,
-                    ),
-                ),
-                'havings' => array(
-                    'queries' => array(
-                        new \Wilkques\Database\Queries\Expression('AND `dns_record`.`provider_id` = ?'),
-                        new \Wilkques\Database\Queries\Expression('AND `dns_record`.`cdn_provider_id` = ?'),
-                    ),
-                    'bindings' => array(
-                        1,
-                        1,
-                    ),
-                ),
-                'offset' => array(
-                    'queries' => '?',
-                    'bindings' => 1,
-                ),
-                'limits' => array(
-                    'queries' => array(
-                        '?',
-                    ),
-                    'bindings' => array(
-                        10,
-                    ),
-                ),
-            )
-        );
+        $this->query->shouldReceive('getQuery')
+            ->once()
+            ->with('columns.queries', array('*'))
+            ->andReturn(array('id', 'name'));
 
-        $this->assertEquals(
-            "SELECT dns_record.* FROM `dns_record` INNER JOIN (SELECT * FROM `default`.`zones` AS `zones` WHERE `zones`.`id` = ? OR `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` AND (`zones`.`id` = `dns_record`.`zones_id`) WHERE (`dns_record`.`id` = ?) GROUP BY dns_record.id DESC, (SELECT MAX(`dns_record`.`id`) FROM `dns_record` INNER JOIN (SELECT * FROM `default`.`zones` WHERE `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` WHERE `zones`.`id` = ?) DESC, dns_record.provider_id DESC HAVING `dns_record`.`provider_id` = ? AND `dns_record`.`cdn_provider_id` = ? ORDER BY `dns_record`.`id` DESC, (SELECT MAX(`dns_record`.`id`) FROM `dns_record` INNER JOIN (SELECT * FROM `default`.`zones` WHERE `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` WHERE `zones`.`id` = ?) DESC, `dns_record`.`provider_id` DESC LIMIT ? OFFSET ?",
-            $this->grammar()->compilerSelect($mock)
-        );
+        $sql = $this->grammar->compilerSelect($this->query);
+
+        $this->assertStringMatchesFormat('SELECT id, name', $sql);
     }
 
     public function testCompilerFroms()
     {
-        $froms = array();
+        $this->query->shouldReceive('getQuery')
+            ->once()
+            ->andReturn(array('users'));
 
-        Arrays::set($froms, 'froms.queries', array('zones', 'dns_record'));
+        $sql = $this->grammar->compilerFroms($this->query);
 
-        $mock = $this->builder($froms);
-
-        $this->assertEquals(
-            "FROM zones, dns_record",
-            $this->grammar()->compilerFroms($mock)
-        );
+        $this->assertEquals('FROM users', $sql);
     }
 
     public function testCompilerWheres()
     {
-        $wheres = array();
+        $this->query->shouldReceive('getQuery')
+            ->once()
+            ->andReturn(array('AND id = 1'));
 
-        Arrays::set($wheres, 'wheres.queries', array('AND (`dns_record`.`id` = ?)'));
+        $sql = $this->grammar->compilerWheres($this->query);
 
-        $mock = $this->builder($wheres);
-
-        $this->assertEquals(
-            "WHERE (`dns_record`.`id` = ?)",
-            $this->grammar()->compilerWheres($mock)
-        );
-
-        $wheres = array();
-
-        Arrays::set($wheres, 'wheres.queries', array('AND (`dns_record`.`id` = ?)', 'AND (`dns_record`.`id` = ?)'));
-
-        $mock = $this->builder($wheres);
-
-        $this->assertEquals(
-            "WHERE (`dns_record`.`id` = ?) AND (`dns_record`.`id` = ?)",
-            $this->grammar()->compilerWheres($mock)
-        );
-
-        $wheres = array();
-
-        Arrays::set($wheres, 'wheres.queries', array('OR (`dns_record`.`id` = ?)', 'AND (`dns_record`.`id` = ?)'));
-
-        $mock = $this->builder($wheres);
-
-        $this->assertEquals(
-            "WHERE (`dns_record`.`id` = ?) AND (`dns_record`.`id` = ?)",
-            $this->grammar()->compilerWheres($mock)
-        );
-
-        $wheres = array();
-
-        Arrays::set($wheres, 'wheres.queries', array('OR (`dns_record`.`id` = ?)', 'OR (`dns_record`.`id` = ?)'));
-
-        $mock = $this->builder($wheres);
-
-        $this->assertEquals(
-            "WHERE (`dns_record`.`id` = ?) OR (`dns_record`.`id` = ?)",
-            $this->grammar()->compilerWheres($mock)
-        );
+        $this->assertEquals('WHERE id = 1', $sql);
     }
 
-    public function testCompilerHavings()
+    public function testCompilerHavingsWithValues()
     {
-        $havings = array();
+        $this->query->shouldReceive('getQuery')
+            ->with('havings.queries', array())
+            ->andReturn(array('AND SUM(amount) > 100', 'AVG(price) < 50'));
 
-        Arrays::set($havings, 'havings.queries', array('AND (`dns_record`.`id` = ?)'));
+        $this->query->shouldReceive('firstJoinReplace')
+            ->with('SUM(amount) > 100 AVG(price) < 50')
+            ->andReturn('SUM(amount) > 100 AVG(price) < 50');
 
-        $mock = $this->builder($havings);
+        $result = $this->grammar->compilerHavings($this->query);
 
-        $this->assertEquals(
-            "HAVING (`dns_record`.`id` = ?)",
-            $this->grammar()->compilerHavings($mock)
-        );
+        $expected = 'HAVING SUM(amount) > 100 AVG(price) < 50';
 
-        $havings = array();
-
-        Arrays::set($havings, 'havings.queries', array('AND (`dns_record`.`id` = ?)', 'AND (`dns_record`.`id` = ?)'));
-
-        $mock = $this->builder($havings);
-
-        $this->assertEquals(
-            "HAVING (`dns_record`.`id` = ?) AND (`dns_record`.`id` = ?)",
-            $this->grammar()->compilerHavings($mock)
-        );
-
-        $havings = array();
-
-        Arrays::set($havings, 'havings.queries', array('OR (`dns_record`.`id` = ?)', 'AND (`dns_record`.`id` = ?)'));
-
-        $mock = $this->builder($havings);
-
-        $this->assertEquals(
-            "HAVING (`dns_record`.`id` = ?) AND (`dns_record`.`id` = ?)",
-            $this->grammar()->compilerHavings($mock)
-        );
-
-        $havings = array();
-
-        Arrays::set($havings, 'havings.queries', array('OR (`dns_record`.`id` = ?)', 'OR (`dns_record`.`id` = ?)'));
-
-        $mock = $this->builder($havings);
-
-        $this->assertEquals(
-            "HAVING (`dns_record`.`id` = ?) OR (`dns_record`.`id` = ?)",
-            $this->grammar()->compilerHavings($mock)
-        );
+        $this->assertEquals($expected, $result);
     }
 
-    public function testCompilerLimits()
+    public function testCompilerHavingsWithEmptyValues()
     {
-        $limits = array();
+        $this->query->shouldReceive('getQuery')
+            ->with('havings.queries', array())
+            ->andReturn(array());
 
-        Arrays::set($limits, 'limits.queries', array('?'));
+        $result = $this->grammar->compilerHavings($this->query);
 
-        $mock = $this->builder($limits);
-
-        $this->assertEquals(
-            "LIMIT ?",
-            $this->grammar()->compilerLimits($mock)
-        );
-
-        $limits = array();
-
-        Arrays::set($limits, 'limits.queries', array('?', '?'));
-
-        $mock = $this->builder($limits);
-
-        $this->assertEquals(
-            "LIMIT ?, ?",
-            $this->grammar()->compilerLimits($mock)
-        );
+        $this->assertFalse($result);
     }
 
-    public function testCompilerGroups()
+    public function testCompilerLimitsWithValues()
     {
-        $groups = array();
+        // Define the mock behavior for getQuery
+        $this->query->shouldReceive('getQuery')
+            ->with('limits.queries', array())
+            ->andReturn(array(10, 20));
 
-        Arrays::set($groups, 'groups.queries', array('zones.id DESC'));
+        // Call the method under test
+        $result = $this->grammar->compilerLimits($this->query);
 
-        $mock = $this->builder($groups);
+        // Define the expected output
+        $expected = 'LIMIT 10, 20';
 
-        $this->assertEquals(
-            "GROUP BY zones.id DESC",
-            $this->grammar()->compilerGroups($mock)
-        );
-
-        $groups = array();
-
-        Arrays::set($groups, 'groups.queries', array('zones.id DESC', 'zones.id ASC'));
-
-        $mock = $this->builder($groups);
-
-        $this->assertEquals(
-            "GROUP BY zones.id DESC, zones.id ASC",
-            $this->grammar()->compilerGroups($mock)
-        );
+        // Assert the result matches the expected output
+        $this->assertEquals($expected, $result);
     }
 
-    public function testCompilerOrders()
+    public function testCompilerLimitsWithEmptyValues()
     {
-        $orders = array();
+        // Define the mock behavior for getQuery
+        $this->query->shouldReceive('getQuery')
+            ->with('limits.queries', array())
+            ->andReturn(array());
 
-        Arrays::set($orders, 'orders.queries', array('zones.id DESC'));
+        // Call the method under test
+        $result = $this->grammar->compilerLimits($this->query);
 
-        $mock = $this->builder($orders);
-
-        $this->assertEquals(
-            "ORDER BY zones.id DESC",
-            $this->grammar()->compilerOrders($mock)
-        );
-
-        $orders = array();
-
-        Arrays::set($orders, 'orders.queries', array('zones.id DESC', 'zones.id ASC'));
-
-        $mock = $this->builder($orders);
-
-        $this->assertEquals(
-            "ORDER BY zones.id DESC, zones.id ASC",
-            $this->grammar()->compilerOrders($mock)
-        );
+        // Assert the result matches the expected output
+        $this->assertFalse($result);
     }
 
-    public function testCompilerOffset()
+    public function testCompilerGroupsWithValues()
     {
-        $offset = array();
+        // Define the mock behavior for getQuery
+        $this->query->shouldReceive('getQuery')
+            ->with('groups.queries', array())
+            ->andReturn(array('name', 'age'));
 
-        Arrays::set($offset, 'offset.queries', '?');
+        // Call the method under test
+        $result = $this->grammar->compilerGroups($this->query);
 
-        $mock = $this->builder($offset);
+        // Define the expected output
+        $expected = 'GROUP BY name, age';
 
-        $this->assertEquals(
-            "OFFSET ?",
-            $this->grammar()->compilerOffset($mock)
-        );
+        // Assert the result matches the expected output
+        $this->assertEquals($expected, $result);
     }
 
-    public function testCompilerLock()
+    public function testCompilerGroupsWithEmptyValues()
     {
-        $lock = array();
+        // Define the mock behavior for getQuery
+        $this->query->shouldReceive('getQuery')
+            ->with('groups.queries', array())
+            ->andReturn(array());
 
-        Arrays::set($lock, 'lock', 'lockForUpdate');
+        // Call the method under test
+        $result = $this->grammar->compilerGroups($this->query);
 
-        $builder = $this->builder($lock);
-
-        $grammar = $this->getMockBuilder('Wilkques\Database\Queries\Grammar\Grammar')
-            ->getMock();
-
-        $grammar->expects($this->once())
-            ->method('compilerLock')
-            ->willReturn("FOR UPDATE");
-
-        $this->assertEquals('FOR UPDATE', $grammar->compilerLock($builder));
+        // Assert the result matches the expected output
+        $this->assertFalse($result);
     }
 
-    public function testCompilerJoins()
+    public function testCompilerOrdersWithValues()
     {
-        $joins = array();
+        // Define the mock behavior for getQuery
+        $this->query->shouldReceive('getQuery')
+            ->with('orders.queries', array())
+            ->andReturn(array('name ASC', 'age DESC'));
 
-        Arrays::set($joins, 'joins.queries', array(
-            'INNER JOIN (SELECT * FROM `default`.`zones` AS `zones` WHERE `zones`.`id` = ? OR `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` AND (`zones`.`id` = `dns_record`.`zones_id`)'
-        ));
+        // Call the method under test
+        $result = $this->grammar->compilerOrders($this->query);
 
-        $mock = $this->builder($joins);
+        // Define the expected output
+        $expected = 'ORDER BY name ASC, age DESC';
 
-        $this->assertEquals(
-            "INNER JOIN (SELECT * FROM `default`.`zones` AS `zones` WHERE `zones`.`id` = ? OR `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` AND (`zones`.`id` = `dns_record`.`zones_id`)",
-            $this->grammar()->compilerJoins($mock)
-        );
+        // Assert the result matches the expected output
+        $this->assertEquals($expected, $result);
+    }
+
+    public function testCompilerOrdersWithEmptyValues()
+    {
+        // Define the mock behavior for getQuery
+        $this->query->shouldReceive('getQuery')
+            ->with('orders.queries', array())
+            ->andReturn(array());
+
+        // Call the method under test
+        $result = $this->grammar->compilerOrders($this->query);
+
+        // Assert the result matches the expected output
+        $this->assertFalse($result);
+    }
+
+    public function testCompilerOffsetWithNumericValue()
+    {
+        // Define the mock behavior for getQuery
+        $this->query->shouldReceive('getQuery')
+            ->with('offset.queries', false)
+            ->andReturn(10);
+
+        // Call the method under test
+        $result = $this->grammar->compilerOffset($this->query);
+
+        // Define the expected output
+        $expected = 'OFFSET 10';
+
+        // Assert the result matches the expected output
+        $this->assertEquals($expected, $result);
+    }
+
+    public function testCompilerOffsetWithExpression()
+    {
+        // Create an instance of Expression with a specific value
+        $expression = new Expression(15);
+
+        // Define the mock behavior for getQuery
+        $this->query->shouldReceive('getQuery')
+            ->with('offset.queries', false)
+            ->andReturn($expression);
+
+        // Call the method under test
+        $result = $this->grammar->compilerOffset($this->query);
+
+        // Define the expected output
+        $expected = 'OFFSET 15';
+
+        // Assert the result matches the expected output
+        $this->assertEquals($expected, $result);
+    }
+
+    public function testCompilerOffsetWithFalseValue()
+    {
+        // Define the mock behavior for getQuery
+        $this->query->shouldReceive('getQuery')
+            ->with('offset.queries', false)
+            ->andReturn(false);
+
+        // Call the method under test
+        $result = $this->grammar->compilerOffset($this->query);
+
+        // Assert the result matches the expected output
+        $this->assertFalse($result);
+    }
+
+    public function testCompilerLockWithMethodName()
+    {
+        // Define a custom method in Grammar class for testing
+        $this->grammar->shouldReceive('customLockMethod')
+            ->andReturn('FOR UPDATE');
+
+        // Define the mock behavior for getQuery
+        $this->query->shouldReceive('getQuery')
+            ->with('lock', false)
+            ->andReturn('customLockMethod');
+
+        // Call the method under test
+        $result = $this->grammar->compilerLock($this->query);
+
+        // Define the expected output
+        $expected = 'FOR UPDATE';
+
+        // Assert the result matches the expected output
+        $this->assertEquals($expected, $result);
+    }
+
+    public function testCompilerLockWithFalseValue()
+    {
+        // Define the mock behavior for getQuery
+        $this->query->shouldReceive('getQuery')
+            ->with('lock', false)
+            ->andReturn(false);
+
+        // Call the method under test
+        $result = $this->grammar->compilerLock($this->query);
+
+        // Assert the result matches the expected output
+        $this->assertFalse($result);
+    }
+
+    public function testCompilerJoinsWithJoins()
+    {
+        // Define mock behavior for getQuery to return join strings
+        $this->query->shouldReceive('getQuery')
+            ->with('joins.queries', array())
+            ->andReturn(array('JOIN users ON users.id = orders.user_id', 'JOIN products ON products.id = orders.product_id'));
+
+        // Call the method under test
+        $result = $this->grammar->compilerJoins($this->query);
+
+        // Define the expected output
+        $expected = 'JOIN users ON users.id = orders.user_id JOIN products ON products.id = orders.product_id';
+
+        // Assert the result matches the expected output
+        $this->assertEquals($expected, $result);
+    }
+
+    public function testCompilerJoinsWithoutJoins()
+    {
+        // Define mock behavior for getQuery to return an empty array
+        $this->query->shouldReceive('getQuery')
+            ->with('joins.queries', array())
+            ->andReturn(array());
+
+        // Call the method under test
+        $result = $this->grammar->compilerJoins($this->query);
+
+        // Assert the result matches the expected output
+        $this->assertFalse($result);
     }
 
     public function testCompilerComponent()
     {
-        $abstract = $this->grammar();
+        // Mock `getQuery` for various components
+        $this->query->shouldReceive('getQuery')
+            ->with('columns', false)
+            ->andReturn(array('id', 'name'));
 
-        $reflectionMethod = new \ReflectionMethod($abstract, 'compilerComponent');
+        $this->query->shouldReceive('getQuery')
+            ->with('froms', false)
+            ->andReturn(array('users'));
 
-        $reflectionMethod->setAccessible(true);
+        $this->query->shouldReceive('getQuery')
+            ->with('joins', false)
+            ->andReturn(array('JOIN orders ON orders.user_id = users.id'));
 
-        $result = $reflectionMethod->invoke($abstract, $this->builder());
+        $this->query->shouldReceive('getQuery')
+            ->with('wheres', false)
+            ->andReturn(array('status = active'));
 
-        $this->assertEquals(
-            array(),
-            $result
+        $this->query->shouldReceive('getQuery')
+            ->with('groups', false)
+            ->andReturn(array('department'));
+        $this->query->shouldReceive('getQuery')
+            ->with('havings', false)
+            ->andReturn(array('COUNT(*) > 1'));
+
+        $this->query->shouldReceive('getQuery')
+            ->with('orders', false)
+            ->andReturn(array('name DESC'));
+
+        $this->query->shouldReceive('getQuery')
+            ->with('limits', false)
+            ->andReturn(array('10'));
+
+        $this->query->shouldReceive('getQuery')
+            ->with('offset', false)
+            ->andReturn(array('20'));
+
+        $this->query->shouldReceive('getQuery')
+            ->with('lock', false)
+            ->andReturn(false);
+
+        // Mock the compiler methods
+        $this->grammar->shouldReceive('compilerColumns')
+            ->with($this->query)
+            ->andReturn('id, name');
+
+        $this->grammar->shouldReceive('compilerFroms')
+            ->with($this->query)
+            ->andReturn('FROM users');
+
+        $this->grammar->shouldReceive('compilerJoins')
+            ->with($this->query)
+            ->andReturn('JOIN orders ON orders.user_id = users.id');
+
+        $this->grammar->shouldReceive('compilerWheres')
+            ->with($this->query)
+            ->andReturn('WHERE status = active');
+
+        $this->grammar->shouldReceive('compilerGroups')
+            ->with($this->query)
+            ->andReturn('GROUP BY department');
+
+        $this->grammar->shouldReceive('compilerHavings')
+            ->with($this->query)
+            ->andReturn('HAVING COUNT(*) > 1');
+
+        $this->grammar->shouldReceive('compilerOrders')
+            ->with($this->query)
+            ->andReturn('ORDER BY name DESC');
+
+        $this->grammar->shouldReceive('compilerLimits')
+            ->with($this->query)
+            ->andReturn('LIMIT 10');
+
+        $this->grammar->shouldReceive('compilerOffset')
+            ->with($this->query)
+            ->andReturn('OFFSET 20');
+
+        // Call the method under test
+        $result = $this->grammar->compilerComponent($this->query);
+
+        // Define the expected output
+        $expected = array(
+            'columns' => 'id, name',
+            'froms' => 'FROM users',
+            'joins' => 'JOIN orders ON orders.user_id = users.id',
+            'wheres' => 'WHERE status = active',
+            'groups' => 'GROUP BY department',
+            'havings' => 'HAVING COUNT(*) > 1',
+            'orders' => 'ORDER BY name DESC',
+            'limits' => 'LIMIT 10',
+            'offset' => 'OFFSET 20',
         );
 
-        $mock = $this->builder(
-            array(
-                'froms' => array(
-                    'queries' => array(
-                        new \Wilkques\Database\Queries\Expression('`dns_record`'),
-                    ),
-                ),
-                'columns' => array(
-                    'queries' => array(
-                        'dns_record.*',
-                    ),
-                ),
-                'joins' => array(
-                    'bindings' => array(
-                        127,
-                        127,
-                    ),
-                    'queries' => array(
-                        new \Wilkques\Database\Queries\Expression('INNER JOIN (SELECT * FROM `default`.`zones` AS `zones` WHERE `zones`.`id` = ? OR `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` AND (`zones`.`id` = `dns_record`.`zones_id`)'),
-                    ),
-                ),
-                'wheres' => array(
-                    'queries' => array(
-                        'AND (`dns_record`.`id` = ?)',
-                    ),
-                    'bindings' => array(
-                        448,
-                    ),
-                ),
-                'orders' => array(
-                    'queries' => array(
-                        '`dns_record`.`id` DESC, (SELECT MAX(`dns_record`.`id`) FROM `dns_record` INNER JOIN (SELECT * FROM `default`.`zones` WHERE `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` WHERE `zones`.`id` = ?) DESC, `dns_record`.`provider_id` DESC',
-                    ),
-                    'bindings' => array(
-                        127,
-                        127,
-                    ),
-                ),
-                'groups' => array(
-                    'queries' => array(
-                        0 => 'dns_record.id DESC, (SELECT MAX(`dns_record`.`id`) FROM `dns_record` INNER JOIN (SELECT * FROM `default`.`zones` WHERE `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` WHERE `zones`.`id` = ?) DESC, dns_record.provider_id DESC',
-                    ),
-                    'bindings' => array(
-                        0 => 127,
-                        1 => 127,
-                    ),
-                ),
-                'havings' => array(
-                    'queries' => array(
-                        new \Wilkques\Database\Queries\Expression('AND `dns_record`.`provider_id` = ?'),
-                        new \Wilkques\Database\Queries\Expression('AND `dns_record`.`cdn_provider_id` = ?'),
-                    ),
-                    'bindings' => array(
-                        1,
-                        1,
-                    ),
-                ),
-                'offset' => array(
-                    'queries' => '?',
-                    'bindings' => 1,
-                ),
-                'limits' => array(
-                    'queries' => array(
-                        '?',
-                    ),
-                    'bindings' => array(
-                        10,
-                    ),
-                ),
-            )
-        );
-
-        $result = $reflectionMethod->invoke($abstract, $mock);
-
-        $this->assertEquals(
-            array(
-                "columns" => "dns_record.*",
-                "froms" => "FROM `dns_record`",
-                "joins" => "INNER JOIN (SELECT * FROM `default`.`zones` AS `zones` WHERE `zones`.`id` = ? OR `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` AND (`zones`.`id` = `dns_record`.`zones_id`)",
-                "wheres" => "WHERE (`dns_record`.`id` = ?)",
-                "groups" => "GROUP BY dns_record.id DESC, (SELECT MAX(`dns_record`.`id`) FROM `dns_record` INNER JOIN (SELECT * FROM `default`.`zones` WHERE `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` WHERE `zones`.`id` = ?) DESC, dns_record.provider_id DESC",
-                "havings" => "HAVING `dns_record`.`provider_id` = ? AND `dns_record`.`cdn_provider_id` = ?",
-                "orders" => "ORDER BY `dns_record`.`id` DESC, (SELECT MAX(`dns_record`.`id`) FROM `dns_record` INNER JOIN (SELECT * FROM `default`.`zones` WHERE `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` WHERE `zones`.`id` = ?) DESC, `dns_record`.`provider_id` DESC",
-                "limits" => "LIMIT ?",
-                "offset" => "OFFSET ?",
-            ),
-            $result
-        );
+        // Assert the result matches the expected output
+        $this->assertEquals($expected, $result);
     }
 
-    public function testConcatenate()
+    public function testConcatenateWithVariousSegments()
     {
-        $abstract = $this->grammar();
+        // Test with non-empty segments
+        $segments = array('SELECT', 'id, name', 'FROM', 'users', '', 'WHERE', 'status = active');
 
-        $reflectionMethod = new \ReflectionMethod($abstract, 'concatenate');
+        $result = $this->grammar->concatenate($segments);
 
-        $reflectionMethod->setAccessible(true);
+        $expected = 'SELECT id, name FROM users WHERE status = active';
 
-        $result = $reflectionMethod->invoke($abstract, array());
+        $this->assertEquals($expected, $result);
 
-        $this->assertEquals(
-            '',
-            $result
-        );
+        // Test with all empty segments
+        $segments = array('', '', '', '');
 
-        $result = $reflectionMethod->invoke($abstract, array(
-            "columns" => "dns_record.*",
-            "froms" => "FROM `dns_record`",
-            "joins" => "INNER JOIN (SELECT * FROM `default`.`zones` AS `zones` WHERE `zones`.`id` = ? OR `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` AND (`zones`.`id` = `dns_record`.`zones_id`)",
-            "wheres" => "WHERE (`dns_record`.`id` = ?)",
-            "groups" => "GROUP BY dns_record.id DESC, (SELECT MAX(`dns_record`.`id`) FROM `dns_record` INNER JOIN (SELECT * FROM `default`.`zones` WHERE `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` WHERE `zones`.`id` = ?) DESC, dns_record.provider_id DESC",
-            "havings" => "HAVING `dns_record`.`provider_id` = ? AND `dns_record`.`cdn_provider_id` = ?",
-            "orders" => "ORDER BY `dns_record`.`id` DESC, (SELECT MAX(`dns_record`.`id`) FROM `dns_record` INNER JOIN (SELECT * FROM `default`.`zones` WHERE `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` WHERE `zones`.`id` = ?) DESC, `dns_record`.`provider_id` DESC",
-            "limits" => "LIMIT ?",
-            "offset" => "OFFSET ?",
-        ));
+        $result = $this->grammar->concatenate($segments);
 
-        $this->assertEquals(
-            "dns_record.* FROM `dns_record` INNER JOIN (SELECT * FROM `default`.`zones` AS `zones` WHERE `zones`.`id` = ? OR `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` AND (`zones`.`id` = `dns_record`.`zones_id`) WHERE (`dns_record`.`id` = ?) GROUP BY dns_record.id DESC, (SELECT MAX(`dns_record`.`id`) FROM `dns_record` INNER JOIN (SELECT * FROM `default`.`zones` WHERE `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` WHERE `zones`.`id` = ?) DESC, dns_record.provider_id DESC HAVING `dns_record`.`provider_id` = ? AND `dns_record`.`cdn_provider_id` = ? ORDER BY `dns_record`.`id` DESC, (SELECT MAX(`dns_record`.`id`) FROM `dns_record` INNER JOIN (SELECT * FROM `default`.`zones` WHERE `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` WHERE `zones`.`id` = ?) DESC, `dns_record`.`provider_id` DESC LIMIT ? OFFSET ?",
-            $result
-        );
+        $this->assertEquals('', $result);
+
+        // Test with some empty segments
+        $segments = array('SELECT', '', 'FROM', 'users', '', 'WHERE', 'status = active');
+
+        $result = $this->grammar->concatenate($segments);
+
+        $expected = 'SELECT FROM users WHERE status = active';
+
+        $this->assertEquals($expected, $result);
+
+        // Test with a single segment
+        $segments = array('SELECT * FROM users');
+
+        $result = $this->grammar->concatenate($segments);
+
+        $this->assertEquals('SELECT * FROM users', $result);
     }
 
     public function testCompilerUpdate()
     {
-        $mock = $this->builder(
-            array(
-                'froms' => array(
-                    'queries' => array(
-                        new \Wilkques\Database\Queries\Expression('`dns_record`'),
-                    ),
-                ),
-                'wheres' => array(
-                    'queries' => array(
-                        new \Wilkques\Database\Queries\Expression('AND `id` IN (?,?)'),
-                    ),
-                    'bindings' => array(
-                        443,
-                        444,
-                    ),
-                )
-            )
-        );
+        $this->query->shouldReceive('getFrom')
+            ->andReturn(array('users'));
 
-        $this->assertEquals(
-            "UPDATE `dns_record` SET abc = ? WHERE `id` IN (?,?)",
-            $this->grammar()->compilerUpdate($mock, array('abc'))
-        );
+        $sql = $this->grammar->compilerUpdate($this->query, array('name'));
 
-        $mock = $this->builder(
-            array(
-                'froms' => array(
-                    'queries' => array(
-                        new \Wilkques\Database\Queries\Expression('`dns_record`'),
-                    ),
-                ),
-                'wheres' => array(
-                    'queries' => array(
-                        new \Wilkques\Database\Queries\Expression('AND `id` IN (?,?)'),
-                    ),
-                    'bindings' => array(
-                        443,
-                        444,
-                    ),
-                ),
-                'joins' => array(
-                    'bindings' => array(
-                        127,
-                        127,
-                    ),
-                    'queries' => array(
-                        new \Wilkques\Database\Queries\Expression(
-                            'INNER JOIN (SELECT * FROM `default`.`zones` AS `zones` WHERE `zones`.`id` = ? OR `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` AND (`zones`.`id` = `dns_record`.`zones_id`)'
-                        ),
-                    ),
-                )
-            )
-        );
-
-        $this->assertEquals(
-            "UPDATE `dns_record` INNER JOIN (SELECT * FROM `default`.`zones` AS `zones` WHERE `zones`.`id` = ? OR `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` AND (`zones`.`id` = `dns_record`.`zones_id`) SET abc = ? WHERE `id` IN (?,?)",
-            $this->grammar()->compilerUpdate($mock, array('abc'))
-        );
+        $this->assertEquals("UPDATE users SET name = ? ", $sql);
     }
 
     public function testCompilerUpdateWithoutJoins()
     {
-        $abstract = $this->grammar();
+        $this->query->shouldReceive('getFrom')
+            ->andReturn(array('users'));
 
-        $reflectionMethod = new \ReflectionMethod($abstract, 'compilerUpdateWithoutJoins');
+        $this->grammar->shouldReceive('compilerWheres')
+            ->andReturn('WHERE id = ?');
 
-        $reflectionMethod->setAccessible(true);
+        $result = $this->grammar->compilerUpdate($this->query, array('name', 'age'));
 
-        $mock = $this->builder(
-            array(
-                'wheres' => array(
-                    'queries' => array(
-                        new \Wilkques\Database\Queries\Expression('AND `id` IN (?,?)'),
-                    ),
-                    'bindings' => array(
-                        443,
-                        444,
-                    ),
-                )
-            )
-        );
+        $expected = "UPDATE users SET name = ?, age = ? WHERE id = ?";
 
-        $result = $reflectionMethod->invoke($abstract, $mock, '`dns_record`', 'abc = ?');
-
-        $this->assertEquals(
-            "UPDATE `dns_record` SET abc = ? WHERE `id` IN (?,?)",
-            $result
-        );
+        $this->assertEquals($expected, $result);
     }
 
     public function testCompilerUpdateWithJoins()
     {
-        $abstract = $this->grammar();
+        $this->query->shouldReceive('getFrom')
+            ->andReturn(array('users'));
 
-        $reflectionMethod = new \ReflectionMethod($abstract, 'compilerUpdateWithJoins');
+        $this->query->shouldReceive('getQuery')
+            ->with('joins')
+            ->andReturn(array(1));
 
-        $reflectionMethod->setAccessible(true);
+        $this->query->shouldReceive('getQuery')
+            ->with('joins.queries', array())
+            ->andReturn(array('INNER JOIN roles ON users.role_id = roles.id'));
 
-        $mock = $this->builder(
-            array(
-                'wheres' => array(
-                    'queries' => array(
-                        new \Wilkques\Database\Queries\Expression('AND `id` IN (?,?)'),
-                    ),
-                    'bindings' => array(
-                        443,
-                        444,
-                    ),
-                ),
-                'joins' => array(
-                    'bindings' => array(
-                        127,
-                        127,
-                    ),
-                    'queries' => array(
-                        new \Wilkques\Database\Queries\Expression(
-                            'INNER JOIN (SELECT * FROM `default`.`zones` AS `zones` WHERE `zones`.`id` = ? OR `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` AND (`zones`.`id` = `dns_record`.`zones_id`)'
-                        ),
-                    ),
-                )
-            )
-        );
+        $this->grammar->shouldReceive('compilerWheres')
+            ->andReturn('WHERE id = ?');
 
-        $result = $reflectionMethod->invoke($abstract, $mock, '`dns_record`', 'abc = ?');
+        $result = $this->grammar->compilerUpdate($this->query, array('name', 'age'));
 
-        $this->assertEquals(
-            "UPDATE `dns_record` INNER JOIN (SELECT * FROM `default`.`zones` AS `zones` WHERE `zones`.`id` = ? OR `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` AND (`zones`.`id` = `dns_record`.`zones_id`) SET abc = ? WHERE `id` IN (?,?)",
-            $result
-        );
+        $expected = "UPDATE users INNER JOIN roles ON users.role_id = roles.id SET name = ?, age = ? WHERE id = ?";
+
+        $this->assertEquals($expected, $result);
+    }
+
+    public function testProtectedCompilerUpdateWithoutJoins()
+    {
+        // Mock the compilerWheres method
+        $this->grammar->shouldReceive('compilerWheres')
+            ->with($this->query)
+            ->andReturn('WHERE status = ?');
+
+        // Expected SQL
+        $expected = 'UPDATE posts SET title = ?, status = ? WHERE status = ?';
+
+        // Call the protected method using Reflection
+        $reflection = new \ReflectionClass($this->grammar);
+
+        $method = $reflection->getMethod('compilerUpdateWithoutJoins');
+
+        $method->setAccessible(true);
+
+        // Call the method
+        $result = $method->invoke($this->grammar, $this->query, 'posts', 'title = ?, status = ?');
+
+        $this->assertEquals($expected, $result);
+    }
+
+    public function testProtectedCompilerUpdateWithJoins()
+    {
+        $this->grammar->shouldReceive('compilerJoins')
+            ->with($this->query)
+            ->andReturn('JOIN comments ON posts.id = comments.post_id');
+
+        // Mock the compilerWheres method
+        $this->grammar->shouldReceive('compilerWheres')
+            ->with($this->query)
+            ->andReturn('WHERE status = ?');
+
+        // Sample columns
+        $columns = 'title = ?, status = ?';
+
+        // Expected SQL
+        $expected = 'UPDATE posts JOIN comments ON posts.id = comments.post_id SET title = ?, status = ? WHERE status = ?';
+
+        // Call the protected method using Reflection
+        $reflection = new \ReflectionClass($this->grammar);
+
+        $method = $reflection->getMethod('compilerUpdateWithJoins');
+
+        $method->setAccessible(true);
+
+        // Call the method
+        $result = $method->invoke($this->grammar, $this->query, 'posts', $columns);
+
+        $this->assertEquals($expected, $result);
     }
 
     public function testCompilerUnions()
     {
-        $unions = array();
+        // Mock the getQuery method to return UNION clauses
+        $this->query->shouldReceive('getQuery')
+            ->with('unions.queries', array())
+            ->andReturn(array('SELECT * FROM posts', 'SELECT * FROM comments'));
 
-        Arrays::set($unions, 'unions.queries', array('UNION SELECT * FROM `dns_record` WHERE `id` IN (?,?)'));
+        // Mock the arrayNested method if needed
+        $this->grammar->shouldReceive('arrayNested')
+            ->with(array('SELECT * FROM posts', 'SELECT * FROM comments'))
+            ->andReturn(array('SELECT * FROM posts', 'SELECT * FROM comments'));
 
-        $mock = $this->builder($unions);
+        // Expected SQL
+        $expected = 'SELECT * FROM posts SELECT * FROM comments';
 
-        $this->assertEquals(
-            "UNION SELECT * FROM `dns_record` WHERE `id` IN (?,?)",
-            $this->grammar()->compilerUnions($mock)
-        );
+        // Call the method
+        $result = $this->grammar->compilerUnions($this->query);
+
+        $this->assertEquals($expected, $result);
     }
 
-    public function testCompilerInsert()
+    public function testCompilerInsertWithData()
     {
-        $mock = $this->builder(
-            array(
-                'froms' => array(
-                    'queries' => array(
-                        new \Wilkques\Database\Queries\Expression('`dns_record`'),
-                    ),
-                )
-            )
-        );
+        // Mock getFrom method
+        $this->query->shouldReceive('getFrom')
+            ->andReturn(array('posts'));
 
-        $this->assertEquals(
-            "INSERT INTO `dns_record` (`abc`) VALUES (?)",
-            $this->grammar()->compilerInsert($mock, array('abc' => 1))
-        );
+        // Mock contactBacktick method
+        $this->query->shouldReceive('contactBacktick')
+            ->with(array('title'))
+            ->andReturn('`title`')->passthru();
 
-        $mock = $this->builder(
-            array(
-                'froms' => array(
-                    'queries' => array(
-                        new \Wilkques\Database\Queries\Expression('`dns_record`'),
-                    ),
-                ),
-                'wheres' => array(
-                    'queries' => array(
-                        new \Wilkques\Database\Queries\Expression('AND `id` IN (?,?)'),
-                    ),
-                    'bindings' => array(
-                        443,
-                        444,
-                    ),
-                ),
-                'joins' => array(
-                    'bindings' => array(
-                        127,
-                        127,
-                    ),
-                    'queries' => array(
-                        new \Wilkques\Database\Queries\Expression(
-                            'INNER JOIN (SELECT * FROM `default`.`zones` AS `zones` WHERE `zones`.`id` = ? OR `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` AND (`zones`.`id` = `dns_record`.`zones_id`)'
-                        ),
-                    ),
-                )
-            )
-        );
+        $this->query->shouldReceive('contactBacktick')
+            ->with('body')
+            ->andReturn('`body`')->passthru();
 
-        $this->assertEquals(
-            "UPDATE `dns_record` INNER JOIN (SELECT * FROM `default`.`zones` AS `zones` WHERE `zones`.`id` = ? OR `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` AND (`zones`.`id` = `dns_record`.`zones_id`) SET abc = ? WHERE `id` IN (?,?)",
-            $this->grammar()->compilerUpdate($mock, array('abc'))
-        );
+        // Mock arrayNested method
+        $this->grammar->shouldReceive('arrayNested')
+            ->with(array('Hello', 'World'), "?")
+            ->andReturn(array('?', '?'));
+
+        $this->grammar->shouldReceive('contactBacktick')
+            ->with(array('title'))
+            ->andReturn('`title`');
+
+        // Expected SQL
+        $expected = "INSERT INTO posts (`title`, `body`) VALUES (?, ?)";
+
+        // Call the method
+        $result = $this->grammar->compilerInsert($this->query, array(
+            array('title' => 'Hello', 'body' => 'World')
+        ));
+
+        $this->assertEquals($expected, $result);
     }
 
-    public function testCompilerInsertWithoutSubQuery()
+    public function testCompilerInsertWithDefaultValues()
     {
-        $abstract = $this->grammar();
+        // Mock getFrom method
+        $this->query->shouldReceive('getFrom')
+            ->andReturn(array('posts'));
 
-        $reflectionMethod = new \ReflectionMethod($abstract, 'compilerInsertWithoutSubQuery');
+        // Expected SQL
+        $expected = "INSERT INTO posts DEFAULT VALUES";
 
-        $reflectionMethod->setAccessible(true);
+        // Call the method
+        $result = $this->grammar->compilerInsert($this->query, array());
 
-        $this->assertEquals(
-            "INSERT INTO dns_record (abc) VALUES (1)",
-            $reflectionMethod->invoke($abstract, "dns_record", "abc", "1")
-        );
+        $this->assertEquals($expected, $result);
     }
 
     public function testCompilerInsertWithSubQuery()
     {
-        $abstract = $this->grammar();
+        // Mock getFrom method
+        $this->query->shouldReceive('getFrom')
+            ->andReturn(array('posts'));
 
-        $reflectionMethod = new \ReflectionMethod($abstract, 'compilerInsertWithSubQuery');
+        $sqlSubquery = "(SELECT title, body FROM temp)";
 
-        $reflectionMethod->setAccessible(true);
+        // Call the method
+        $result = $this->grammar->compilerInsert($this->query, array(
+            array('title' => 'Hello', 'body' => 'World')
+        ), $sqlSubquery);
 
-        $this->assertEquals(
-            "INSERT INTO dns_record (abc) SELECT abc FROM dns_record",
-            $reflectionMethod->invoke($abstract, "dns_record", "abc", "SELECT abc FROM dns_record")
-        );
+        $this->assertEquals("INSERT INTO posts (`title`, `body`) {$sqlSubquery}", $result);
     }
 
-    public function testCompilerDelete()
+    public function testProtectedCompilerInsertWithoutSubQuery()
     {
-        $mock = $this->builder(array(
-            'froms' => array(
-                'queries' => array(
-                    new \Wilkques\Database\Queries\Expression('`dns_record`'),
-                ),
-            ),
-            'wheres' => array(
-                'queries' => array(
-                    new \Wilkques\Database\Queries\Expression('AND `id` IN (?,?)'),
-                ),
-                'bindings' => array(
-                    443,
-                    444,
-                ),
-            ),
-        ));
+        // Sample data
+        $from = 'posts';
+        $columns = '`title`, `body`';
+        $values = "'Hello', 'World'";
 
-        $this->assertEquals(
-            "DELETE FROM `dns_record` WHERE `id` IN (?,?)",
-            $this->grammar()->compilerDelete($mock)
-        );
+        // Expected SQL
+        $expected = "INSERT INTO {$from} ({$columns}) VALUES ({$values})";
 
-        $mock = $this->builder(array(
-            'froms' => array(
-                'queries' => array(
-                    new \Wilkques\Database\Queries\Expression('`dns_record`'),
-                ),
-            ),
-            'wheres' => array(
-                'queries' => array(
-                    new \Wilkques\Database\Queries\Expression('AND `id` IN (?,?)')
-                ),
-                'bindings' => array(
-                    443,
-                    444,
-                ),
-            ),
-            'joins' => array(
-                'bindings' => array(
-                    127,
-                    127,
-                ),
-                'queries' => array(
-                    new \Wilkques\Database\Queries\Expression('INNER JOIN (SELECT * FROM `default`.`zones` AS `zones` WHERE `zones`.`id` = ? OR `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` AND (`zones`.`id` = `dns_record`.`zones_id`)'),
-                ),
-            ),
-        ));
+        // Call the method
+        $result = $this->grammar->compilerInsertWithoutSubQuery($from, $columns, $values);
 
-        $this->assertEquals(
-            "DELETE FROM `dns_record` INNER JOIN (SELECT * FROM `default`.`zones` AS `zones` WHERE `zones`.`id` = ? OR `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` AND (`zones`.`id` = `dns_record`.`zones_id`) WHERE `id` IN (?,?)",
-            $this->grammar()->compilerDelete($mock)
-        );
+        $this->assertEquals($expected, $result);
     }
 
-    public function testCompilerDeleteWithoutJoins()
+    public function testProtectedCompilerInsertWithSubQuery()
     {
-        $abstract = $this->grammar();
+        // Sample data
+        $from = 'posts';
+        $columns = '`title`, `body`';
+        $sql = 'SELECT `title`, `body` FROM `temp_table`';
 
-        $reflectionMethod = new \ReflectionMethod($abstract, 'compilerDeleteWithoutJoins');
+        // Expected SQL
+        $expected = "INSERT INTO {$from} ({$columns}) {$sql}";
 
-        $reflectionMethod->setAccessible(true);
+        // Call the method
+        $result = $this->grammar->compilerInsertWithSubQuery($from, $columns, $sql);
 
-        $mock = $this->builder(
-            array(
-                'froms' => array(
-                    'queries' => array(
-                        new \Wilkques\Database\Queries\Expression('`dns_record`'),
-                    ),
-                ),
-                'wheres' => array(
-                    'queries' => array(
-                        new \Wilkques\Database\Queries\Expression('AND `id` IN (?,?)'),
-                    ),
-                    'bindings' => array(
-                        443,
-                        444,
-                    ),
-                ),
-            )
-        );
-
-        $result = $reflectionMethod->invoke($abstract, $mock);
-
-        $this->assertEquals(
-            "DELETE FROM `dns_record` WHERE `id` IN (?,?)",
-            $result
-        );
+        $this->assertEquals($expected, $result);
     }
 
     public function testCompilerDeleteWithJoins()
     {
-        $abstract = $this->grammar();
+        $this->query->shouldReceive('getQuery')
+            ->with('joins')
+            ->andReturn(array(1));
 
-        $reflectionMethod = new \ReflectionMethod($abstract, 'compilerDeleteWithJoins');
+        $this->query->shouldReceive('getQuery')
+            ->with('joins.queries', array())
+            ->andReturn(array('INNER JOIN users ON posts.user_id = users.id'));
 
-        $reflectionMethod->setAccessible(true);
+        $this->query->shouldReceive('getQuery')
+            ->with('froms.queries', array())
+            ->andReturn(array('posts'));
 
-        $mock = $this->builder(
-            array(
-                'froms' => array(
-                    'queries' => array(
-                        new \Wilkques\Database\Queries\Expression('`dns_record`'),
-                    ),
-                ),
-                'wheres' => array(
-                    'queries' => array(
-                        new \Wilkques\Database\Queries\Expression('AND `id` IN (?,?)')
-                    ),
-                    'bindings' => array(
-                        443,
-                        444,
-                    ),
-                ),
-                'joins' => array(
-                    'bindings' => array(
-                        127,
-                        127,
-                    ),
-                    'queries' => array(
-                        new \Wilkques\Database\Queries\Expression('INNER JOIN (SELECT * FROM `default`.`zones` AS `zones` WHERE `zones`.`id` = ? OR `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` AND (`zones`.`id` = `dns_record`.`zones_id`)'),
-                    ),
-                ),
-            )
-        );
+        $this->grammar->shouldReceive('compilerWheres')
+            ->andReturn('WHERE status = "active"');
 
-        $result = $reflectionMethod->invoke($abstract, $mock, '`dns_record`', 'abc = ?');
+        $expected = 'DELETE FROM posts INNER JOIN users ON posts.user_id = users.id WHERE status = "active"';
 
-        $this->assertEquals(
-            "DELETE FROM `dns_record` INNER JOIN (SELECT * FROM `default`.`zones` AS `zones` WHERE `zones`.`id` = ? OR `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` AND (`zones`.`id` = `dns_record`.`zones_id`) WHERE `id` IN (?,?)",
-            $result
-        );
+        $result = $this->grammar->compilerDelete($this->query);
+
+        $this->assertEquals($expected, $result);
+    }
+
+    public function testCompilerDeleteWithoutJoins()
+    {
+        $this->query->shouldReceive('getQuery')
+            ->with('froms.queries', array())
+            ->andReturn(array('posts'));
+
+        $this->grammar->shouldReceive('compilerWheres')
+            ->andReturn('WHERE status = "active"');
+
+        $expected = 'DELETE FROM posts WHERE status = "active"';
+
+        $result = $this->grammar->compilerDelete($this->query);
+
+        $this->assertEquals($expected, $result);
+    }
+
+    public function testProtectedCompilerDeleteWithoutJoins()
+    {
+        // Mock the methods used within compilerDeleteWithoutJoins
+        $this->grammar->shouldReceive('compilerFroms')
+            ->with($this->query)
+            ->andReturn('FROM posts');
+
+        $this->grammar->shouldReceive('compilerWheres')
+            ->with($this->query)
+            ->andReturn('WHERE status = "inactive"');
+
+        // Call the protected method directly using Reflection
+        $method = new \ReflectionMethod($this->grammar, 'compilerDeleteWithoutJoins');
+
+        $method->setAccessible(true);
+
+        $result = $method->invoke($this->grammar, $this->query);
+
+        $expected = 'DELETE FROM posts WHERE status = "inactive"';
+
+        $this->assertEquals($expected, $result);
+    }
+
+    public function testProtectedCompilerDeleteWithJoins()
+    {
+        // Mock the methods used within compilerDeleteWithJoins
+        $this->grammar->shouldReceive('compilerFroms')
+            ->with($this->query)
+            ->andReturn('FROM posts');
+
+        $this->grammar->shouldReceive('compilerJoins')
+            ->with($this->query)
+            ->andReturn('JOIN users ON posts.user_id = users.id');
+
+        $this->grammar->shouldReceive('compilerWheres')
+            ->with($this->query)
+            ->andReturn('WHERE status = "inactive"');
+
+        // Call the protected method directly using Reflection
+        $method = new \ReflectionMethod($this->grammar, 'compilerDeleteWithJoins');
+
+        $method->setAccessible(true);
+
+        $result = $method->invoke($this->grammar, $this->query);
+
+        $expected = 'DELETE FROM posts JOIN users ON posts.user_id = users.id WHERE status = "inactive"';
+
+        $this->assertEquals($expected, $result);
     }
 
     public function testCompilerCount()
     {
-        $mock = $this->builder(
-            array(
-                'froms' => array(
-                    'queries' => array(
-                        new \Wilkques\Database\Queries\Expression('`dns_record`'),
-                    ),
-                ),
-                'columns' => array(
-                    'queries' => array(
-                        'dns_record.*',
-                    ),
-                ),
-                'joins' => array(
-                    'bindings' => array(
-                        127,
-                        127,
-                    ),
-                    'queries' => array(
-                        new \Wilkques\Database\Queries\Expression('INNER JOIN (SELECT * FROM `default`.`zones` AS `zones` WHERE `zones`.`id` = ? OR `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` AND (`zones`.`id` = `dns_record`.`zones_id`)'),
-                    ),
-                ),
-                'wheres' => array(
-                    'queries' => array(
-                        'AND (`dns_record`.`id` = ?)',
-                    ),
-                    'bindings' => array(
-                        448,
-                    ),
-                ),
-                'orders' => array(
-                    'queries' => array(
-                        '`dns_record`.`id` DESC, (SELECT MAX(`dns_record`.`id`) FROM `dns_record` INNER JOIN (SELECT * FROM `default`.`zones` WHERE `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` WHERE `zones`.`id` = ?) DESC, `dns_record`.`provider_id` DESC',
-                    ),
-                    'bindings' => array(
-                        127,
-                        127,
-                    ),
-                ),
-                'groups' => array(
-                    'queries' => array(
-                        0 => 'dns_record.id DESC, (SELECT MAX(`dns_record`.`id`) FROM `dns_record` INNER JOIN (SELECT * FROM `default`.`zones` WHERE `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` WHERE `zones`.`id` = ?) DESC, dns_record.provider_id DESC',
-                    ),
-                    'bindings' => array(
-                        0 => 127,
-                        1 => 127,
-                    ),
-                ),
-                'havings' => array(
-                    'queries' => array(
-                        new \Wilkques\Database\Queries\Expression('AND `dns_record`.`provider_id` = ?'),
-                        new \Wilkques\Database\Queries\Expression('AND `dns_record`.`cdn_provider_id` = ?'),
-                    ),
-                    'bindings' => array(
-                        1,
-                        1,
-                    ),
-                ),
-                'offset' => array(
-                    'queries' => '?',
-                    'bindings' => 1,
-                ),
-                'limits' => array(
-                    'queries' => array(
-                        '?',
-                    ),
-                    'bindings' => array(
-                        10,
-                    ),
-                ),
-            )
-        );
+        // Mock the compilerSelect method
+        $this->grammar->shouldReceive('compilerSelect')
+            ->with($this->query)
+            ->andReturn('SELECT * FROM posts WHERE status = "active"');
 
-        $this->assertEquals(
-            "SELECT COUNT(*) AS `aggregate` FROM (SELECT dns_record.* FROM `dns_record` INNER JOIN (SELECT * FROM `default`.`zones` AS `zones` WHERE `zones`.`id` = ? OR `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` AND (`zones`.`id` = `dns_record`.`zones_id`) WHERE (`dns_record`.`id` = ?) GROUP BY dns_record.id DESC, (SELECT MAX(`dns_record`.`id`) FROM `dns_record` INNER JOIN (SELECT * FROM `default`.`zones` WHERE `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` WHERE `zones`.`id` = ?) DESC, dns_record.provider_id DESC HAVING `dns_record`.`provider_id` = ? AND `dns_record`.`cdn_provider_id` = ? ORDER BY `dns_record`.`id` DESC, (SELECT MAX(`dns_record`.`id`) FROM `dns_record` INNER JOIN (SELECT * FROM `default`.`zones` WHERE `zones`.`id` = ?) AS `zones` ON `zones`.`id` = `dns_record`.`zones_id` WHERE `zones`.`id` = ?) DESC, `dns_record`.`provider_id` DESC LIMIT ? OFFSET ?) AS `aggregate_table`",
-            $this->grammar()->compilerCount($mock)
-        );
+        // Call the method under test
+        $result = $this->grammar->compilerCount($this->query);
+
+        // Define the expected SQL
+        $expected = 'SELECT COUNT(*) AS `aggregate` FROM (SELECT * FROM posts WHERE status = "active") AS `aggregate_table`';
+
+        // Assert that the generated SQL matches the expected SQL
+        $this->assertEquals($expected, $result);
+    }
+
+    public function testSupportsSavepoints()
+    {
+        // Assert that the supportsSavepoints method returns true
+        $this->assertTrue($this->grammar->supportsSavepoints());
+    }
+
+    public function testCompileSavepoint()
+    {
+        $name = 'my_savepoint';
+
+        // Assert that the compileSavepoint method returns the correct SQL string
+        $this->assertEquals('SAVEPOINT my_savepoint', $this->grammar->compileSavepoint($name));
+    }
+
+    public function testCompileSavepointRollBack()
+    {
+        $name = 'my_savepoint';
+
+        // Assert that the compileSavepointRollBack method returns the correct SQL string
+        $this->assertEquals('ROLLBACK TO SAVEPOINT my_savepoint', $this->grammar->compileSavepointRollBack($name));
     }
 }

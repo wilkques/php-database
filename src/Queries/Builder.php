@@ -22,14 +22,23 @@ class Builder
      */
     protected $methods = array(
         'set'       => array(
-            'table', 'username', 'password', 'database', 'host',
-            'raw', 'from',
+            'table',
+            'username',
+            'password',
+            'database',
+            'host',
+            'raw',
+            'from',
         ),
         'process'   => array(
             'insertGetId',
         ),
         'get'       => array(
-            'parseQueryLog', 'lastParseQuery', 'lastInsertId', 'queryLog', 'lastQueryLog',
+            'parseQueryLog',
+            'lastParseQuery',
+            'lastInsertId',
+            'queryLog',
+            'lastQueryLog',
         )
     );
 
@@ -38,22 +47,62 @@ class Builder
      *
      * @var string[]
      */
-    public $operators = array(
-        '=', '<', '>', '<=', '>=', '<>', '!=', '<=>',
-        'like', 'like binary', 'not like', 'ilike',
-        '&', '|', '^', '<<', '>>', '&~',
-        'rlike', 'not rlike', 'regexp', 'not regexp',
-        '~', '~*', '!~', '!~*', 'similar to',
-        'not similar to', 'not ilike', '~~*', '!~~*',
-        'is not', 'is', 'not in', 'in', 'exists',
-        'not exists', 'between', 'not between',
+    protected $operators = array(
+        '=',
+        '<',
+        '>',
+        '<=',
+        '>=',
+        '<>',
+        '!=',
+        '<=>',
+        'like',
+        'like binary',
+        'not like',
+        'ilike',
+        '&',
+        '|',
+        '^',
+        '<<',
+        '>>',
+        '&~',
+        'rlike',
+        'not rlike',
+        'regexp',
+        'not regexp',
+        '~',
+        '~*',
+        '!~',
+        '!~*',
+        'similar to',
+        'not similar to',
+        'not ilike',
+        '~~*',
+        '!~~*',
+        'is not',
+        'is',
+        'not in',
+        'in',
+        'exists',
+        'not exists',
+        'between',
+        'not between',
     );
 
     /** @var array */
     protected $bindingComponents = array(
-        'columns', 'froms', 'joins', 'insert', 'update',
-        'wheres', 'groups', 'havings', 'orders', 'limits',
-        'offset', 'unions',
+        'columns',
+        'froms',
+        'joins',
+        'insert',
+        'update',
+        'wheres',
+        'groups',
+        'havings',
+        'orders',
+        'limits',
+        'offset',
+        'unions',
     );
 
     /**
@@ -288,7 +337,7 @@ class Builder
     }
 
     /**
-     * @param callback|static|Closure $callback
+     * @param string|callback|static|Closure $callback
      * 
      * @return array
      * 
@@ -296,7 +345,7 @@ class Builder
      */
     protected function createSub($callback)
     {
-        if ($callback instanceof Closure) {
+        if ($callback instanceof Closure || is_callable($callback)) {
             call_user_func($callback, $callback = $this->forSubQuery());
         }
 
@@ -781,7 +830,10 @@ class Builder
     {
         return array_replace(
             array(
-                null, null, null, $join
+                null,
+                null,
+                null,
+                $join
             ),
             $value
         );
@@ -2545,34 +2597,6 @@ class Builder
     public function sharedLock()
     {
         return $this->setQuery('lock', 'sharedLock');
-    }
-
-    /**
-     * @param string|Expression|...string ...$value
-     * 
-     * @return string
-     */
-    public function contactBacktick($value)
-    {
-        if ($value instanceof Expression) {
-            return (string) $value;
-        }
-
-        if (func_num_args() > 1) {
-            $value = func_get_args();
-        } else if (is_string($value)) {
-            preg_match_all('/(\w+)/', $value, $matches);
-
-            $value = array_pop($matches);
-        }
-
-        $value = Arrays::map($value, function ($value) {
-            $value = trim($value, '`');
-
-            return "`{$value}`";
-        });
-
-        return join(".", $value);
     }
 
     /**

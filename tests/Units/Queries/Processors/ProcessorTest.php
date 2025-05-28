@@ -2,97 +2,51 @@
 
 namespace Wilkques\Database\Tests\Units\Queries\Processors;
 
-use PHPUnit\Framework\TestCase;
+use Mockery\Adapter\Phpunit\MockeryTestCase;
 
-class ProcessorTest extends TestCase
+class ProcessorTest extends MockeryTestCase
 {
-    private function builder($queries = array())
-    {
-        $abstract = $this->getMockBuilder('Wilkques\Database\Queries\Builder');
+    protected $query;
 
-        $abstract->disableOriginalConstructor();
+    protected $connection;
 
-        /** @var \Wilkques\Database\Queries\Builder */
-        $abstract = $abstract->getMockForAbstractClass();
-
-        return $abstract->setQueries($queries);
-    }
-
-    private function grammar()
-    {
-        return $this->getMockForAbstractClass(
-            'Wilkques\Database\Queries\Grammar\Grammar',
-            array(),
-            '',
-            false
-        );
-    }
-
-    private function dbResult()
-    {
-        $createMock = method_exists($this, 'createMock') ? 'createMock' : 'getMock';
-
-        return call_user_func(array($this, $createMock), 'Wilkques\Database\Connections\ResultInterface');
-    }
-
-    private function connection()
-    {
-        return $this->getMockForAbstractClass(
-            'Wilkques\Database\Connections\Connections',
-            array(),
-            '',
-            false
-        );
-    }
-
-    private function processor()
-    {
-        $createMock = method_exists($this, 'createMock') ? 'createMock' : 'getMock';
-
-        $mock = call_user_func(array($this, $createMock), 'Wilkques\Database\Queries\Processors\ProcessorInterface');
-
-        $mock->expects($this->once())->method('processInsertGetId')->willReturn(1);
-
-        return $mock;
-    }
-
-    private function resultConnectForInsertAndUpdate()
-    {
-        $connection = $this->connection();
-
-        $result = $this->dbResult();
-
-        $connection->expects($this->any())->method('exec')
-            ->willReturnCallback(function ($query, $bindings) use ($connection, $result) {
-                $connection->setQueryLog(compact('query', 'bindings'));
-
-                return $result;
-            });
-
-        return $connection;
-    }
+    protected $processor;
 
     public function testProcessInsertGetId()
     {
-        $builder = $this->builder();
+        $this->connection->shouldReceive('getConnection->lastInsertId')
+            ->once()
+            ->andReturn(1);
 
-        $builder->setConnection(
-            $this->resultConnectForInsertAndUpdate()
-        );
+        $this->query->shouldReceive('getConnection')
+            ->once()
+            ->andReturn($this->connection);
 
-        $builder->setGrammar(
-            $this->grammar()
-        );
+        $this->query->shouldReceive('insert')
+            ->once()
+            ->with(array('key' => 'value'));
 
-        $builder->from('abc');
+        $result = $this->processor->processInsertGetId($this->query, array('key' => 'value'));
 
-        $processor = $this->processor();
+        $this->assertEquals(1, $result);
+    }
 
-        $result = $processor->processInsertGetId($builder, array('abc' => 1));
+    public function testProcessInsertGetIdWithSequence()
+    {
+        $this->connection->shouldReceive('getConnection->lastInsertId')
+            ->once()
+            ->with('id')
+            ->andReturn(1);
 
-        $this->assertTrue(
-            is_numeric($result)
-        );
+        $this->query->shouldReceive('getConnection')
+            ->once()
+            ->andReturn($this->connection);
+
+        $this->query->shouldReceive('insert')
+            ->once()
+            ->with(array('key' => 'value'));
+
+        $result = $this->processor->processInsertGetId($this->query, array('key' => 'value'), 'id');
 
         $this->assertEquals(1, $result);
     }
