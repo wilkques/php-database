@@ -733,9 +733,9 @@ class BuilderTest extends MockeryTestCase
             ->with('`table` AS `alias`')
             ->andReturnSelf();
 
-        $result = $this->query->from('table', 'alias');
+        $result = $query->from('table', 'alias');
 
-        $this->assertSame($this->query, $result);
+        $this->assertSame($query, $result);
     }
 
     public function testFromClosure()
