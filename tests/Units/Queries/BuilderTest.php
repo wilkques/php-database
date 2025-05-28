@@ -1062,7 +1062,7 @@ class BuilderTest extends MockeryTestCase
 
     public function testSelectWithSelfInstance()
     {
-        $subQuery = $this->newQuery(); 
+        $subQuery = $this->newQuery();
 
         // Mock the selectSub method
         $this->query->shouldReceive('selectSub')
@@ -1229,7 +1229,13 @@ class BuilderTest extends MockeryTestCase
 
     public function testInvalidOperatorReturnsFalseForSupportedOperators()
     {
-        $supportedOperators = $this->query->operators;
+        $reflection = new \ReflectionClass($this->query);
+
+        $property = $reflection->getProperty('operators');
+
+        $property->setAccessible(true);
+
+        $supportedOperators = $property->getValue($this->query);
 
         foreach ($supportedOperators as $operator) {
             $this->assertFalse($this->query->invalidOperator($operator));
