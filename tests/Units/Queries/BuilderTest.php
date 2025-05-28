@@ -727,15 +727,17 @@ class BuilderTest extends MockeryTestCase
 
     public function testFromSingleTableWithAlias()
     {
-        $query = $this->newQuery();
-
-        $query->shouldReceive('fromRaw')
+        $this->query->shouldReceive('fromRaw')
+            ->with('`table` AS `alias`')
+            ->andReturnSelf();
+        
+        $this->query->shouldReceive('contactBacktick')
             ->with('`table` AS `alias`')
             ->andReturnSelf();
 
-        $result = $query->from('table', 'alias');
+        $result = $this->query->from('table', 'alias');
 
-        $this->assertSame($query, $result);
+        $this->assertSame($this->query, $result);
     }
 
     public function testFromClosure()
