@@ -727,7 +727,9 @@ class BuilderTest extends MockeryTestCase
 
     public function testFromSingleTableWithAlias()
     {
-        $this->query->shouldReceive('fromRaw')
+        $query = $this->newQuery();
+
+        $query->shouldReceive('fromRaw')
             ->with('`table` AS `alias`')
             ->andReturnSelf();
 
