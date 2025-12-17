@@ -37,7 +37,7 @@
 
 1. start
     ```php
-    $connection = \Wilkques\Database\Database::connect('<host>', '<username>', '<password>', '<database>', '<port>', '<character>');
+    $connection = \Wilkques\Database\Database::connect('<DB driver>', '<host>', '<username>', '<password>', '<database>', '<port>', '<character>');
 
     // or
 
