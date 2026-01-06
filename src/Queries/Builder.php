@@ -421,13 +421,11 @@ class Builder
      *
      * @throws \InvalidArgumentException
      */
-    protected function queriesPush($query, $binding, $type = 'wheres')
+    protected function addQueryBindings($query, $binding, $type = 'wheres')
     {
-        $this->queryPush($query, $type);
+        $this->addQuery($query, $type);
 
-        if (!empty($binding)) {
-            $this->bindingPush($binding, $type);
-        }
+        $this->addBinding($binding, $type);
 
         return $this;
     }
@@ -440,7 +438,7 @@ class Builder
      *
      * @throws \InvalidArgumentException
      */
-    protected function queryPush($query, $type = 'wheres')
+    protected function addQuery($query, $type = 'wheres')
     {
         $this->queries[$type]['queries'][] = $query;
 
@@ -457,7 +455,7 @@ class Builder
      *
      * @throws \InvalidArgumentException
      */
-    protected function bindingPush($values, $type = 'wheres')
+    protected function addBinding($values, $type = 'wheres')
     {
         if (is_array($values)) {
             if (!isset($this->queries[$type]['bindings'])) {
@@ -530,7 +528,7 @@ class Builder
      */
     public function fromRaw($expression, $bindings = array())
     {
-        return $this->queriesPush($this->raw($expression), $bindings, 'froms');
+        return $this->addQueryBindings($this->raw($expression), $bindings, 'froms');
     }
 
     /**
@@ -631,7 +629,7 @@ class Builder
      */
     public function selectRaw($expression, $bindings = array())
     {
-        return $this->queriesPush($this->raw($expression), $bindings, 'columns');
+        return $this->addQueryBindings($this->raw($expression), $bindings, 'columns');
     }
 
     /**
@@ -651,7 +649,7 @@ class Builder
             } else {
                 $column = $column == '*' ? $column : $this->queryAsContactBacktick($column, $as);
 
-                $this->queryPush($column, 'columns');
+                $this->addQuery($column, 'columns');
             }
         }
 
@@ -790,7 +788,7 @@ class Builder
         if (in_array($type, array('groups', 'orders'))) {
             $sql = join(', ', $queries);
 
-            $this->queryPush($sql, $type);
+            $this->addQuery($sql, $type);
         } else {
             $sql = join(' ', $queries);
 
@@ -798,13 +796,13 @@ class Builder
 
             $join = strtoupper($join);
 
-            $this->queryPush("{$join} ({$sql})", $type);
+            $this->addQuery("{$join} ({$sql})", $type);
         }
 
         $bindings = $query->getQuery("{$type}.bindings");
 
         if (!empty($bindings)) {
-            $this->bindingPush($bindings, $type);
+            $this->addBinding($bindings, $type);
         }
 
         return $this;
@@ -904,7 +902,7 @@ class Builder
      */
     public function whereRaw($sql, $bindings = array(), $andOr = 'and')
     {
-        return $this->queriesPush($this->raw("{$andOr} {$sql}"), $bindings);
+        return $this->addQueryBindings($this->raw("{$andOr} {$sql}"), $bindings);
     }
 
     /**
@@ -952,7 +950,7 @@ class Builder
             list($sub, $bindings) = $this->createSub($column);
 
             if (!empty($bindings)) {
-                $this->bindingPush($bindings);
+                $this->addBinding($bindings);
             }
 
             return $this->where($this->raw('(' . $sub . ')'), $operator, $value, $andOr);
@@ -1496,7 +1494,7 @@ class Builder
      */
     public function groupByRaw($sql, $bindings = array())
     {
-        return $this->queriesPush($this->raw($sql), $bindings, 'groups');
+        return $this->addQueryBindings($this->raw($sql), $bindings, 'groups');
     }
 
     /**
@@ -1645,7 +1643,7 @@ class Builder
      */
     public function havingRaw($sql, $bindings = array(), $andOr = 'and')
     {
-        return $this->queriesPush($this->raw("{$andOr} {$sql}"), $bindings, 'havings');
+        return $this->addQueryBindings($this->raw("{$andOr} {$sql}"), $bindings, 'havings');
     }
 
     /**
@@ -1694,7 +1692,7 @@ class Builder
             list($sub, $bindings) = $this->createSub($column);
 
             if (!empty($bindings)) {
-                $this->bindingPush($bindings, 'havings');
+                $this->addBinding($bindings, 'havings');
             }
 
             return $this->having($this->raw('(' . $sub . ')'), $operator, $value, $andOr);
@@ -1708,7 +1706,7 @@ class Builder
             list($sub, $bindings) = $this->createSub($value);
 
             if (!empty($bindings)) {
-                $this->bindingPush($bindings, 'havings');
+                $this->addBinding($bindings, 'havings');
             }
 
             return $this->having($column, $operator, $this->raw('(' . $sub . ')'), $andOr);
@@ -1794,7 +1792,7 @@ class Builder
      */
     public function orderByRaw($sql, $bindings = array())
     {
-        return $this->queriesPush($this->raw($sql), $bindings, 'orders');
+        return $this->addQueryBindings($this->raw($sql), $bindings, 'orders');
     }
 
     /**
@@ -1951,7 +1949,7 @@ class Builder
             }
         }
 
-        return $this->bindingPush($values, 'update')->getConnection()->exec(
+        return $this->addBinding($values, 'update')->getConnection()->exec(
             $this->getGrammar()->compilerUpdate($this, $columns),
             $this->getBindings()
         )->rowCount();
@@ -1974,7 +1972,7 @@ class Builder
 
         $formula = $isIncrement ? '+' : '-';
 
-        return $this->bindingPush(array($amount), 'update')
+        return $this->addBinding(array($amount), 'update')
             ->update(
                 array_merge(
                     $data,
@@ -2026,7 +2024,7 @@ class Builder
             return array_merge($carry, $values);
         });
 
-        return $this->bindingPush($bindings, 'insert')->getConnection()->exec(
+        return $this->addBinding($bindings, 'insert')->getConnection()->exec(
             $this->getGrammar()->compilerInsert($this, $data),
             $this->getBindings()
         )->rowCount();
@@ -2042,7 +2040,7 @@ class Builder
     {
         list($sql, $bindings) = $this->createSub($query);
 
-        return $this->bindingPush($bindings, 'insert')->getConnection()->exec(
+        return $this->addBinding($bindings, 'insert')->getConnection()->exec(
             $this->getGrammar()->compilerInsert($this, array_flip($columns), $sql),
             $this->getBindings()
         )->rowCount();
@@ -2142,7 +2140,7 @@ class Builder
             $queries = Arrays::get($queriesArguments, 'queries');
 
             if (!empty($bindings)) {
-                $this->bindingPush($bindings, 'joins');
+                $this->addBinding($bindings, 'joins');
             }
 
             $sql = join(' ', $queries);
@@ -2151,7 +2149,7 @@ class Builder
 
             $type = strtoupper($type);
 
-            return $this->queryPush($this->raw("{$type} JOIN {$table} {$method} {$sql}"), 'joins');
+            return $this->addQuery($this->raw("{$type} JOIN {$table} {$method} {$sql}"), 'joins');
         }
 
         // 如果帶入參數只有兩個，則 $second = $operator and $operator = '='
@@ -2169,7 +2167,7 @@ class Builder
 
         $type = strtoupper($type);
 
-        return $this->queryPush($this->raw("{$type} JOIN {$table} {$method} {$first} {$operator} {$second}"), 'joins');
+        return $this->addQuery($this->raw("{$type} JOIN {$table} {$method} {$first} {$operator} {$second}"), 'joins');
     }
 
     /**
@@ -2206,7 +2204,7 @@ class Builder
         list($query, $bindings) = $this->createSub($table);
 
         if (!empty($bindings)) {
-            $this->bindingPush($bindings, 'joins');
+            $this->addBinding($bindings, 'joins');
         }
 
         return $this->join($this->raw("({$query}) AS {$this->contactBacktick($as)}"), $first, $operator, $second, $type, $isWhere);
@@ -2569,7 +2567,7 @@ class Builder
 
         $type = $all ? 'UNION ALL' : 'UNION';
 
-        return $this->queriesPush($this->raw("{$type} {$queries}"), $bindings, 'unions');
+        return $this->addQueryBindings($this->raw("{$type} {$queries}"), $bindings, 'unions');
     }
 
     /**

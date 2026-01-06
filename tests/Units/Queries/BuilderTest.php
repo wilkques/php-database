@@ -491,13 +491,13 @@ class BuilderTest extends MockeryTestCase
         $this->assertEquals($expected, $result);
     }
 
-    public function testQueriesPushWithBinding()
+    public function testaddQueryBindingsWithBinding()
     {
-        $this->query->shouldReceive('queryPush')
+        $this->query->shouldReceive('addQuery')
             ->with('some_query', 'wheres')
             ->once();
 
-        $this->query->shouldReceive('bindingPush')
+        $this->query->shouldReceive('addBinding')
             ->with('some_binding', 'wheres')
             ->once();
 
@@ -508,7 +508,7 @@ class BuilderTest extends MockeryTestCase
 
     public function testQueriesPushWithoutBinding()
     {
-        $this->query->shouldReceive('queryPush')
+        $this->query->shouldReceive('addQuery')
             ->with('some_query', 'wheres')
             ->once();
 
@@ -517,13 +517,13 @@ class BuilderTest extends MockeryTestCase
         $this->assertSame($this->query, $result);
     }
 
-    public function testQueryPush()
+    public function testaddQuery()
     {
         $property = $this->setProtectedProperty($this->query, 'queries', array(
             'wheres' => array('queries' => array()),
         ));
 
-        $result = $this->query->queryPush('some_query', 'wheres');
+        $result = $this->query->addQuery('some_query', 'wheres');
 
         $expectedQueries = array(
             'wheres' => array('queries' => array('some_query')),
@@ -534,7 +534,7 @@ class BuilderTest extends MockeryTestCase
         $this->assertSame($this->query, $result);
     }
 
-    public function testBindingPushWithArray()
+    public function testaddBindingWithArray()
     {
         $property = $this->setProtectedProperty($this->query, 'queries', array(
             'wheres' => array('bindings' => array()),
@@ -544,7 +544,7 @@ class BuilderTest extends MockeryTestCase
             ->with(array('value1', 'value2'))
             ->andReturn(array('processed_value1', 'processed_value2'));
 
-        $result = $this->query->bindingPush(array('value1', 'value2'), 'wheres');
+        $result = $this->query->addBinding(array('value1', 'value2'), 'wheres');
 
         $expectedQueries = array(
             'wheres' => array('bindings' => array('processed_value1', 'processed_value2')),
@@ -555,13 +555,13 @@ class BuilderTest extends MockeryTestCase
         $this->assertSame($this->query, $result);
     }
 
-    public function testBindingPushWithSingleValue()
+    public function testaddBindingWithSingleValue()
     {
         $property = $this->setProtectedProperty($this->query, 'queries', array(
             'wheres' => array('bindings' => array()),
         ));
 
-        $result = $this->query->bindingPush('single_value', 'wheres');
+        $result = $this->query->addBinding('single_value', 'wheres');
 
         $expectedQueries = array(
             'wheres' => array('bindings' => array('single_value')),
@@ -572,7 +572,7 @@ class BuilderTest extends MockeryTestCase
         $this->assertSame($this->query, $result);
     }
 
-    public function testBindingPushWithExpression()
+    public function testaddBindingWithExpression()
     {
         $property = $this->setProtectedProperty($this->query, 'queries', array(
             'wheres' => array('bindings' => array()),
@@ -580,7 +580,7 @@ class BuilderTest extends MockeryTestCase
 
         $expression = new Expression('NOW()');
 
-        $result = $this->query->bindingPush($expression, 'wheres');
+        $result = $this->query->addBinding($expression, 'wheres');
 
         $expectedQueries = array(
             'wheres' => array('bindings' => array()),
@@ -979,7 +979,7 @@ class BuilderTest extends MockeryTestCase
             ->with($column, null)
             ->andReturn('`users`.`id`');
 
-        $this->query->shouldReceive('queryPush')
+        $this->query->shouldReceive('addQuery')
             ->with('`users`.`id`', 'columns')
             ->andReturnSelf();
 
@@ -1000,11 +1000,11 @@ class BuilderTest extends MockeryTestCase
             ->with('users.name', 1)
             ->andReturn('`users`.`name`');
 
-        $this->query->shouldReceive('queryPush')
+        $this->query->shouldReceive('addQuery')
             ->with('`users`.`id`', 'columns')
             ->andReturnSelf();
 
-        $this->query->shouldReceive('queryPush')
+        $this->query->shouldReceive('addQuery')
             ->with('`users`.`name`', 'columns')
             ->andReturnSelf();
 
@@ -1017,7 +1017,7 @@ class BuilderTest extends MockeryTestCase
     {
         $wildcard = '*';
 
-        $this->query->shouldReceive('queryPush')
+        $this->query->shouldReceive('addQuery')
             ->with($wildcard, 'columns')
             ->andReturnSelf();
 
@@ -1051,7 +1051,7 @@ class BuilderTest extends MockeryTestCase
             ->with($column, $alias)
             ->andReturn('`users`.`id` AS `user_id`');
 
-        $this->query->shouldReceive('queryPush')
+        $this->query->shouldReceive('addQuery')
             ->with('`users`.`id` AS `user_id`', 'columns')
             ->andReturnSelf();
 
