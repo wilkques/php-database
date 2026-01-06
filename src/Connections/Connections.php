@@ -313,13 +313,9 @@ abstract class Connections
     public function getParseQueryLog()
     {
         return array_map(function ($queryLog) {
-            $index = 0;
+            $binding = array_shift($queryLog['bindings']);
 
-            return preg_replace_callback('/\?/', function ($match) use (&$index, $queryLog) {
-                $binding = Arrays::get($queryLog, "bindings.{$index}");
-
-                $index++;
-
+            return preg_replace_callback('/\?/', function () use ($binding) {
                 if (is_numeric($binding)) {
                     return $binding;
                 }
