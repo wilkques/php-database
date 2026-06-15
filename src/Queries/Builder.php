@@ -376,14 +376,14 @@ class Builder
         $newArray = array();
 
         foreach ($bindings as $key => $value) {
-            $result = $callback($value, $key);
+            $result = $callback($value);
 
             if ($result || is_numeric($result)) {
                 $newArray[$key] = $value;
             }
         }
 
-        return array_values($bindings);
+        return array_values($newArray);
     }
 
     /**
@@ -2018,7 +2018,9 @@ class Builder
             }
 
             $values = array_values(
-                array_filter($self->bindingsNested($values))
+                array_filter($self->bindingsNested($values), function($value) {
+                    return $value !== null;
+                })
             );
 
             return array_merge($carry, $values);

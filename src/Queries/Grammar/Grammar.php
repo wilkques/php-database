@@ -406,7 +406,7 @@ class Grammar
 
         if (!$sql) {
             $values = Arrays::map($data, function ($values) use ($query) {
-                return join(', ', $query->arrayNested($values, "?"));
+                return join(', ', $this->arrayNested($values, "?"));
             });
 
             $values = join('), (', $values);
