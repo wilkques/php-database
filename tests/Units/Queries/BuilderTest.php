@@ -1247,4 +1247,719 @@ class BuilderTest extends MockeryTestCase
         $this->assertFalse($this->query->invalidOperator('LIKE')); // 大寫
         $this->assertFalse($this->query->invalidOperator('Not Like')); // 混合大小寫
     }
+
+    // =========================================================================
+    // setTable 隔離測試 (Bug Fix 驗證)
+    // =========================================================================
+
+    public function testSetTableReturnsNewQueryInstance()
+    {
+        $newQuery = Mockery::mock('Wilkques\Database\Queries\Builder');
+        $newQuery->shouldReceive('from')->andReturnSelf();
+
+        $this->query->shouldReceive('newQuery')->andReturn($newQuery);
+
+        $result = $this->query->table('users');
+
+        $this->assertNotSame($this->query, $result);
+        $this->assertInstanceOf('Wilkques\Database\Queries\Builder', $result);
+    }
+
+    public function testSetTableCallsNewQueryBeforeFrom()
+    {
+        $newQuery = Mockery::mock('Wilkques\Database\Queries\Builder');
+        $newQuery->shouldReceive('from')->with('users', null)->once()->andReturnSelf();
+
+        $this->query->shouldReceive('newQuery')->once()->andReturn($newQuery);
+
+        $this->query->table('users');
+
+        $newQuery->shouldHaveReceived('from')->once();
+    }
+
+    public function testSetTableDoesNotCarryOverWheres()
+    {
+        $firstQuery = Mockery::mock('Wilkques\Database\Queries\Builder');
+        $firstQuery->shouldReceive('from')->andReturnSelf();
+
+        $secondQuery = Mockery::mock('Wilkques\Database\Queries\Builder');
+        $secondQuery->shouldReceive('from')->andReturnSelf();
+
+        $this->query->shouldReceive('newQuery')
+            ->andReturn($firstQuery, $secondQuery);
+
+        $first = $this->query->table('users');
+        $second = $this->query->table('posts');
+
+        $this->assertNotSame($first, $second);
+        $this->assertSame($firstQuery, $first);
+        $this->assertSame($secondQuery, $second);
+    }
+
+    // =========================================================================
+    // WHERE 系列
+    // =========================================================================
+
+    public function testWhereRawAddsToWhereQueries()
+    {
+        $this->query->whereRaw('id = 1');
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['wheres']['queries']);
+    }
+
+    public function testOrWhereRawAddsToWhereQueries()
+    {
+        $this->query->orWhereRaw('id = 1');
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['wheres']['queries']);
+    }
+
+    public function testWhereRawWithBindings()
+    {
+        $this->query->whereRaw('id = ?', 1);
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['wheres']['queries']);
+        $this->assertNotEmpty($queries['wheres']['bindings']);
+    }
+
+    public function testWhereAddsToWhereQueries()
+    {
+        $this->query->shouldReceive('contactBacktick')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($v) { return "`{$v}`"; });
+
+        $this->query->where('id', '=', 1);
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['wheres']['queries']);
+    }
+
+    public function testWhereWithTwoArgsDefaultsToEquals()
+    {
+        $this->query->shouldReceive('contactBacktick')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($v) { return "`{$v}`"; });
+
+        $this->query->where('status', 'active');
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['wheres']['queries']);
+    }
+
+    public function testOrWhereAddsToWhereQueries()
+    {
+        $this->query->shouldReceive('contactBacktick')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($v) { return "`{$v}`"; });
+
+        $this->query->orWhere('id', 1);
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['wheres']['queries']);
+    }
+
+    public function testWhereNullAddsToWhereQueries()
+    {
+        $this->query->shouldReceive('contactBacktick')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($v) { return "`{$v}`"; });
+
+        $this->query->whereNull('deleted_at');
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['wheres']['queries']);
+    }
+
+    public function testOrWhereNullAddsToWhereQueries()
+    {
+        $this->query->shouldReceive('contactBacktick')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($v) { return "`{$v}`"; });
+
+        $this->query->orWhereNull('deleted_at');
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['wheres']['queries']);
+    }
+
+    public function testWhereNotNullAddsToWhereQueries()
+    {
+        $this->query->shouldReceive('contactBacktick')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($v) { return "`{$v}`"; });
+
+        $this->query->whereNotNull('email');
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['wheres']['queries']);
+    }
+
+    public function testOrWhereNotNullAddsToWhereQueries()
+    {
+        $this->query->shouldReceive('contactBacktick')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($v) { return "`{$v}`"; });
+
+        $this->query->orWhereNotNull('email');
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['wheres']['queries']);
+    }
+
+    public function testWhereInAddsToWhereQueries()
+    {
+        $this->query->shouldReceive('contactBacktick')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($v) { return "`{$v}`"; });
+
+        $this->query->whereIn('id', array(1, 2, 3));
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['wheres']['queries']);
+    }
+
+    public function testOrWhereInAddsToWhereQueries()
+    {
+        $this->query->shouldReceive('contactBacktick')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($v) { return "`{$v}`"; });
+
+        $this->query->orWhereIn('id', array(1, 2));
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['wheres']['queries']);
+    }
+
+    public function testWhereNotInAddsToWhereQueries()
+    {
+        $this->query->shouldReceive('contactBacktick')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($v) { return "`{$v}`"; });
+
+        $this->query->whereNotIn('status', array('banned', 'inactive'));
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['wheres']['queries']);
+    }
+
+    public function testOrWhereNotInAddsToWhereQueries()
+    {
+        $this->query->shouldReceive('contactBacktick')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($v) { return "`{$v}`"; });
+
+        $this->query->orWhereNotIn('status', array('banned'));
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['wheres']['queries']);
+    }
+
+    public function testWhereBetweenAddsToWhereQueries()
+    {
+        $this->query->shouldReceive('contactBacktick')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($v) { return "`{$v}`"; });
+
+        $this->query->whereBetween('age', array(18, 30));
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['wheres']['queries']);
+    }
+
+    public function testOrWhereBetweenAddsToWhereQueries()
+    {
+        $this->query->shouldReceive('contactBacktick')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($v) { return "`{$v}`"; });
+
+        $this->query->orWhereBetween('age', array(18, 30));
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['wheres']['queries']);
+    }
+
+    public function testWhereNotBetweenAddsToWhereQueries()
+    {
+        $this->query->shouldReceive('contactBacktick')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($v) { return "`{$v}`"; });
+
+        $this->query->whereNotBetween('score', array(0, 100));
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['wheres']['queries']);
+    }
+
+    public function testOrWhereNotBetweenAddsToWhereQueries()
+    {
+        $this->query->shouldReceive('contactBacktick')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($v) { return "`{$v}`"; });
+
+        $this->query->orWhereNotBetween('score', array(0, 100));
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['wheres']['queries']);
+    }
+
+    public function testWhereExistsAddsToWhereQueries()
+    {
+        $this->query->shouldReceive('createSub')
+            ->andReturn(array('SELECT 1 FROM `orders`', array()));
+
+        $self = $this;
+        $this->query->whereExists(function ($q) use ($self) {
+            $q->shouldReceive('from')->andReturnSelf();
+        });
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['wheres']['queries']);
+    }
+
+    public function testWhereNotExistsAddsToWhereQueries()
+    {
+        $this->query->shouldReceive('createSub')
+            ->andReturn(array('SELECT 1 FROM `orders`', array()));
+
+        $self = $this;
+        $this->query->whereNotExists(function ($q) use ($self) {
+            $q->shouldReceive('from')->andReturnSelf();
+        });
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['wheres']['queries']);
+    }
+
+    public function testOrWhereExistsAddsToWhereQueries()
+    {
+        $this->query->shouldReceive('createSub')
+            ->andReturn(array('SELECT 1 FROM `orders`', array()));
+
+        $self = $this;
+        $this->query->orWhereExists(function ($q) use ($self) {
+            $q->shouldReceive('from')->andReturnSelf();
+        });
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['wheres']['queries']);
+    }
+
+    public function testWhereLikeAddsToWhereQueries()
+    {
+        $this->query->shouldReceive('contactBacktick')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($v) { return "`{$v}`"; });
+
+        $this->query->where('name', 'like', '%john%');
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['wheres']['queries']);
+    }
+
+    // =========================================================================
+    // JOIN 系列
+    // =========================================================================
+
+    public function testJoinAddsToJoinQueries()
+    {
+        $this->query->join('orders', 'users.id', '=', 'orders.user_id');
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['joins']['queries']);
+    }
+
+    public function testLeftJoinAddsToJoinQueries()
+    {
+        $this->query->leftJoin('orders', 'users.id', '=', 'orders.user_id');
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['joins']['queries']);
+    }
+
+    public function testRightJoinAddsToJoinQueries()
+    {
+        $this->query->rightJoin('orders', 'users.id', '=', 'orders.user_id');
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['joins']['queries']);
+    }
+
+    public function testCrossJoinAddsToJoinQueries()
+    {
+        $this->query->crossJoin('tags', 'users.id', '=', 'tags.user_id');
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['joins']['queries']);
+    }
+
+    public function testJoinWithTwoColumnArgsDefaultsToEquals()
+    {
+        $this->query->join('orders', 'users.id', 'orders.user_id');
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['joins']['queries']);
+    }
+
+    // =========================================================================
+    // ORDER BY 系列
+    // =========================================================================
+
+    public function testOrderByRawAddsToOrderQueries()
+    {
+        $this->query->orderByRaw('FIELD(id, 1, 2, 3)');
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['orders']['queries']);
+    }
+
+    public function testOrderByAddsToOrderQueries()
+    {
+        $this->query->shouldReceive('contactBacktick')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($v) { return "`{$v}`"; });
+
+        $this->query->orderBy('created_at', 'desc');
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['orders']['queries']);
+    }
+
+    public function testOrderByDescAddsToOrderQueries()
+    {
+        $this->query->shouldReceive('contactBacktick')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($v) { return "`{$v}`"; });
+
+        $this->query->orderByDesc('updated_at');
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['orders']['queries']);
+    }
+
+    public function testOrderByAscAddsToOrderQueries()
+    {
+        $this->query->shouldReceive('contactBacktick')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($v) { return "`{$v}`"; });
+
+        $this->query->orderByAsc('name');
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['orders']['queries']);
+    }
+
+    // =========================================================================
+    // GROUP BY 系列
+    // =========================================================================
+
+    public function testGroupByRawAddsToGroupQueries()
+    {
+        $this->query->groupByRaw('YEAR(created_at)');
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['groups']['queries']);
+    }
+
+    public function testGroupByAddsToGroupQueries()
+    {
+        $this->query->shouldReceive('contactBacktick')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($v) { return "`{$v}`"; });
+
+        $this->query->groupBy('category_id');
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['groups']['queries']);
+    }
+
+    public function testGroupByDescAddsToGroupQueries()
+    {
+        $this->query->shouldReceive('contactBacktick')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($v) { return "`{$v}`"; });
+
+        $this->query->groupByDesc('created_at');
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['groups']['queries']);
+    }
+
+    public function testGroupByAscAddsToGroupQueries()
+    {
+        $this->query->shouldReceive('contactBacktick')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($v) { return "`{$v}`"; });
+
+        $this->query->groupByAsc('category_id');
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['groups']['queries']);
+    }
+
+    // =========================================================================
+    // HAVING 系列
+    // =========================================================================
+
+    public function testHavingRawAddsToHavingQueries()
+    {
+        $this->query->havingRaw('count(*) > 1');
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['havings']['queries']);
+    }
+
+    public function testOrHavingRawAddsToHavingQueries()
+    {
+        $this->query->orHavingRaw('count(*) > 1');
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['havings']['queries']);
+    }
+
+    public function testHavingAddsToHavingQueries()
+    {
+        $this->query->shouldReceive('contactBacktick')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($v) { return "`{$v}`"; });
+
+        $this->query->having('count', '>', 5);
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['havings']['queries']);
+    }
+
+    public function testOrHavingAddsToHavingQueries()
+    {
+        $this->query->shouldReceive('contactBacktick')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($v) { return "`{$v}`"; });
+
+        $this->query->orHaving('count', '>', 5);
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['havings']['queries']);
+    }
+
+    // =========================================================================
+    // LIMIT / OFFSET
+    // =========================================================================
+
+    public function testLimitSetsLimitQuery()
+    {
+        $this->query->limit(10);
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['limits']);
+    }
+
+    public function testOffsetSetsOffsetQuery()
+    {
+        $this->query->offset(20);
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertArrayHasKey('offset', $queries);
+    }
+
+    public function testLimitWithOffsetSetsBoth()
+    {
+        $this->query->limit(10, 20);
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['limits']);
+        $this->assertCount(2, $queries['limits']['queries']);
+    }
+
+    // =========================================================================
+    // LOCK
+    // =========================================================================
+
+    public function testLockForUpdateSetsLockQuery()
+    {
+        $this->query->lockForUpdate();
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertEquals('lockForUpdate', $queries['lock']);
+    }
+
+    public function testSharedLockSetsLockQuery()
+    {
+        $this->query->sharedLock();
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertEquals('sharedLock', $queries['lock']);
+    }
+
+    // =========================================================================
+    // UNION
+    // =========================================================================
+
+    public function testUnionAddsToUnionQueries()
+    {
+        $this->query->shouldReceive('createSub')
+            ->andReturn(array('SELECT * FROM `archived_users`', array()));
+
+        $sub = Mockery::mock('Wilkques\Database\Queries\Builder');
+        $this->query->union($sub);
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['unions']['queries']);
+    }
+
+    public function testUnionAllAddsToUnionQueries()
+    {
+        $this->query->shouldReceive('createSub')
+            ->andReturn(array('SELECT * FROM `archived_users`', array()));
+
+        $sub = Mockery::mock('Wilkques\Database\Queries\Builder');
+        $this->query->unionAll($sub);
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['unions']['queries']);
+    }
+
+    // =========================================================================
+    // CRUD 執行
+    // =========================================================================
+
+    public function testGetFetchesAllRecords()
+    {
+        $expected = array(array('id' => 1, 'name' => 'Alice'));
+
+        $mockResult = Mockery::mock('result');
+        $mockResult->shouldReceive('fetchAll')->andReturn($expected);
+
+        $this->query->shouldReceive('select')->andReturnSelf();
+        $this->query->shouldReceive('toSql')->andReturn('SELECT * FROM `users`');
+        $this->query->shouldReceive('getBindings')->andReturn(array());
+        $this->query->shouldReceive('getQuery')->andReturn(null);
+        $this->query->shouldReceive('getConnection')->andReturn($this->connection);
+
+        $this->connection->shouldReceive('exec')->andReturn($mockResult);
+
+        $result = $this->query->get();
+        $this->assertEquals($expected, $result);
+    }
+
+    public function testDeleteReturnsRowCount()
+    {
+        $mockResult = Mockery::mock('result');
+        $mockResult->shouldReceive('rowCount')->andReturn(3);
+
+        $this->query->shouldReceive('getConnection')->andReturn($this->connection);
+        $this->query->shouldReceive('getGrammar')->andReturn($this->grammar);
+        $this->query->shouldReceive('getBindings')->andReturn(array());
+
+        $this->grammar->shouldReceive('compilerDelete')->andReturn('DELETE FROM `users`');
+        $this->connection->shouldReceive('exec')->andReturn($mockResult);
+
+        $result = $this->query->delete();
+        $this->assertEquals(3, $result);
+    }
+
+    public function testCountReturnsAggregateValue()
+    {
+        $mockResult = Mockery::mock('result');
+        $mockResult->shouldReceive('fetch')->andReturn(array('aggregate' => 42));
+
+        $this->query->shouldReceive('getConnection')->andReturn($this->connection);
+        $this->query->shouldReceive('getGrammar')->andReturn($this->grammar);
+        $this->query->shouldReceive('getBindings')->andReturn(array());
+
+        $this->grammar->shouldReceive('compilerCount')->andReturn('SELECT COUNT(*) AS aggregate FROM `users`');
+        $this->connection->shouldReceive('exec')->andReturn($mockResult);
+
+        $result = $this->query->count();
+        $this->assertEquals(42, $result);
+    }
+
+    public function testUpdateReturnsRowCount()
+    {
+        $mockResult = Mockery::mock('result');
+        $mockResult->shouldReceive('rowCount')->andReturn(1);
+
+        $this->query->shouldReceive('contactBacktick')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($v) { return "`{$v}`"; });
+        $this->query->shouldReceive('getConnection')->andReturn($this->connection);
+        $this->query->shouldReceive('getGrammar')->andReturn($this->grammar);
+        $this->query->shouldReceive('getBindings')->andReturn(array());
+        $this->query->shouldReceive('addBinding')->andReturnSelf();
+
+        $this->grammar->shouldReceive('compilerUpdate')->andReturn('UPDATE `users` SET `name` = ?');
+        $this->connection->shouldReceive('exec')->andReturn($mockResult);
+
+        $result = $this->query->update(array('name' => 'Bob'));
+        $this->assertEquals(1, $result);
+    }
+
+    public function testInsertReturnsRowCount()
+    {
+        $mockResult = Mockery::mock('result');
+        $mockResult->shouldReceive('rowCount')->andReturn(1);
+
+        $this->query->shouldReceive('bindingsNested')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($v) { return array_values($v); });
+        $this->query->shouldReceive('getConnection')->andReturn($this->connection);
+        $this->query->shouldReceive('getGrammar')->andReturn($this->grammar);
+        $this->query->shouldReceive('getBindings')->andReturn(array());
+        $this->query->shouldReceive('addBinding')->andReturnSelf();
+
+        $this->grammar->shouldReceive('compilerInsert')->andReturn('INSERT INTO `users` (`name`) VALUES (?)');
+        $this->connection->shouldReceive('exec')->andReturn($mockResult);
+
+        $result = $this->query->insert(array(array('name' => 'Alice')));
+        $this->assertEquals(1, $result);
+    }
+
+    public function testSoftDeleteCallsUpdateWithTimestamp()
+    {
+        $this->query->shouldReceive('contactBacktick')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($v) { return "`{$v}`"; });
+        $this->query->shouldReceive('update')->once()->andReturn(1);
+
+        $result = $this->query->softDelete();
+        $this->assertEquals(1, $result);
+    }
+
+    public function testReStoreCallsUpdateWithNull()
+    {
+        $this->query->shouldReceive('contactBacktick')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($v) { return "`{$v}`"; });
+        $this->query->shouldReceive('update')->once()->andReturn(1);
+
+        $result = $this->query->reStore();
+        $this->assertEquals(1, $result);
+    }
+
+    public function testReStoreWithCustomValueCallsUpdate()
+    {
+        $this->query->shouldReceive('update')->once()->andReturn(1);
+
+        $result = $this->query->reStore('deleted_at', '2024-01-01 00:00:00');
+        $this->assertEquals(1, $result);
+    }
+
+    public function testReStoreThrowsOnNonStringColumn()
+    {
+        $caught = false;
+        try {
+            $this->query->reStore(array('deleted_at'));
+        } catch (\InvalidArgumentException $e) {
+            $caught = true;
+        }
+        $this->assertTrue($caught, 'Expected InvalidArgumentException was not thrown');
+    }
+
+    public function testIncrementCallsUpdateWithFormula()
+    {
+        $this->query->shouldReceive('contactBacktick')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($v) { return "`{$v}`"; });
+        $this->query->shouldReceive('addBinding')->andReturnSelf();
+        $this->query->shouldReceive('update')->once()->andReturn(1);
+
+        $result = $this->query->increment('views');
+        $this->assertEquals(1, $result);
+    }
+
+    public function testDecrementCallsUpdateWithFormula()
+    {
+        $this->query->shouldReceive('contactBacktick')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($v) { return "`{$v}`"; });
+        $this->query->shouldReceive('addBinding')->andReturnSelf();
+        $this->query->shouldReceive('update')->once()->andReturn(1);
+
+        $result = $this->query->decrement('stock', 2);
+        $this->assertEquals(1, $result);
+    }
+
+    public function testIncrementThrowsOnNonNumericAmount()
+    {
+        $caught = false;
+        try {
+            $this->query->increment('views', 'notanumber');
+        } catch (\InvalidArgumentException $e) {
+            $caught = true;
+        }
+        $this->assertTrue($caught, 'Expected InvalidArgumentException was not thrown');
+    }
+
+    // =========================================================================
+    // getForPage / prePage / currentPage
+    // =========================================================================
+
+    public function testPrePageSetsLimitQuery()
+    {
+        $this->query->prePage(15);
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertNotEmpty($queries['limits']);
+    }
+
+    public function testCurrentPageSetsOffsetQuery()
+    {
+        $this->query->currentPage(3);
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+        $this->assertArrayHasKey('offset', $queries);
+    }
 }

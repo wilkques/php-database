@@ -608,7 +608,7 @@ class Builder
      */
     public function setTable($table, $as = null)
     {
-        return $this->from($table, $as);
+        return $this->newQuery()->from($table, $as);
     }
 
     /**
