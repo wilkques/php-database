@@ -501,7 +501,7 @@ class BuilderTest extends MockeryTestCase
             ->with('some_binding', 'wheres')
             ->once();
 
-        $result = $this->query->queriesPush('some_query', 'some_binding', 'wheres');
+        $result = $this->query->addQueryBindings('some_query', 'some_binding', 'wheres');
 
         $this->assertSame($this->query, $result);
     }
@@ -512,7 +512,7 @@ class BuilderTest extends MockeryTestCase
             ->with('some_query', 'wheres')
             ->once();
 
-        $result = $this->query->queriesPush('some_query', null, 'wheres');
+        $result = $this->query->addQueryBindings('some_query', null, 'wheres');
 
         $this->assertSame($this->query, $result);
     }
@@ -697,7 +697,7 @@ class BuilderTest extends MockeryTestCase
             ->with($expression)
             ->andReturn(new Expression($expression));
 
-        $this->query->shouldReceive('queriesPush')
+        $this->query->shouldReceive('addQueryBindings')
             ->with(Mockery::type('Wilkques\Database\Queries\Expression'), $bindings, 'froms')
             ->andReturnSelf();
 
@@ -962,7 +962,7 @@ class BuilderTest extends MockeryTestCase
             ->with($expression)
             ->andReturn($expression);
 
-        $this->query->shouldReceive('queriesPush')
+        $this->query->shouldReceive('addQueryBindings')
             ->with($expression, $bindings, 'columns')
             ->andReturnSelf();
 
