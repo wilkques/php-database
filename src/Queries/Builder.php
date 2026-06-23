@@ -603,7 +603,18 @@ class Builder
     /**
      * @param string|callback|Closure $table
      * @param string|null $as
-     * 
+     *
+     * @return static
+     */
+    public function table($table, $as = null)
+    {
+        return $this->setTable($table, $as);
+    }
+
+    /**
+     * @param string|callback|Closure $table
+     * @param string|null $as
+     *
      * @return static
      */
     public function setTable($table, $as = null)
