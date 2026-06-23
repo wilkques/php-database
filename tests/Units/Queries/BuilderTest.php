@@ -432,7 +432,8 @@ class BuilderTest extends MockeryTestCase
 
         $result = $this->query->bindingsNested($bindings);
 
-        $this->assertEquals(array_values($bindings), $result);
+        // Expression objects are stripped from bindings; only scalars remain
+        $this->assertEquals(array('value', 123), $result);
     }
 
     public function testBindingsNestedWithEmptyArray()
@@ -727,7 +728,11 @@ class BuilderTest extends MockeryTestCase
 
     public function testFromSingleTableWithAlias()
     {
-        $this->query->shouldHaveReceived('fromRaw')
+        $this->query->shouldReceive('contactBacktick')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($v) { return "`{$v}`"; });
+
+        $this->query->shouldReceive('fromRaw')
             ->with('`table` AS `alias`')
             ->andReturnSelf();
 
@@ -764,6 +769,10 @@ class BuilderTest extends MockeryTestCase
 
     public function testFromWithFromRaw()
     {
+        $this->query->shouldReceive('contactBacktick')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($v) { return "`{$v}`"; });
+
         $this->query->shouldReceive('fromRaw')
             ->with('`raw_query`')
             ->andReturnSelf();
@@ -800,7 +809,7 @@ class BuilderTest extends MockeryTestCase
             ->andReturnSelf();
 
         $result = $this->query->from([
-            $tableName => $alias,
+            $alias => $tableName,
             $closure,
             $subQuery
         ]);
@@ -914,6 +923,8 @@ class BuilderTest extends MockeryTestCase
     {
         $table = 'users';
 
+        $this->query->shouldReceive('newQuery')->andReturn($this->query);
+
         $this->query->shouldReceive('from')
             ->with($table, null)
             ->andReturnSelf();
@@ -928,6 +939,8 @@ class BuilderTest extends MockeryTestCase
         $table = 'users';
 
         $alias = 'u';
+
+        $this->query->shouldReceive('newQuery')->andReturn($this->query);
 
         $this->query->shouldReceive('from')
             ->with($table, $alias)
@@ -1055,7 +1068,7 @@ class BuilderTest extends MockeryTestCase
             ->with('`users`.`id` AS `user_id`', 'columns')
             ->andReturnSelf();
 
-        $result = $this->query->select([$column => $alias]);
+        $result = $this->query->select([$alias => $column]);
 
         $this->assertSame($this->query, $result);
     }
@@ -1204,14 +1217,18 @@ class BuilderTest extends MockeryTestCase
 
     public function testPrepareValueAndOperatorWithInvalidCombination()
     {
-        // 模擬 invalidOperatorAndValue 方法
         $this->query->shouldReceive('invalidOperatorAndValue')
             ->with('>', null)
             ->andReturn(true);
 
-        // 測試不合法的操作符和空值
-        // $this->expectException(InvalidArgumentException::class);
-        $this->query->prepareValueAndOperator(null, '>', false);
+        $caught = false;
+        try {
+            $this->query->prepareValueAndOperator(null, '>', false);
+        } catch (\InvalidArgumentException $e) {
+            $caught = true;
+            $this->assertEquals('Illegal operator and value combination.', $e->getMessage());
+        }
+        $this->assertTrue($caught, 'Expected InvalidArgumentException was not thrown');
     }
 
     public function testInvalidOperatorReturnsTrueForNonString()
@@ -1600,9 +1617,11 @@ class BuilderTest extends MockeryTestCase
 
     public function testOrderByDescAddsToOrderQueries()
     {
+        $self = $this->query;
         $this->query->shouldReceive('contactBacktick')
             ->zeroOrMoreTimes()
             ->andReturnUsing(function ($v) { return "`{$v}`"; });
+        $this->query->shouldReceive('forNested')->andReturn($self);
 
         $this->query->orderByDesc('updated_at');
         $queries = $this->getProtectedProperty($this->query, 'queries');
@@ -1611,9 +1630,11 @@ class BuilderTest extends MockeryTestCase
 
     public function testOrderByAscAddsToOrderQueries()
     {
+        $self = $this->query;
         $this->query->shouldReceive('contactBacktick')
             ->zeroOrMoreTimes()
             ->andReturnUsing(function ($v) { return "`{$v}`"; });
+        $this->query->shouldReceive('forNested')->andReturn($self);
 
         $this->query->orderByAsc('name');
         $queries = $this->getProtectedProperty($this->query, 'queries');
@@ -1644,9 +1665,11 @@ class BuilderTest extends MockeryTestCase
 
     public function testGroupByDescAddsToGroupQueries()
     {
+        $self = $this->query;
         $this->query->shouldReceive('contactBacktick')
             ->zeroOrMoreTimes()
             ->andReturnUsing(function ($v) { return "`{$v}`"; });
+        $this->query->shouldReceive('forNested')->andReturn($self);
 
         $this->query->groupByDesc('created_at');
         $queries = $this->getProtectedProperty($this->query, 'queries');
@@ -1655,9 +1678,11 @@ class BuilderTest extends MockeryTestCase
 
     public function testGroupByAscAddsToGroupQueries()
     {
+        $self = $this->query;
         $this->query->shouldReceive('contactBacktick')
             ->zeroOrMoreTimes()
             ->andReturnUsing(function ($v) { return "`{$v}`"; });
+        $this->query->shouldReceive('forNested')->andReturn($self);
 
         $this->query->groupByAsc('category_id');
         $queries = $this->getProtectedProperty($this->query, 'queries');

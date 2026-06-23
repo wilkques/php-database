@@ -593,32 +593,19 @@ class GrammarTest extends MockeryTestCase
 
     public function testCompilerInsertWithData()
     {
-        // Mock getFrom method
         $this->query->shouldReceive('getFrom')
             ->andReturn(array('posts'));
 
-        // Mock contactBacktick method
         $this->query->shouldReceive('contactBacktick')
-            ->with(array('title'))
-            ->andReturn('`title`')->passthru();
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($v) { return "`{$v}`"; });
 
-        $this->query->shouldReceive('contactBacktick')
-            ->with('body')
-            ->andReturn('`body`')->passthru();
-
-        // Mock arrayNested method
         $this->grammar->shouldReceive('arrayNested')
             ->with(array('Hello', 'World'), "?")
             ->andReturn(array('?', '?'));
 
-        $this->grammar->shouldReceive('contactBacktick')
-            ->with(array('title'))
-            ->andReturn('`title`');
-
-        // Expected SQL
         $expected = "INSERT INTO posts (`title`, `body`) VALUES (?, ?)";
 
-        // Call the method
         $result = $this->grammar->compilerInsert($this->query, array(
             array('title' => 'Hello', 'body' => 'World')
         ));
@@ -643,13 +630,15 @@ class GrammarTest extends MockeryTestCase
 
     public function testCompilerInsertWithSubQuery()
     {
-        // Mock getFrom method
         $this->query->shouldReceive('getFrom')
             ->andReturn(array('posts'));
 
+        $this->query->shouldReceive('contactBacktick')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($v) { return "`{$v}`"; });
+
         $sqlSubquery = "(SELECT title, body FROM temp)";
 
-        // Call the method
         $result = $this->grammar->compilerInsert($this->query, array(
             array('title' => 'Hello', 'body' => 'World')
         ), $sqlSubquery);
