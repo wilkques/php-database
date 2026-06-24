@@ -815,7 +815,10 @@ class GrammarTest extends MockeryTestCase
 
     protected function makeRealBuilder()
     {
-        $grammar    = new Grammar();
+        // Use spy+makePartial so class_parents(spy) includes Grammar,
+        // allowing Builder's resolver lookup (which uses class_parents) to find it.
+        // makePartial() ensures real compileCase/compileIf methods are called.
+        $grammar    = Mockery::spy('Wilkques\Database\Queries\Grammar\Grammar')->makePartial();
         $connection = Mockery::mock('Wilkques\Database\Connections\Connections');
         $processor  = Mockery::mock('Wilkques\Database\Queries\Processors\ProcessorInterface');
 
