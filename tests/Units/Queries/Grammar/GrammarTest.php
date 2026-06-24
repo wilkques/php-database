@@ -2,8 +2,10 @@
 
 namespace Wilkques\Database\Tests\Units\Queries\Grammar;
 
+use Mockery;
 use Mockery\Adapter\Phpunit\MockeryTestCase;
 use Wilkques\Database\Queries\Expression;
+use Wilkques\Database\Queries\Grammar\Grammar;
 
 class GrammarTest extends MockeryTestCase
 {
@@ -805,5 +807,283 @@ class GrammarTest extends MockeryTestCase
 
         // Assert that the compileSavepointRollBack method returns the correct SQL string
         $this->assertEquals('ROLLBACK TO SAVEPOINT my_savepoint', $this->grammar->compileSavepointRollBack($name));
+    }
+
+    // =========================================================================
+    // Helpers for CASE/IF tests
+    // =========================================================================
+
+    protected function makeRealBuilder()
+    {
+        $grammar    = new Grammar();
+        $connection = Mockery::mock('Wilkques\Database\Connections\Connections');
+        $processor  = Mockery::mock('Wilkques\Database\Queries\Processors\ProcessorInterface');
+
+        return new \Wilkques\Database\Queries\Builder($connection, $grammar, $processor);
+    }
+
+    protected function makeCaseClause($column = null)
+    {
+        return $this->makeRealBuilder()->caseWhen($column);
+    }
+
+    protected function makeIfClause($condition)
+    {
+        return $this->makeRealBuilder()->ifExpr($condition);
+    }
+
+    // =========================================================================
+    // compileCase()
+    // =========================================================================
+
+    public function testCompileCaseSimpleScalarConditions()
+    {
+        $grammar = new Grammar();
+        $clause  = $this->makeCaseClause('status');
+        $clause->when('active', 'Active User')->otherwise('Unknown');
+
+        list($sql, $bindings) = $grammar->compileCase($clause);
+
+        $this->assertEquals('CASE `status` WHEN ? THEN ? ELSE ? END', $sql);
+        $this->assertEquals(array('active', 'Active User', 'Unknown'), $bindings);
+    }
+
+    public function testCompileCaseSearchedStringCondition()
+    {
+        $grammar = new Grammar();
+        $clause  = $this->makeCaseClause();
+        $clause->when('age > 18', 'Adult')->otherwise('Minor');
+
+        list($sql, $bindings) = $grammar->compileCase($clause);
+
+        $this->assertEquals('CASE WHEN age > 18 THEN ? ELSE ? END', $sql);
+        $this->assertEquals(array('Adult', 'Minor'), $bindings);
+    }
+
+    public function testCompileCaseWithIfClauseThenValue()
+    {
+        $grammar  = new Grammar();
+        $ifClause = $this->makeIfClause('score > 90');
+        $ifClause->then('A+')->otherwise('A');
+
+        $caseClause = $this->makeCaseClause('is_student');
+        $caseClause->when(1, $ifClause)->otherwise('N/A');
+
+        list($sql, $bindings) = $grammar->compileCase($caseClause);
+
+        $this->assertEquals('CASE `is_student` WHEN ? THEN IF(score > 90, ?, ?) ELSE ? END', $sql);
+        $this->assertEquals(array(1, 'A+', 'A', 'N/A'), $bindings);
+    }
+
+    public function testCompileCaseThrowsWhenNoConditions()
+    {
+        $grammar = new Grammar();
+        $clause  = $this->makeCaseClause('status');
+
+        try {
+            $grammar->compileCase($clause);
+            $this->fail('Expected InvalidArgumentException');
+        } catch (\InvalidArgumentException $e) {
+            $this->assertTrue(strpos($e->getMessage(), 'at least one when()') !== false);
+        }
+    }
+
+    public function testCompileCaseSimplePlusClosureThrows()
+    {
+        $grammar = new Grammar();
+        $clause  = $this->makeCaseClause('status');
+        $clause->when(function ($q) { $q->from('active_statuses')->select('id'); }, 'Active');
+
+        try {
+            $grammar->compileCase($clause);
+            $this->fail('Expected InvalidArgumentException');
+        } catch (\InvalidArgumentException $e) {
+            $this->assertTrue(strpos($e->getMessage(), 'Simple CASE') !== false);
+        }
+    }
+
+    public function testCompileCaseSearchedClosureWithFromUsesExists()
+    {
+        $query  = $this->makeRealBuilder();
+        $result = $query->from('users')
+            ->caseWhen()
+            ->when(function ($q) { $q->from('active_statuses')->select('id'); }, 'Active')
+            ->otherwise('Inactive')
+            ->end('status_label');
+
+        $sql = $result->toSql();
+        $this->assertTrue(strpos($sql, 'EXISTS(') !== false);
+        $this->assertTrue(strpos($sql, 'active_statuses') !== false);
+    }
+
+    public function testCompileCaseWhenCaseClauseThrows()
+    {
+        $grammar   = new Grammar();
+        $innerCase = $this->makeCaseClause('score');
+        $innerCase->when(90, 'High');
+        $outerCase = $this->makeCaseClause();
+        $outerCase->when($innerCase, 'Match');
+
+        try {
+            $grammar->compileCase($outerCase);
+            $this->fail('Expected InvalidArgumentException');
+        } catch (\InvalidArgumentException $e) {
+            $this->assertTrue(strpos($e->getMessage(), 'CaseClause is not supported as a WHEN') !== false);
+        }
+    }
+
+    public function testCompileCaseElseNullExplicit()
+    {
+        $grammar = new Grammar();
+        $clause  = $this->makeCaseClause('status');
+        $clause->when('active', 'Active')->otherwise(null);
+
+        list($sql, $bindings) = $grammar->compileCase($clause);
+
+        $this->assertEquals('CASE `status` WHEN ? THEN ? ELSE ? END', $sql);
+        $this->assertEquals(array('active', 'Active', null), $bindings);
+    }
+
+    public function testCompileCaseNestedCaseAsThenValue()
+    {
+        $grammar   = new Grammar();
+        $innerCase = $this->makeCaseClause('score');
+        $innerCase->when(90, 'A+')->otherwise('A');
+
+        $outerCase = $this->makeCaseClause('is_student');
+        $outerCase->when(1, $innerCase)->otherwise('N/A');
+
+        list($sql, $bindings) = $grammar->compileCase($outerCase);
+
+        $this->assertTrue(strpos($sql, 'CASE `is_student` WHEN ? THEN CASE `score`') !== false);
+        $this->assertEquals(array(1, 90, 'A+', 'A', 'N/A'), $bindings);
+    }
+
+    // =========================================================================
+    // compileIf()
+    // =========================================================================
+
+    public function testCompileIfScalarCondition()
+    {
+        $grammar = new Grammar();
+        $clause  = $this->makeIfClause('age >= 18');
+        $clause->then('Adult')->otherwise('Minor');
+
+        list($sql, $bindings) = $grammar->compileIf($clause);
+
+        $this->assertEquals('IF(age >= 18, ?, ?)', $sql);
+        $this->assertEquals(array('Adult', 'Minor'), $bindings);
+    }
+
+    public function testCompileIfNestedFalseValue()
+    {
+        $grammar = new Grammar();
+        $inner   = $this->makeIfClause('age > 18');
+        $inner->then('Adult')->otherwise('Minor');
+
+        $outer = $this->makeIfClause('age > 30');
+        $outer->then('Senior')->otherwise($inner);
+
+        list($sql, $bindings) = $grammar->compileIf($outer);
+
+        $this->assertEquals('IF(age > 30, ?, IF(age > 18, ?, ?))', $sql);
+        $this->assertEquals(array('Senior', 'Adult', 'Minor'), $bindings);
+    }
+
+    public function testCompileIfThrowsForObjectCondition()
+    {
+        $grammar = new Grammar();
+        $clause  = $this->makeIfClause(new \stdClass());
+        $clause->then('Yes')->otherwise('No');
+
+        try {
+            $grammar->compileIf($clause);
+            $this->fail('Expected InvalidArgumentException');
+        } catch (\InvalidArgumentException $e) {
+            $this->assertTrue(strpos($e->getMessage(), 'IF condition') !== false);
+        }
+    }
+
+    // =========================================================================
+    // End-to-end tests
+    // =========================================================================
+
+    public function testCaseEndToEndSqlAndBindings()
+    {
+        $query  = $this->makeRealBuilder();
+        $result = $query->from('users')
+            ->caseWhen('status')
+            ->when('active', 'Active User')
+            ->when('inactive', 'Inactive User')
+            ->otherwise('Unknown')
+            ->end('status_label');
+
+        $sql      = $result->toSql();
+        $bindings = $result->getBindings();
+
+        $this->assertTrue(
+            strpos($sql, 'CASE `status` WHEN ? THEN ? WHEN ? THEN ? ELSE ? END AS `status_label`') !== false
+        );
+        $this->assertEquals(array('active', 'Active User', 'inactive', 'Inactive User', 'Unknown'), $bindings);
+    }
+
+    public function testIfEndToEndSqlAndBindings()
+    {
+        $query  = $this->makeRealBuilder();
+        $result = $query->from('users')
+            ->ifExpr('age >= 18')
+            ->then('Adult')
+            ->otherwise('Minor')
+            ->end('age_group');
+
+        $sql      = $result->toSql();
+        $bindings = $result->getBindings();
+
+        $this->assertTrue(strpos($sql, 'IF(age >= 18, ?, ?)') !== false);
+        $this->assertEquals(array('Adult', 'Minor'), $bindings);
+    }
+
+    public function testIfEndToEndWithFalsyBindings()
+    {
+        $query  = $this->makeRealBuilder();
+        $result = $query->from('users')
+            ->ifExpr('deleted_at IS NULL')
+            ->then('')
+            ->otherwise(null)
+            ->end('val');
+
+        $bindings = $result->getBindings();
+
+        $this->assertCount(2, $bindings);
+        $this->assertSame('', $bindings[0]);
+        $this->assertNull($bindings[1]);
+    }
+
+    public function testCaseSearchedClosureWhereOnly()
+    {
+        $query  = $this->makeRealBuilder();
+        $result = $query->from('users')
+            ->caseWhen()
+            ->when(function ($q) { $q->where('age', '>', 18); }, 'Adult')
+            ->otherwise('Minor')
+            ->end('age_group');
+
+        $sql = $result->toSql();
+
+        $this->assertTrue(strpos($sql, 'WHEN') !== false);
+        $this->assertTrue(strpos($sql, 'THEN') !== false);
+        $this->assertTrue(strpos($sql, 'WHEN (') !== false);
+    }
+
+    public function testEndAliasZeroString()
+    {
+        $query  = $this->makeRealBuilder();
+        $result = $query->from('users')
+            ->caseWhen('status')
+            ->when('active', 'Active')
+            ->end('0');
+
+        $sql = $result->toSql();
+        $this->assertTrue(strpos($sql, 'AS `0`') !== false);
     }
 }

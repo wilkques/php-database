@@ -367,18 +367,10 @@ class Builder
      */
     protected function bindingsNested($bindings)
     {
-        $callback = function ($value) {
-            if (!$value instanceof Expression) {
-                return $value;
-            }
-        };
-
         $newArray = array();
 
         foreach ($bindings as $key => $value) {
-            $result = $callback($value);
-
-            if ($result || is_numeric($result)) {
+            if (!$value instanceof Expression) {
                 $newArray[$key] = $value;
             }
         }
@@ -391,7 +383,7 @@ class Builder
      * 
      * @return array
      */
-    protected function getBindings($except = array())
+    public function getBindings($except = array())
     {
         $components = Arrays::filter($this->bindingComponents, function ($component) use ($except) {
             return !in_array($component, $except);
@@ -644,8 +636,26 @@ class Builder
     }
 
     /**
+     * @param  string|null $column
+     * @return \Wilkques\Database\Queries\CaseClause
+     */
+    public function caseWhen($column = null)
+    {
+        return new \Wilkques\Database\Queries\CaseClause($this, $column);
+    }
+
+    /**
+     * @param  string|callable|\Wilkques\Database\Queries\IfClause $condition
+     * @return \Wilkques\Database\Queries\IfClause
+     */
+    public function ifExpr($condition)
+    {
+        return new \Wilkques\Database\Queries\IfClause($this, $condition);
+    }
+
+    /**
      * @param array<string|Closure|static>|string
-     * 
+     *
      * @return static
      */
     public function select($columns = array('*'))

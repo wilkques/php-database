@@ -1987,4 +1987,38 @@ class BuilderTest extends MockeryTestCase
         $queries = $this->getProtectedProperty($this->query, 'queries');
         $this->assertArrayHasKey('offset', $queries);
     }
+
+    // =========================================================================
+    // caseWhen() / ifExpr()
+    // =========================================================================
+
+    public function testCaseWhenReturnsCaseClause()
+    {
+        $this->query->shouldReceive('getConnection')->andReturn($this->connection);
+        $this->query->shouldReceive('getGrammar')->andReturn($this->grammar);
+        $this->query->shouldReceive('getProcessor')->andReturn($this->processor);
+
+        $result = $this->query->caseWhen('status');
+        $this->assertInstanceOf('Wilkques\Database\Queries\CaseClause', $result);
+    }
+
+    public function testCaseWhenWithNoColumnReturnsCaseClause()
+    {
+        $this->query->shouldReceive('getConnection')->andReturn($this->connection);
+        $this->query->shouldReceive('getGrammar')->andReturn($this->grammar);
+        $this->query->shouldReceive('getProcessor')->andReturn($this->processor);
+
+        $result = $this->query->caseWhen();
+        $this->assertInstanceOf('Wilkques\Database\Queries\CaseClause', $result);
+    }
+
+    public function testIfExprReturnsIfClause()
+    {
+        $this->query->shouldReceive('getConnection')->andReturn($this->connection);
+        $this->query->shouldReceive('getGrammar')->andReturn($this->grammar);
+        $this->query->shouldReceive('getProcessor')->andReturn($this->processor);
+
+        $result = $this->query->ifExpr('age >= 18');
+        $this->assertInstanceOf('Wilkques\Database\Queries\IfClause', $result);
+    }
 }

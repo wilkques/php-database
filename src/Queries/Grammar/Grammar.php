@@ -524,4 +524,210 @@ class Grammar
     {
         return 'ROLLBACK TO SAVEPOINT ' . $name;
     }
+
+    /**
+     * Compile a CASE expression. Returns [sql, bindings].
+     *
+     * Simple CASE (column set):   CASE `col` WHEN ? THEN ? ... END
+     * Searched CASE (no column):  CASE WHEN cond THEN ? ... END
+     *
+     * @param  \Wilkques\Database\Queries\CaseClause $clause
+     * @return array
+     */
+    public function compileCase($clause)
+    {
+        $conditions = $clause->getQuery('conditions', array());
+
+        if (empty($conditions)) {
+            throw new \InvalidArgumentException('CaseClause requires at least one when() call.');
+        }
+
+        $sql       = 'CASE';
+        $bindings  = array();
+        $column    = $clause->getQuery('column');
+        $hasElse   = $clause->getQuery('has_else', false);
+        $elseValue = $clause->getQuery('else_value');
+        $isSimple  = !is_null($column);
+
+        if ($isSimple) {
+            if ($column instanceof Expression) {
+                $sql .= ' ' . (string) $column;
+            } else {
+                $sql .= ' ' . $this->contactBacktick($column);
+            }
+        }
+
+        foreach ($conditions as $condition) {
+            $when = $condition['when'];
+            $then = $condition['then'];
+
+            if ($when instanceof \Closure) {
+                if ($isSimple) {
+                    throw new \InvalidArgumentException(
+                        'Simple CASE (with column) does not support Closure WHEN conditions. ' .
+                        'Use caseWhen() without a column for Searched CASE with Closure conditions.'
+                    );
+                }
+                $subQuery = $clause->forSubQuery();
+                call_user_func($when, $subQuery);
+                list($condSql, $condBindings) = $this->extractCaseCondition($subQuery);
+                $sql      .= ' WHEN ' . $condSql;
+                $bindings  = array_merge($bindings, $condBindings);
+
+            } else if ($when instanceof \Wilkques\Database\Queries\IfClause) {
+                list($condSql, $condBindings) = $this->compileIf($when);
+                $sql      .= ' WHEN ' . $condSql;
+                $bindings  = array_merge($bindings, $condBindings);
+
+            } else if ($when instanceof \Wilkques\Database\Queries\CaseClause) {
+                throw new \InvalidArgumentException(
+                    'CaseClause is not supported as a WHEN condition. ' .
+                    'Use an Expression or IfClause for complex WHEN conditions.'
+                );
+
+            } else if ($when instanceof Expression) {
+                $sql .= ' WHEN ' . (string) $when;
+
+            } else if ($isSimple) {
+                $sql      .= ' WHEN ?';
+                $bindings[] = $when;
+
+            } else if (is_string($when) || is_int($when) || is_float($when) || is_bool($when)) {
+                $sql .= ' WHEN ' . $when;
+
+            } else {
+                throw new \InvalidArgumentException(
+                    'Unsupported WHEN condition type "' . gettype($when) . '". ' .
+                    'Searched CASE WHEN accepts: string, int, float, bool, Expression, Closure, or IfClause.'
+                );
+            }
+
+            $sql .= ' THEN';
+            $sql  = $this->appendClauseValue($sql, $bindings, $then);
+        }
+
+        if ($hasElse) {
+            $sql .= ' ELSE';
+            $sql  = $this->appendClauseValue($sql, $bindings, $elseValue);
+        }
+
+        $sql .= ' END';
+
+        return array($sql, $bindings);
+    }
+
+    /**
+     * Compile an IF() expression. Returns [sql, bindings].
+     *
+     * NOTE: IF() is MySQL-specific. Override in dialect subclasses or use
+     *       CASE WHEN cond THEN t ELSE f END as a portable equivalent.
+     *
+     * @param  \Wilkques\Database\Queries\IfClause $clause
+     * @return array
+     */
+    public function compileIf($clause)
+    {
+        $sql        = 'IF(';
+        $bindings   = array();
+        $condition  = $clause->getQuery('condition');
+        $trueValue  = $clause->getQuery('true_value');
+        $falseValue = $clause->getQuery('false_value');
+
+        if ($condition instanceof \Closure) {
+            $subQuery = $clause->forSubQuery();
+            call_user_func($condition, $subQuery);
+            $froms = $subQuery->getQuery('froms.queries');
+            if (!empty($froms)) {
+                $sql .= 'EXISTS(' . $subQuery->toSql() . ')';
+            } else {
+                $whereClause = $this->compilerWheres($subQuery);
+                $sql .= $whereClause
+                    ? '(' . preg_replace('/^WHERE\s+/i', '', $whereClause) . ')'
+                    : 'TRUE';
+            }
+            $bindings = array_merge($bindings, $subQuery->getBindings());
+
+        } else if ($condition instanceof \Wilkques\Database\Queries\IfClause) {
+            list($condSql, $condBindings) = $this->compileIf($condition);
+            $sql     .= $condSql;
+            $bindings = array_merge($bindings, $condBindings);
+
+        } else if (is_string($condition) || is_int($condition) || is_float($condition) || is_bool($condition)) {
+            $sql .= (string) $condition;
+
+        } else {
+            throw new \InvalidArgumentException(
+                'IF condition must be a string, scalar, Closure, or IfClause. Got "' . gettype($condition) . '".'
+            );
+        }
+
+        $sql .= ',';
+        $sql  = $this->appendClauseValue($sql, $bindings, $trueValue);
+        $sql .= ',';
+        $sql  = $this->appendClauseValue($sql, $bindings, $falseValue);
+        $sql .= ')';
+
+        return array($sql, $bindings);
+    }
+
+    /**
+     * Extract CASE WHEN condition from a sub-query builder.
+     * With FROM  → EXISTS(SELECT ...) to match compileIf() semantics.
+     * Without FROM → WHERE-only string wrapped in parentheses.
+     *
+     * @param  \Wilkques\Database\Queries\Builder $subQuery
+     * @return array
+     */
+    protected function extractCaseCondition($subQuery)
+    {
+        $froms = $subQuery->getQuery('froms.queries');
+
+        if (!empty($froms)) {
+            return array(
+                'EXISTS(' . $subQuery->toSql() . ')',
+                $subQuery->getBindings()
+            );
+        }
+
+        $whereClause = $this->compilerWheres($subQuery);
+
+        if ($whereClause) {
+            $condSql = '(' . preg_replace('/^WHERE\s+/i', '', $whereClause) . ')';
+
+            return array($condSql, $subQuery->getBindings());
+        }
+
+        return array('TRUE', array());
+    }
+
+    /**
+     * Append a THEN/ELSE value to the SQL string.
+     * IfClause / CaseClause → recursive compile.
+     * Expression            → embed raw.
+     * Other                 → bind as ?.
+     *
+     * @param  string $sql
+     * @param  array  $bindings  by reference
+     * @param  mixed  $value
+     * @return string
+     */
+    protected function appendClauseValue($sql, &$bindings, $value)
+    {
+        if ($value instanceof \Wilkques\Database\Queries\IfClause) {
+            list($v, $b) = $this->compileIf($value);
+            $sql      .= ' ' . $v;
+            $bindings  = array_merge($bindings, $b);
+        } else if ($value instanceof \Wilkques\Database\Queries\CaseClause) {
+            list($v, $b) = $this->compileCase($value);
+            $sql      .= ' ' . $v;
+            $bindings  = array_merge($bindings, $b);
+        } else if ($value instanceof Expression) {
+            $sql .= ' ' . (string) $value;
+        } else {
+            $sql      .= ' ?';
+            $bindings[] = $value;
+        }
+
+        return $sql;
+    }
 }
