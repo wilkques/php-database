@@ -1243,6 +1243,171 @@
     ]);
     ```
 
+### CASE WHEN
+
+1. `caseWhen` - Simple CASE (with column)
+
+    ```php
+
+    $db->from('<table name>')
+        ->caseWhen('<columnName>')
+        ->when('<value1>', '<result1>')
+        ->when('<value2>', '<result2>')
+        ->otherwise('<default result>')
+        ->end('<alias>');
+
+    // output: select CASE `<columnName>` WHEN ? THEN ? WHEN ? THEN ? ELSE ? END AS `<alias>` from `<table name>`
+    ```
+
+1. `caseWhen` - Searched CASE (without column, string condition)
+
+    ```php
+
+    $db->from('<table name>')
+        ->caseWhen()
+        ->when('<condition expression>', '<result1>')
+        ->otherwise('<default result>')
+        ->end('<alias>');
+
+    // example
+
+    $db->from('users')
+        ->caseWhen()
+        ->when('age > 18', 'Adult')
+        ->otherwise('Minor')
+        ->end('age_group');
+
+    // output: select CASE WHEN age > 18 THEN ? ELSE ? END AS `age_group` from `users`
+    ```
+
+1. `caseWhen` - Searched CASE (Closure WHERE condition)
+
+    ```php
+
+    $db->from('<table name>')
+        ->caseWhen()
+        ->when(function ($query) {
+            $query->where('<columnName>', '<operator>', '<value>');
+        }, '<result1>')
+        ->otherwise('<default result>')
+        ->end('<alias>');
+
+    // output: select CASE WHEN (<columnName> <operator> ?) THEN ? ELSE ? END AS `<alias>` from `<table name>`
+    ```
+
+1. `caseWhen` - Searched CASE (Closure with `from()` → EXISTS subquery)
+
+    ```php
+
+    $db->from('<table name>')
+        ->caseWhen()
+        ->when(function ($query) {
+            $query->from('<sub table name>')->select('<columnName>');
+        }, '<result1>')
+        ->otherwise('<default result>')
+        ->end('<alias>');
+
+    // output: select CASE WHEN EXISTS(SELECT `<columnName>` FROM `<sub table name>`) THEN ? ELSE ? END AS `<alias>` from `<table name>`
+    ```
+
+1. `caseWhen` - Nested CASE as THEN value
+
+    ```php
+
+    $innerCase = $db->caseWhen('<columnName1>')
+        ->when('<value1>', '<inner result1>')
+        ->otherwise('<inner default>');
+
+    $db->from('<table name>')
+        ->caseWhen('<columnName2>')
+        ->when('<value2>', $innerCase)
+        ->otherwise('<outer default>')
+        ->end('<alias>');
+
+    // output: select CASE `<columnName2>` WHEN ? THEN CASE `<columnName1>` WHEN ? THEN ? ELSE ? END ELSE ? END AS `<alias>` from `<table name>`
+    ```
+
+1. `end` - Compile and add to SELECT, returns parent Builder
+
+    ```php
+
+    // with alias
+    $db->from('<table name>')->caseWhen('<columnName>')->when(...)->end('<alias>');
+
+    // without alias
+    $db->from('<table name>')->caseWhen('<columnName>')->when(...)->end();
+    ```
+
+### IF Expression
+
+> ⚠️ `IF()` is MySQL-specific. For other databases use `caseWhen()` instead.
+
+1. `ifExpr` - Simple scalar condition
+
+    ```php
+
+    $db->from('<table name>')
+        ->ifExpr('<condition expression>')
+        ->then('<true result>')
+        ->otherwise('<false result>')
+        ->end('<alias>');
+
+    // example
+
+    $db->from('users')
+        ->ifExpr('age >= 18')
+        ->then('Adult')
+        ->otherwise('Minor')
+        ->end('age_group');
+
+    // output: select IF(age >= 18, ?, ?) AS `age_group` from `users`
+    ```
+
+1. `ifExpr` - Nested IF (pass IfClause instance as value)
+
+    ```php
+
+    $inner = $db->ifExpr('<condition1>')->then('<result1>')->otherwise('<result2>');
+
+    $db->from('<table name>')
+        ->ifExpr('<condition2>')
+        ->then('<result3>')
+        ->otherwise($inner)
+        ->end('<alias>');
+
+    // output: select IF(<condition2>, ?, IF(<condition1>, ?, ?)) AS `<alias>` from `<table name>`
+    ```
+
+1. `ifExpr` - Closure with `from()` → EXISTS subquery
+
+    ```php
+
+    $db->from('<table name>')
+        ->ifExpr(function ($query) {
+            $query->from('<sub table name>')->select('<columnName>')->where('<columnName2>', '<value>');
+        })
+        ->then('<true result>')
+        ->otherwise('<false result>')
+        ->end('<alias>');
+
+    // output: select IF(EXISTS(SELECT `<columnName>` FROM `<sub table name>` WHERE `<columnName2>` = ?), ?, ?) AS `<alias>` from `<table name>`
+    ```
+
+1. `ifExpr` as CASE WHEN THEN value
+
+    ```php
+
+    $ifExpr = $db->ifExpr('<condition>')->then('<result1>')->otherwise('<result2>');
+
+    $db->from('<table name>')
+        ->caseWhen('<columnName>')
+        ->when('<value>', $ifExpr)
+        ->otherwise('<default>')
+        ->end('<alias>');
+
+    // output: select CASE `<columnName>` WHEN ? THEN IF(<condition>, ?, ?) ELSE ? END AS `<alias>` from `<table name>`
+    ```
+
 ### SQL Execute
 
 1. `query` set SQL string

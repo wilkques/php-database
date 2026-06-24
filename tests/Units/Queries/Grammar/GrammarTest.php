@@ -1007,6 +1007,25 @@ class GrammarTest extends MockeryTestCase
         }
     }
 
+    public function testIfExprClosureWithFromUsesExists()
+    {
+        $query  = $this->makeRealBuilder();
+        $result = $query->from('users')
+            ->ifExpr(function ($q) { $q->from('orders')->select('id')->where('user_id', 1); })
+            ->then('Has Orders')
+            ->otherwise('No Orders')
+            ->end('order_status');
+
+        $sql      = $result->toSql();
+        $bindings = $result->getBindings();
+
+        $this->assertTrue(strpos($sql, 'IF(EXISTS(') !== false);
+        $this->assertTrue(strpos($sql, 'orders') !== false);
+        $this->assertTrue(strpos($sql, 'AS `order_status`') !== false);
+        $this->assertTrue(in_array('Has Orders', $bindings));
+        $this->assertTrue(in_array('No Orders', $bindings));
+    }
+
     // =========================================================================
     // End-to-end tests
     // =========================================================================
