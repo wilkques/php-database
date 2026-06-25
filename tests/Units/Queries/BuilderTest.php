@@ -1045,9 +1045,12 @@ class BuilderTest extends MockeryTestCase
             $query->where('active', 1);
         };
 
-        $this->query->shouldReceive('selectSub')
-            ->with($closure, null)
-            ->andReturnSelf();
+        // New path: Closure → newQuery → call closure → parseSub → selectRaw
+        $tempQuery = Mockery::spy('Wilkques\Database\Queries\Builder');
+        $this->query->shouldReceive('newQuery')->andReturn($tempQuery);
+        $this->query->shouldReceive('parseSub')->with($tempQuery)->andReturn(array('SELECT *', array()));
+        $this->query->shouldReceive('subQueryAsContactBacktick')->andReturn('(SELECT *)');
+        $this->query->shouldReceive('selectRaw')->andReturnSelf();
 
         $result = $this->query->select($closure);
 

@@ -51,7 +51,7 @@ class CaseClauseTest extends MockeryTestCase
         $this->assertEquals('Unknown', $clause->getQuery('else_value'));
     }
 
-    public function testEndCallsGrammarAndReturnsParentBuilder()
+    public function testEndCallsGrammarAndReturnsCompiledClause()
     {
         $this->grammar->shouldReceive('compileCase')
             ->once()
@@ -70,7 +70,9 @@ class CaseClauseTest extends MockeryTestCase
 
         $result = $this->makeClause('status')->when('active', 'Active')->end('label');
 
-        $this->assertSame($this->parentBuilder, $result);
+        $this->assertInstanceOf('Wilkques\Database\Queries\CompiledClause', $result);
+        $this->assertEquals('label', $result->alias);
+        $this->assertEquals('CASE `status` WHEN ? THEN ? END', $result->rawSql);
     }
 
     public function testEndWithoutAlias()

@@ -1108,4 +1108,273 @@ class GrammarTest extends MockeryTestCase
         $sql = $result->toSql();
         $this->assertTrue(strpos($sql, 'AS `0`') !== false);
     }
+
+    // =========================================================================
+    // Phase 2: CompilableClause interface contracts
+    // =========================================================================
+
+    public function testCaseClauseImplementsCompilableClause()
+    {
+        $clause = $this->makeCaseClause('status');
+        $this->assertInstanceOf('Wilkques\Database\Queries\CompilableClause', $clause);
+    }
+
+    public function testCaseClauseCompileSqlReturnsRawSqlWithoutAlias()
+    {
+        $grammar = new Grammar();
+        $clause  = $this->makeCaseClause('status');
+        $clause->when('active', 'Active User')->otherwise('Unknown');
+
+        list($sql, $bindings) = $clause->compileSql();
+
+        $this->assertEquals('CASE `status` WHEN ? THEN ? ELSE ? END', $sql);
+        $this->assertEquals(array('active', 'Active User', 'Unknown'), $bindings);
+        $this->assertTrue(strpos($sql, ' AS ') === false);
+    }
+
+    public function testIfClauseImplementsCompilableClause()
+    {
+        $clause = $this->makeIfClause('age >= 18');
+        $this->assertInstanceOf('Wilkques\Database\Queries\CompilableClause', $clause);
+    }
+
+    public function testIfClauseCompileSqlReturnsRawSqlWithoutAlias()
+    {
+        $clause = $this->makeIfClause('age >= 18');
+        $clause->then('Adult')->otherwise('Minor');
+
+        list($sql, $bindings) = $clause->compileSql();
+
+        $this->assertEquals('IF(age >= 18, ?, ?)', $sql);
+        $this->assertEquals(array('Adult', 'Minor'), $bindings);
+        $this->assertTrue(strpos($sql, ' AS ') === false);
+    }
+
+    public function testCompiledClauseImplementsCompilableClause()
+    {
+        $query    = $this->makeRealBuilder();
+        $compiled = $query->caseWhen('status')
+            ->when('active', 'Active User')->otherwise('Unknown')
+            ->end('status_label');
+
+        $this->assertInstanceOf('Wilkques\Database\Queries\CompilableClause', $compiled);
+        $this->assertInstanceOf('Wilkques\Database\Queries\CompiledClause', $compiled);
+    }
+
+    public function testCompiledClauseCompileSqlReturnsRawSqlWithoutAlias()
+    {
+        $query    = $this->makeRealBuilder();
+        $compiled = $query->caseWhen('status')
+            ->when('active', 'Active User')->otherwise('Unknown')
+            ->end('status_label');
+
+        list($sql, $bindings) = $compiled->compileSql();
+
+        $this->assertEquals('CASE `status` WHEN ? THEN ? ELSE ? END', $sql);
+        $this->assertEquals(array('active', 'Active User', 'Unknown'), $bindings);
+        $this->assertTrue(strpos($sql, 'status_label') === false);
+    }
+
+    // =========================================================================
+    // Phase 2: select() array syntax
+    // =========================================================================
+
+    public function testSelectWithEndSkipsReturnValue()
+    {
+        $query  = $this->makeRealBuilder();
+        $result = $query->from('users')
+            ->select(array(
+                'ignored' => $query->caseWhen('status')
+                    ->when('active', 'Active User')->otherwise('Unknown')->end('status_label'),
+            ));
+
+        $sql      = $result->toSql();
+        $bindings = $result->getBindings();
+
+        $this->assertTrue(strpos($sql, 'CASE `status`') !== false);
+        $this->assertTrue(strpos($sql, 'AS `status_label`') !== false);
+        $this->assertTrue(strpos($sql, '(SELECT') === false);
+        $this->assertEquals(array('active', 'Active User', 'Unknown'), $bindings);
+    }
+
+    public function testSelectWithEndMultipleColumns()
+    {
+        $query  = $this->makeRealBuilder();
+        $result = $query->from('users')
+            ->select(array(
+                $query->caseWhen('status')
+                    ->when('active', 'Active User')->otherwise('Unknown')->end('col1'),
+                $query->caseWhen('type')
+                    ->when('admin', 'Admin')->otherwise('User')->end('col2'),
+            ));
+
+        $sql = $result->toSql();
+
+        $this->assertTrue(strpos($sql, 'AS `col1`') !== false);
+        $this->assertTrue(strpos($sql, 'AS `col2`') !== false);
+        $this->assertTrue(strpos($sql, '(SELECT') === false);
+    }
+
+    public function testSelectArrayWithCaseClause()
+    {
+        $query  = $this->makeRealBuilder();
+        $result = $query->from('users')
+            ->select(array(
+                'name',
+                'status_label' => $query->caseWhen('status')
+                    ->when('active', 'Active User')->otherwise('Unknown'),
+            ));
+
+        $sql      = $result->toSql();
+        $bindings = $result->getBindings();
+
+        $this->assertTrue(strpos($sql, 'CASE `status`') !== false);
+        $this->assertTrue(strpos($sql, 'AS `status_label`') !== false);
+        $this->assertEquals(array('active', 'Active User', 'Unknown'), $bindings);
+    }
+
+    public function testSelectArrayWithIfClause()
+    {
+        $query  = $this->makeRealBuilder();
+        $result = $query->from('users')
+            ->select(array(
+                'name',
+                'age_group' => $query->ifExpr('age >= 18')
+                    ->then('Adult')->otherwise('Minor'),
+            ));
+
+        $sql = $result->toSql();
+
+        $this->assertTrue(strpos($sql, 'IF(age >= 18') !== false);
+        $this->assertTrue(strpos($sql, 'AS `age_group`') !== false);
+    }
+
+    public function testSelectArrayMultipleCaseClauses()
+    {
+        $query  = $this->makeRealBuilder();
+        $result = $query->from('users')
+            ->select(array(
+                'name',
+                'status_label' => $query->caseWhen('status')
+                    ->when('active', 'Active User')->otherwise('Unknown'),
+                'age_group'    => $query->caseWhen()
+                    ->when('age > 18', 'Adult')->otherwise('Minor'),
+            ));
+
+        $sql      = $result->toSql();
+        $bindings = $result->getBindings();
+
+        $this->assertTrue(strpos($sql, 'AS `status_label`') !== false);
+        $this->assertTrue(strpos($sql, 'AS `age_group`') !== false);
+        $this->assertCount(5, $bindings);
+    }
+
+    public function testSelectArrayClosureReturningCompiledClause()
+    {
+        $query  = $this->makeRealBuilder();
+        $result = $query->from('users')
+            ->select(array(
+                function ($q) {
+                    return $q->caseWhen('status')
+                        ->when('active', 'Active User')->otherwise('Unknown')->end('col4');
+                },
+            ));
+
+        $sql = $result->toSql();
+
+        $this->assertTrue(strpos($sql, 'CASE `status`') !== false);
+        $this->assertTrue(strpos($sql, 'AS `col4`') !== false);
+        $this->assertTrue(strpos($sql, '(SELECT') === false);
+    }
+
+    public function testSelectArrayClosureReturningCaseClauseWithKey()
+    {
+        $query  = $this->makeRealBuilder();
+        $result = $query->from('users')
+            ->select(array(
+                'col5' => function ($q) {
+                    return $q->caseWhen('status')
+                        ->when('active', 'Active User')->otherwise('Unknown');
+                },
+            ));
+
+        $sql = $result->toSql();
+
+        $this->assertTrue(strpos($sql, 'CASE `status`') !== false);
+        $this->assertTrue(strpos($sql, 'AS `col5`') !== false);
+    }
+
+    // =========================================================================
+    // Phase 2: update() array syntax + B1 regression
+    // =========================================================================
+
+    public function testUpdateGrammarWithCaseClause()
+    {
+        $grammar = new Grammar();
+        $query   = $this->makeRealBuilder();
+        $query->from('users')->where('id', 1);
+
+        $case = $query->caseWhen('status')
+            ->when('active', 'Active User')->otherwise('Unknown');
+
+        list($caseSql,) = $case->compileSql();
+
+        $columns = array(
+            new \Wilkques\Database\Queries\Expression(
+                '`status_label` = ' . $caseSql
+            ),
+        );
+
+        $updateSql = $grammar->compilerUpdate($query, $columns);
+
+        $this->assertTrue(strpos($updateSql, 'CASE `status`') !== false);
+        $this->assertTrue(strpos($updateSql, '`status_label`') !== false);
+    }
+
+    public function testUpdateGrammarCaseSqlHasNoAlias()
+    {
+        // compileSql() must not include AS alias — update SET clause requires bare SQL
+        $query = $this->makeRealBuilder();
+        $case  = $query->caseWhen('status')
+            ->when('active', 'Active User')->otherwise('Unknown');
+
+        list($sql, $bindings) = $case->compileSql();
+
+        $this->assertTrue(strpos($sql, ' AS ') === false);
+        $this->assertEquals(array('active', 'Active User', 'Unknown'), $bindings);
+    }
+
+    public function testCompiledClauseCompileSqlAlwaysNoAlias()
+    {
+        // B1 regression: CompiledClause.compileSql() must return rawSql without alias
+        // even when end() was called with an alias
+        $query    = $this->makeRealBuilder();
+        $compiled = $query->caseWhen('status')
+            ->when('active', 'Active User')->otherwise('Unknown')
+            ->end('my_alias');
+
+        list($sql, $bindings) = $compiled->compileSql();
+
+        // SQL must not contain the alias (safe for UPDATE SET)
+        $this->assertTrue(strpos($sql, 'my_alias') === false);
+        $this->assertTrue(strpos($sql, ' AS ') === false);
+        $this->assertEquals(array('active', 'Active User', 'Unknown'), $bindings);
+    }
+
+    public function testEndSideEffectPreservedForChainApi()
+    {
+        // end() side-effect: adds to SELECT so chain API still works
+        $query  = $this->makeRealBuilder();
+        $result = $query->from('users')
+            ->caseWhen('status')
+            ->when('active', 'Active')
+            ->end('status_label');
+
+        // Result is a CompiledClause, not the original builder
+        $this->assertInstanceOf('Wilkques\Database\Queries\CompiledClause', $result);
+
+        // But calling ->toSql() on it proxies to parentBuilder
+        $sql = $result->toSql();
+        $this->assertTrue(strpos($sql, 'AS `status_label`') !== false);
+    }
 }

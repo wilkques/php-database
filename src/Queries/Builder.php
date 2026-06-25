@@ -665,8 +665,51 @@ class Builder
         }
 
         foreach ($columns as $as => $column) {
-            if ($column instanceof Closure || $column instanceof self) {
+            if ($column instanceof \Wilkques\Database\Queries\CompiledClause) {
+                // end() already added the column via selectRaw side-effect; skip
+                continue;
+
+            } else if ($column instanceof \Wilkques\Database\Queries\CompilableClause) {
+                // CaseClause / IfClause without end() — array key is alias
+                list($sql, $bindings) = $column->compileSql();
+                if (is_string($as)) {
+                    $sql .= ' AS ' . $this->getGrammar()->contactBacktick($as);
+                }
+                $this->selectRaw($sql, $bindings);
+
+            } else if ($column instanceof Closure) {
+                $temp   = $this->newQuery();
+                $result = call_user_func($column, $temp);
+
+                if ($result instanceof \Wilkques\Database\Queries\CompiledClause) {
+                    // Closure called end() — reconstruct SQL with alias from alias field
+                    $sql = $result->rawSql;
+                    if ($result->alias !== null) {
+                        $sql .= ' AS ' . $this->getGrammar()->contactBacktick($result->alias);
+                    }
+                    $this->selectRaw($sql, $result->bindings);
+
+                } else if ($result instanceof \Wilkques\Database\Queries\CompilableClause) {
+                    // Closure returned clause without end()
+                    list($sql, $bindings) = $result->compileSql();
+                    if (is_string($as)) {
+                        $sql .= ' AS ' . $this->getGrammar()->contactBacktick($as);
+                    }
+                    $this->selectRaw($sql, $bindings);
+
+                } else {
+                    // No return or Builder returned — subquery mode
+                    $target = ($result instanceof self) ? $result : $temp;
+                    list($queries, $bindings) = $this->parseSub($target);
+                    $this->selectRaw(
+                        $this->subQueryAsContactBacktick($queries, is_string($as) ? $as : null),
+                        $bindings
+                    );
+                }
+
+            } else if ($column instanceof self) {
                 $this->selectSub($column, (is_string($as) ? $as : null));
+
             } else {
                 $column = $column == '*' ? $column : $this->queryAsContactBacktick($column, $as);
 
@@ -1951,12 +1994,32 @@ class Builder
         $columns = array();
 
         foreach ($data as $column => $value) {
-            if ($value instanceof Closure || $value instanceof self) {
+            if ($value instanceof \Wilkques\Database\Queries\CompilableClause) {
+                // CaseClause / IfClause / CompiledClause — compileSql() always no alias
+                list($sql, $bindings) = $value->compileSql();
+                $columns[] = $this->raw($this->contactBacktick($column) . ' = ' . $sql);
+                $values    = array_merge($values, $bindings);
+
+            } else if ($value instanceof Closure) {
+                $temp   = $this->newQuery();
+                $result = call_user_func($value, $temp);
+
+                if ($result instanceof \Wilkques\Database\Queries\CompilableClause) {
+                    list($sql, $bindings) = $result->compileSql();
+                    $columns[] = $this->raw($this->contactBacktick($column) . ' = ' . $sql);
+                    $values    = array_merge($values, $bindings);
+                } else {
+                    $target = ($result instanceof self) ? $result : $temp;
+                    list($sql, $bindings) = $this->parseSub($target);
+                    $columns[] = $this->raw("{$this->contactBacktick($column)} = ({$sql})");
+                    $values    = array_merge($values, $bindings);
+                }
+
+            } else if ($value instanceof self) {
                 list($sql, $bindings) = $this->createSub($value);
-
                 $columns[] = $this->raw("{$this->contactBacktick($column)} = ({$sql})");
+                $values    = array_merge($values, $bindings);
 
-                $values = array_merge($values, $bindings);
             } else if ($value instanceof Expression) {
                 if (is_numeric($column)) {
                     $columns[] = $value;
@@ -1970,9 +2033,10 @@ class Builder
             }
         }
 
+        // B1 fix: exclude 'columns' to prevent end() side-effect binding pollution
         return $this->addBinding($values, 'update')->getConnection()->exec(
             $this->getGrammar()->compilerUpdate($this, $columns),
-            $this->getBindings()
+            $this->getBindings(array('columns'))
         )->rowCount();
     }
 

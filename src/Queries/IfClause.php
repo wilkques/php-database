@@ -2,7 +2,7 @@
 
 namespace Wilkques\Database\Queries;
 
-class IfClause extends Builder
+class IfClause extends Builder implements CompilableClause
 {
     /**
      * @var string
@@ -51,18 +51,33 @@ class IfClause extends Builder
     }
 
     /**
+     * Compile without alias — for update() and direct array usage.
+     *
+     * @return array  [$sql, $bindings]
+     */
+    public function compileSql()
+    {
+        return $this->getGrammar()->compileIf($this);
+    }
+
+    /**
      * @param  string|null $alias
-     * @return Builder
+     * @return CompiledClause
      */
     public function end($alias = null)
     {
-        list($sql, $bindings) = $this->getGrammar()->compileIf($this);
+        list($rawSql, $bindings) = $this->getGrammar()->compileIf($this);
 
-        if (!is_null($alias) && $alias !== '') {
-            $sql .= ' AS ' . $this->getGrammar()->contactBacktick($alias);
+        $compiled        = new CompiledClause($rawSql, $bindings, $this->parentBuilder);
+        $compiled->alias = (!is_null($alias) && $alias !== '') ? $alias : null;
+
+        $sqlForSelect = $rawSql;
+        if ($compiled->alias !== null) {
+            $sqlForSelect .= ' AS ' . $this->getGrammar()->contactBacktick($alias);
         }
+        $this->parentBuilder->selectRaw($sqlForSelect, $bindings);
 
-        return $this->parentBuilder->selectRaw($sql, $bindings);
+        return $compiled;
     }
 
     /**

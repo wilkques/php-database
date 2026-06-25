@@ -45,7 +45,7 @@ class IfClauseTest extends MockeryTestCase
         $this->assertEquals('Minor', $clause->getQuery('false_value'));
     }
 
-    public function testEndCallsGrammarAndReturnsParentBuilder()
+    public function testEndCallsGrammarAndReturnsCompiledClause()
     {
         $this->grammar->shouldReceive('compileIf')
             ->once()
@@ -64,7 +64,9 @@ class IfClauseTest extends MockeryTestCase
 
         $result = $this->makeClause('age >= 18')->then('Adult')->otherwise('Minor')->end('age_group');
 
-        $this->assertSame($this->parentBuilder, $result);
+        $this->assertInstanceOf('Wilkques\Database\Queries\CompiledClause', $result);
+        $this->assertEquals('age_group', $result->alias);
+        $this->assertEquals('IF(age >= 18, ?, ?)', $result->rawSql);
     }
 
     public function testEndWithoutAlias()
