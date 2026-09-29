@@ -112,8 +112,8 @@ class Builder
      */
     public function __construct(
         Connections $connection,
-        Grammar $grammar = null,
-        ProcessorInterface $processor = null
+        $grammar = null,
+        $processor = null
     ) {
         $this->setConnection($connection)
             ->setGrammar($grammar)
@@ -129,8 +129,8 @@ class Builder
      */
     public static function make(
         Connections $connection,
-        Grammar $grammar = null,
-        ProcessorInterface $processor = null
+        $grammar = null,
+        $processor = null
     ) {
         return new static($connection, $grammar, $processor);
     }
@@ -205,7 +205,7 @@ class Builder
      * 
      * @return static
      */
-    public function setGrammar(Grammar $grammar = null)
+    public function setGrammar($grammar = null)
     {
         return $this->resolverRegister($grammar);
     }
@@ -223,7 +223,7 @@ class Builder
      * 
      * @return static
      */
-    public function setProcessor(ProcessorInterface $processor = null)
+    public function setProcessor($processor = null)
     {
         return $this->resolverRegister($processor);
 
@@ -2236,7 +2236,7 @@ class Builder
 
             $type = strtoupper($type);
 
-            return $this->addQuery($this->raw("{$type} JOIN {$table} {$method} {$sql}"), 'joins');
+            return $this->addQuery($this->raw("{$type} JOIN {$this->contactBacktick($table)} {$method} {$sql}"), 'joins');
         }
 
         // 如果帶入參數只有兩個，則 $second = $operator and $operator = '='
@@ -2254,7 +2254,7 @@ class Builder
 
         $type = strtoupper($type);
 
-        return $this->addQuery($this->raw("{$type} JOIN {$table} {$method} {$first} {$operator} {$second}"), 'joins');
+        return $this->addQuery($this->raw("{$type} JOIN {$this->contactBacktick($table)} {$method} {$this->contactBacktick($first)} {$operator} {$this->contactBacktick($second)}"), 'joins');
     }
 
     /**

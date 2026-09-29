@@ -1327,16 +1327,62 @@
     // output: select CASE `<columnName2>` WHEN ? THEN CASE `<columnName1>` WHEN ? THEN ? ELSE ? END ELSE ? END AS `<alias>` from `<table name>`
     ```
 
-1. `end` - Compile and add to SELECT, returns parent Builder
+1. `caseWhen` - `Expression` as THEN / ELSE value (embed raw SQL, no binding)
 
     ```php
 
-    // with alias
-    $db->from('<table name>')->caseWhen('<columnName>')->when(...)->end('<alias>');
+    $db->from('<table name>')
+        ->caseWhen('<columnName>')
+        ->when('<value1>', new \Wilkques\Database\Queries\Expression('<raw SQL>'))
+        ->otherwise(new \Wilkques\Database\Queries\Expression('NULL'))
+        ->end('<alias>');
+
+    // example
+
+    $db->from('orders')
+        ->caseWhen('status')
+        ->when('shipped', new \Wilkques\Database\Queries\Expression('NOW()'))
+        ->otherwise(new \Wilkques\Database\Queries\Expression('NULL'))
+        ->end('shipped_at');
+
+    // output: select CASE `status` WHEN ? THEN NOW() ELSE NULL END AS `shipped_at` from `orders`
+    ```
+
+1. `caseWhen` - `Expression` as Simple CASE column (raw SQL, no backtick wrapping)
+
+    ```php
+
+    $db->from('<table name>')
+        ->caseWhen(new \Wilkques\Database\Queries\Expression('<raw column expression>'))
+        ->when('<value1>', '<result1>')
+        ->otherwise('<default>')
+        ->end('<alias>');
+
+    // example
+
+    $db->from('orders')
+        ->caseWhen(new \Wilkques\Database\Queries\Expression('YEAR(created_at)'))
+        ->when(2024, 'This Year')
+        ->otherwise('Other')
+        ->end('year_label');
+
+    // output: select CASE YEAR(created_at) WHEN ? THEN ? ELSE ? END AS `year_label` from `orders`
+    ```
+
+1. `end` - Compile and add to SELECT, returns `CompiledClause` (proxies to parent Builder)
+
+    ```php
+
+    // with alias — returns CompiledClause, chain via proxy
+    $db->from('<table name>')->caseWhen('<columnName>')->when(...)->end('<alias>')->select('name')->get();
 
     // without alias
     $db->from('<table name>')->caseWhen('<columnName>')->when(...)->end();
     ```
+
+    > `end()` now returns a `CompiledClause` object instead of the parent `Builder`.  
+    > All method calls on `CompiledClause` are transparently proxied to the parent `Builder`,  
+    > so existing fluent chains continue to work unchanged.
 
 ### IF Expression
 
@@ -1407,6 +1453,207 @@
 
     // output: select CASE `<columnName>` WHEN ? THEN IF(<condition>, ?, ?) ELSE ? END AS `<alias>` from `<table name>`
     ```
+
+1. `caseWhen` as `ifExpr` THEN / ELSE value
+
+    ```php
+
+    $caseExpr = $db->caseWhen('<columnName>')
+        ->when('<value1>', '<result1>')
+        ->otherwise('<default>');
+
+    $db->from('<table name>')
+        ->ifExpr('<condition>')
+        ->then($caseExpr)
+        ->otherwise('<fallback>')
+        ->end('<alias>');
+
+    // output: select IF(<condition>, CASE `<columnName>` WHEN ? THEN ? ELSE ? END, ?) AS `<alias>` from `<table name>`
+    ```
+
+### CASE WHEN / IF in `select()` and `update()` Array Form
+
+> Pass `CaseClause` / `IfClause` / `CompiledClause` directly inside `select([...])` or `update([...])` arrays.
+
+#### `select([...])` — three forms
+
+1. **Direct form** (recommended for ordering guarantee): alias via array key, no `end()` call
+
+    ```php
+
+    $db->from('users')->select([
+        'name',
+        'status_label' => $db->caseWhen('status')
+            ->when('active', 'Active User')
+            ->otherwise('Unknown'),
+        'age_group' => $db->ifExpr('age >= 18')
+            ->then('Adult')
+            ->otherwise('Minor'),
+    ])->get();
+
+    // output: SELECT `name`,
+    //         CASE `status` WHEN ? THEN ? ELSE ? END AS `status_label`,
+    //         IF(age >= 18, ?, ?) AS `age_group`
+    //         FROM `users`
+    ```
+
+1. **`end()` form**: alias provided by `end()`, array key is ignored
+
+    ```php
+
+    $db->from('users')->select([
+        $db->caseWhen('status')
+            ->when('active', 'Active User')
+            ->otherwise('Unknown')
+            ->end('status_label'),
+    ])->get();
+
+    // output: SELECT CASE `status` WHEN ? THEN ? ELSE ? END AS `status_label` FROM `users`
+    ```
+
+    > ⚠️ **Column ordering**: `end()` triggers a `selectRaw` side-effect when evaluated by PHP,  
+    > so `end()`-form columns always appear **before** other columns in the SELECT list,  
+    > regardless of their position in the array. Use the direct form to guarantee order.
+
+1. **Closure form**: Closure must `return` the clause; no return falls back to scalar subquery mode
+
+    ```php
+
+    // ✅ with return — CASE expression inserted directly
+    $db->from('users')->select([
+        function ($q) {
+            return $q->caseWhen('status')
+                ->when('active', 'Active User')
+                ->otherwise('Unknown')
+                ->end('status_label');
+        },
+    ])->get();
+
+    // output: SELECT CASE `status` WHEN ? THEN ? ELSE ? END AS `status_label` FROM `users`
+
+    // ⚠️ without return — falls back to subquery (wraps the SELECT as a scalar subquery)
+    $db->from('users')->select([
+        function ($q) {
+            $q->caseWhen('status')->when('active', 'Active User')->end('status_label');
+            // no return → $q's SELECT has the CASE, but it becomes (SELECT CASE ...)
+        },
+    ])->get();
+
+    // output: SELECT (SELECT CASE `status` WHEN ? THEN ? END AS `status_label`) FROM `users`
+    ```
+
+#### `update([...])` — four forms
+
+1. **Direct form without `end()`** (recommended): column from array key, no alias side-effect
+
+    ```php
+
+    $db->from('users')->where('id', 1)->update([
+        'status_label' => $db->caseWhen('status')
+            ->when('active', 'Active User')
+            ->otherwise('Unknown'),
+        'age_group' => $db->ifExpr('age >= 18')
+            ->then('Adult')
+            ->otherwise('Minor'),
+    ]);
+
+    // output: UPDATE `users`
+    //         SET `status_label` = CASE `status` WHEN ? THEN ? ELSE ? END,
+    //             `age_group` = IF(age >= 18, ?, ?)
+    //         WHERE `id` = ?
+    ```
+
+1. **Direct form with `end()`**: `end()` alias is ignored in UPDATE; column name comes from array key
+
+    ```php
+
+    $db->from('users')->where('id', 1)->update([
+        'status' => $db->caseWhen('status')
+            ->when('active', 'Active User')
+            ->when('inactive', 'Inactive User')
+            ->otherwise('Unknown')
+            ->end('status_label'),  // 'status_label' is ignored; column is 'status' from array key
+        'status2' => $db->ifExpr('age >= 18')
+            ->then('Adult')
+            ->otherwise('Minor')
+            ->end('age_group'),     // 'age_group' is ignored; column is 'status2' from array key
+    ]);
+
+    // output: UPDATE `users`
+    //         SET `status` = CASE `status` WHEN ? THEN ? WHEN ? THEN ? ELSE ? END,
+    //             `status2` = IF(age >= 18, ?, ?)
+    //         WHERE `id` = ?
+    ```
+
+    > ⚠️ `end()` still fires a `selectRaw` side-effect on the parent builder.  
+    > For clean UPDATE without side-effects, prefer the form without `end()`.
+
+1. **Closure form with `return`**: Closure must `return` the clause
+
+    ```php
+
+    $db->from('users')->where('id', 1)->update([
+        'status_label' => function ($q) {
+            return $q->caseWhen('status')
+                ->when('active', 'Active User')
+                ->otherwise('Unknown');  // return CaseClause directly (no end() call)
+        },
+    ]);
+    ```
+
+1. **Closure form without `return`**: `end()` called inside Closure but not returned → falls back to scalar subquery
+
+    ```php
+
+    $db->from('users')->where('id', 1)->update([
+        'status2' => function ($q) {
+            $q->caseWhen('status')
+                ->when('active', 'Active User')
+                ->when('inactive', 'Inactive User')
+                ->otherwise('Unknown')
+                ->end('status_label2');  // no return — becomes a scalar subquery
+        },
+    ]);
+
+    // output: UPDATE `users`
+    //         SET `status2` = (SELECT CASE `status` WHEN ? THEN ? WHEN ? THEN ? ELSE ? END AS `status_label2`)
+    //         WHERE `id` = ?
+    ```
+
+    > ⚠️ Without `return`, the Closure falls back to subquery mode — the CASE becomes a scalar subquery  
+    > instead of a direct SET expression. Use the `return` form or direct form to avoid this.
+
+1. **Mixed forms** (same as REPORT example — valid but with caveats noted above)
+
+    ```php
+
+    $db->from('users')->where('id', 1)->update([
+        'status' => $db->caseWhen('status')        // end() form: alias ignored, column from key
+            ->when('active', 'Active User')
+            ->when('inactive', 'Inactive User')
+            ->otherwise('Unknown')
+            ->end('status_label'),
+        'status2' => function ($q) {               // Closure without return: scalar subquery
+            $q->caseWhen('status')
+                ->when('active', 'Active User')
+                ->when('inactive', 'Inactive User')
+                ->otherwise('Unknown')
+                ->end('status_label2');
+        },
+    ]);
+
+    // output: UPDATE `users`
+    //         SET `status`  = CASE `status` WHEN ? THEN ? WHEN ? THEN ? ELSE ? END,
+    //             `status2` = (SELECT CASE `status` WHEN ? THEN ? WHEN ? THEN ? ELSE ? END AS `status_label2`)
+    //         WHERE `id` = ?
+    ```
+
+#### Notes
+
+- In `update()`, **the array key always determines the column name**. `end()` aliases are never used in SET clauses.
+- `compileSql()` always returns SQL **without** alias — safe for `UPDATE SET` expressions.
+- Closure without `return` → scalar subquery (wraps the SELECT); Closure with `return` → direct expression.
+- `CaseClause` and `IfClause` implement `CompilableClause` interface, so any future expression type that also implements `compileSql()` will work automatically in `select()` / `update()`.
 
 ### SQL Execute
 

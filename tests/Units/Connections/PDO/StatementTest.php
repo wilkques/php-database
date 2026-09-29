@@ -71,20 +71,23 @@ class StatementTest extends MockeryTestCase
 
     public function testGetParam()
     {
+        $errorMessage = null;
+
         try {
             $this->statement->getParam('abc');
         } catch (\Exception $e) {
-            if (version_compare(PHP_VERSION, '8.0', '>=') && version_compare(PHP_VERSION, '8.1', '<')) {
-                $errorMessage = 'Undefined array key "abc"';
-            } else {
-                $errorMessage = 'Undefined index: abc';
-            }
-    
-            $this->assertEquals(
-                $errorMessage,
-                $e->getMessage()
-            );
+            $errorMessage = $e->getMessage();
         }
+
+        // Not a PHP-version-dependent "Undefined array key"/"Undefined
+        // index" warning: relying on convertWarningsToExceptions to turn
+        // that into a catchable exception here never actually worked on
+        // PHPUnit >= 9 (that XML option was removed), so getParam() now
+        // throws a real, stable exception itself instead.
+        $this->assertEquals(
+            'Param: abc Not exists',
+            $errorMessage
+        );
     }
 
     public function testSetParam()

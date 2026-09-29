@@ -107,6 +107,10 @@ class Statement
      */
     public function getParam($param)
     {
+        if (!array_key_exists($param, $this->params)) {
+            throw new \RuntimeException("Param: {$param} Not exists");
+        }
+
         return $this->params[$param];
     }
 

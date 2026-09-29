@@ -1563,6 +1563,10 @@ class BuilderTest extends MockeryTestCase
 
     public function testJoinAddsToJoinQueries()
     {
+        $this->query->shouldReceive('contactBacktick')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($v) { return "`{$v}`"; });
+
         $this->query->join('orders', 'users.id', '=', 'orders.user_id');
         $queries = $this->getProtectedProperty($this->query, 'queries');
         $this->assertNotEmpty($queries['joins']['queries']);
@@ -1570,6 +1574,10 @@ class BuilderTest extends MockeryTestCase
 
     public function testLeftJoinAddsToJoinQueries()
     {
+        $this->query->shouldReceive('contactBacktick')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($v) { return "`{$v}`"; });
+
         $this->query->leftJoin('orders', 'users.id', '=', 'orders.user_id');
         $queries = $this->getProtectedProperty($this->query, 'queries');
         $this->assertNotEmpty($queries['joins']['queries']);
@@ -1577,6 +1585,10 @@ class BuilderTest extends MockeryTestCase
 
     public function testRightJoinAddsToJoinQueries()
     {
+        $this->query->shouldReceive('contactBacktick')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($v) { return "`{$v}`"; });
+
         $this->query->rightJoin('orders', 'users.id', '=', 'orders.user_id');
         $queries = $this->getProtectedProperty($this->query, 'queries');
         $this->assertNotEmpty($queries['joins']['queries']);
@@ -1584,6 +1596,10 @@ class BuilderTest extends MockeryTestCase
 
     public function testCrossJoinAddsToJoinQueries()
     {
+        $this->query->shouldReceive('contactBacktick')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($v) { return "`{$v}`"; });
+
         $this->query->crossJoin('tags', 'users.id', '=', 'tags.user_id');
         $queries = $this->getProtectedProperty($this->query, 'queries');
         $this->assertNotEmpty($queries['joins']['queries']);
@@ -1591,6 +1607,10 @@ class BuilderTest extends MockeryTestCase
 
     public function testJoinWithTwoColumnArgsDefaultsToEquals()
     {
+        $this->query->shouldReceive('contactBacktick')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($v) { return "`{$v}`"; });
+
         $this->query->join('orders', 'users.id', 'orders.user_id');
         $queries = $this->getProtectedProperty($this->query, 'queries');
         $this->assertNotEmpty($queries['joins']['queries']);
