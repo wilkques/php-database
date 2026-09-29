@@ -135,6 +135,36 @@ English | [繁體中文](README_ZH.md)
     ]);
 
     // output: select ... from (select ... from <table name1>) AS `<as name1>`, (select ... from <table name2>) AS `<as name2>`
+
+    // example
+
+    $db->table('users');
+
+    // output: SELECT * FROM `users`
+
+    $db->table('users', 'u');
+
+    // output: SELECT * FROM `users` AS `u`
+
+    $db->table(function ($query) {
+        $query->table('users');
+    }, 'u');
+
+    // output: SELECT * FROM (SELECT * FROM `users`) AS `u`
+
+    $db->table([
+        function ($query) { $query->table('users'); },
+        function ($query) { $query->table('posts'); },
+    ]);
+
+    // output: SELECT * FROM (SELECT * FROM `users`), (SELECT * FROM `posts`)
+
+    $db->table([
+        'u' => function ($query) { $query->table('users'); },
+        'p' => function ($query) { $query->table('posts'); },
+    ]);
+
+    // output: SELECT * FROM (SELECT * FROM `users`) AS `u`, (SELECT * FROM `posts`) AS `p`
     ```
 
 ### select
@@ -197,6 +227,30 @@ English | [繁體中文](README_ZH.md)
     );
 
     // output: select (select ...) AS `<as name>`
+
+    // example
+
+    $db->table('orders')->select('id', 'status', function ($query) {
+        $query->table('users');
+    });
+
+    // output: SELECT `id`, `status`, (SELECT * FROM `users`) FROM `orders`
+
+    $db->table('orders')->select([
+        'order_id'     => 'id',
+        'order_status' => 'status',
+    ]);
+
+    // output: SELECT `id` AS `order_id`, `status` AS `order_status` FROM `orders`
+
+    $db->table('orders')->select([
+        'id',
+        'status',
+        function ($query) { $query->table('users'); },
+        'user_count' => function ($query) { $query->table('users'); },
+    ]);
+
+    // output: SELECT `id`, `status`, (SELECT * FROM `users`), (SELECT * FROM `users`) AS `user_count` FROM `orders`
     ```
 
 1. `selectSub`
@@ -223,6 +277,20 @@ English | [繁體中文](README_ZH.md)
     );
 
     // output: select (select ...) AS `<as name>`
+
+    // example
+
+    $db->selectSub(function ($query) {
+        $query->table('users');
+    });
+
+    // output: SELECT (SELECT * FROM `users`)
+
+    $db->selectSub(function ($query) {
+        $query->table('users');
+    }, 'user_count');
+
+    // output: SELECT (SELECT * FROM `users`) AS `user_count`
     ```
 
 ### join
@@ -252,6 +320,19 @@ English | [繁體中文](README_ZH.md)
     );
 
     // output: select ... join <table name> ON <table name1>.<column1> = <table name2>.<column1> OR <table name1>.<column2> = <table name2>.<column2>
+
+    // example
+
+    $db->from('orders')->join('users', 'orders.user_id', 'users.id');
+
+    // output: SELECT * FROM `orders` INNER JOIN `users` ON `orders`.`user_id` = `users`.`id`
+
+    $db->from('orders')->join('users', function ($join) {
+        $join->on('orders.user_id', 'users.id')
+            ->orOn('orders.backup_user_id', 'users.id');
+    });
+
+    // output: SELECT * FROM `orders` INNER JOIN `users` ON `orders`.`user_id` = `users`.`id` OR `orders`.`backup_user_id` = `users`.`id`
     ```
 
 1. `joinWhere`
@@ -279,6 +360,19 @@ English | [繁體中文](README_ZH.md)
     );
 
     // output: select ... join <table name> WHERE <table name1>.<column1> = <table name2>.<column1> OR <table name1>.<column2> = <table name2>.<column2>
+
+    // example
+
+    $db->from('orders')->joinWhere('users', 'orders.user_id', 'users.id');
+
+    // output: SELECT * FROM `orders` INNER JOIN `users` WHERE `orders`.`user_id` = `users`.`id`
+
+    $db->from('orders')->joinWhere('users', function ($join) {
+        $join->on('orders.user_id', 'users.id')
+            ->orOn('orders.backup_user_id', 'users.id');
+    });
+
+    // output: SELECT * FROM `orders` INNER JOIN `users` WHERE `orders`.`user_id` = `users`.`id` OR `orders`.`backup_user_id` = `users`.`id`
     ```
 
 1. `joinSub`
@@ -320,13 +414,24 @@ English | [繁體中文](README_ZH.md)
     );
 
     // output: select ... join (select ...) as `<as name2>` ON <table name1>.<column1> = <as name2>.<column1> OR <table name1>.<column2> = <as name2>.<column2>
+
+    // example
+
+    $db->from('orders')->joinSub(function ($query) {
+        $query->table('users');
+    }, 'u', function ($join) {
+        $join->on('orders.user_id', 'u.id')
+            ->orOn('orders.backup_user_id', 'u.id');
+    });
+
+    // output: SELECT * FROM `orders` INNER JOIN (SELECT * FROM `users`) AS `u` ON `orders`.`user_id` = `u`.`id` OR `orders`.`backup_user_id` = `u`.`id`
     ```
 
-1. `joinSubWhere`
+1. `joinWhereSub`
 
     ```php
 
-    $db->from('<table name1>')->joinSubWhere(
+    $db->from('<table name1>')->joinWhereSub(
         function ($builder) {
             $builder->table('<table name2>');
 
@@ -351,7 +456,7 @@ English | [繁體中文](README_ZH.md)
         )
     )->table('<table name1>');
 
-    $db->from('<table name1>')->joinSubWhere(
+    $db->from('<table name1>')->joinWhereSub(
         $dbTable,
         '<as name2>',
         function (\Wilkques\Database\Queries\JoinClause $join) {
@@ -361,6 +466,17 @@ English | [繁體中文](README_ZH.md)
     );
 
     // output: select ... join (select ...) as `<as name2>` WHERE <table name1>.<column1> = <as name2>.<column1> OR <table name1>.<column2> = <as name2>.<column2>
+
+    // example
+
+    $db->from('orders')->joinWhereSub(function ($query) {
+        $query->table('users');
+    }, 'u', function ($join) {
+        $join->on('orders.user_id', 'u.id')
+            ->orOn('orders.backup_user_id', 'u.id');
+    });
+
+    // output: SELECT * FROM `orders` INNER JOIN (SELECT * FROM `users`) AS `u` WHERE `orders`.`user_id` = `u`.`id` OR `orders`.`backup_user_id` = `u`.`id`
     ```
 
 1. `leftJoin`
@@ -375,7 +491,7 @@ English | [繁體中文](README_ZH.md)
 
     same `join`
 
-1. `leftJoinSubWhere`
+1. `leftJoinWhereSub`
 
     same `joinSub`
 
@@ -391,7 +507,7 @@ English | [繁體中文](README_ZH.md)
 
     same `join`
 
-1. `rightJoinSubWhere`
+1. `rightJoinWhereSub`
 
     same `joinSub`
 
@@ -407,7 +523,7 @@ English | [繁體中文](README_ZH.md)
 
     same `join`
 
-1. `crossJoinSubWhere`
+1. `crossJoinWhereSub`
 
     same `joinSub`
 
@@ -508,6 +624,71 @@ English | [繁體中文](README_ZH.md)
     });
 
     // output: select ... where '<columnName>' <operator> (select ...)
+
+    // example
+
+    $db->table('orders')->where([
+        ['status'],
+        ['type'],
+    ]);
+
+    // output: SELECT * FROM `orders` WHERE (`status` IS NULL AND `type` IS NULL)
+
+    $db->table('orders')->where('status');
+
+    // output: SELECT * FROM `orders` WHERE `status` IS NULL
+
+    $db->table('orders')->where([
+        ['status', 'shipped'],
+        ['type', 'online'],
+    ]);
+
+    // output: SELECT * FROM `orders` WHERE (`status` = ? AND `type` = ?)
+
+    $db->table('orders')->where([
+        ['status', '!=', 'cancelled'],
+        ['amount', '>', 100],
+    ]);
+
+    // output: SELECT * FROM `orders` WHERE (`status` != ? AND `amount` > ?)
+
+    $db->table('orders')->where('status', '=', 'shipped');
+
+    // output: SELECT * FROM `orders` WHERE `status` = ?
+
+    $db->table('orders')->where('status', 'shipped')->where('type', 'online');
+
+    // output: SELECT * FROM `orders` WHERE `status` = ? AND `type` = ?
+
+    $db->table('orders')->where('status', '!=', 'cancelled')->where('amount', '>', 100);
+
+    // output: SELECT * FROM `orders` WHERE `status` != ? AND `amount` > ?
+
+    $db->table('orders')->where(function ($query) {
+        $query->where('status', 'shipped')->where('type', 'online');
+    });
+
+    // output: SELECT * FROM `orders` WHERE (`status` = ? AND `type` = ?)
+
+    $dbTable = $connection->newQuery()->table('users');
+
+    $db->table('orders')->where($dbTable);
+
+    // output: SELECT * FROM `orders` WHERE EXISTS (SELECT * FROM `users`)
+
+    $db->table('orders')->where('user_id', $connection->newQuery()->select('id')->table('users'));
+
+    // output: SELECT * FROM `orders` WHERE `user_id` = (SELECT `id` FROM `users`)
+
+    $db->table('orders')->where('user_id', 'in', $connection->newQuery()->select('id')->table('users'));
+
+    // output: SELECT * FROM `orders` WHERE `user_id` IN (SELECT `id` FROM `users`)
+
+    $db->table('orders')->where('amount', '>', function ($query) {
+        $query->table('orders')->select('amount')->where('status', 'shipped');
+    });
+
+    // output: SELECT * FROM `orders` WHERE `amount` > (SELECT `amount` FROM `orders` WHERE `status` = ?)
     ```
 
 1. `orWhere`
@@ -519,6 +700,12 @@ English | [繁體中文](README_ZH.md)
     ```php
 
     $db->whereNull('<columnName1>');
+
+    // example
+
+    $db->table('orders')->whereNull('shipped_at');
+
+    // output: SELECT * FROM `orders` WHERE `shipped_at` IS NULL
     ```
 
 1. `orWhereNull`
@@ -556,6 +743,24 @@ English | [繁體中文](README_ZH.md)
     $db->whereIn('<columnName1>', function ($query) {
         $query->select('<columnName2>')->table('<table name1>');
     });
+
+    // example
+
+    $db->table('orders')->whereIn('status', ['shipped', 'delivered']);
+
+    // output: SELECT * FROM `orders` WHERE `status` IN (?, ?)
+
+    $dbTable = $connection->newQuery()->select('id')->table('users');
+
+    $db->table('orders')->whereIn('user_id', $dbTable);
+
+    // output: SELECT * FROM `orders` WHERE `user_id` IN (SELECT `id` FROM `users`)
+
+    $db->table('orders')->whereIn('user_id', function ($query) {
+        $query->select('id')->table('users');
+    });
+
+    // output: SELECT * FROM `orders` WHERE `user_id` IN (SELECT `id` FROM `users`)
     ```
 
 1. `orWhereIn`
@@ -575,6 +780,12 @@ English | [繁體中文](README_ZH.md)
     ```php
 
     $db->whereBetween('<columnName1>', ['<columnValue1>', '<columnValue2>']);
+
+    // example
+
+    $db->table('orders')->whereBetween('amount', [100, 500]);
+
+    // output: SELECT * FROM `orders` WHERE `amount` BETWEEN ? AND ?
     ```
 
 1. `orWhereBetween`
@@ -614,6 +825,14 @@ English | [繁體中文](README_ZH.md)
     // same
 
     $db->where($dbTable);
+
+    // example
+
+    $db->table('orders')->whereExists(function ($query) {
+        $query->table('users');
+    });
+
+    // output: SELECT * FROM `orders` WHERE EXISTS (SELECT * FROM `users`)
     ```
 
 1. `whereNotExists`
@@ -633,6 +852,12 @@ English | [繁體中文](README_ZH.md)
     ```php
 
     $db->whereLike('<columnName1>', '<columnValue2>');
+
+    // example
+
+    $db->table('orders')->whereLike('status', '%ship%');
+
+    // output: SELECT * FROM `orders` WHERE `status` LIKE ?
     ```
 
 1. `orWhereLike`
@@ -640,6 +865,12 @@ English | [繁體中文](README_ZH.md)
     ```php
 
     $db->orWhereLike('<columnName1>', '<columnValue2>');
+
+    // example
+
+    $db->table('orders')->where('id', 1)->orWhereLike('status', '%ship%');
+
+    // output: SELECT * FROM `orders` WHERE `id` = ? OR `status` LIKE ?
     ```
 
 ### having
@@ -690,6 +921,28 @@ English | [繁體中文](README_ZH.md)
     // or 
 
     $db->having('<columnName1>', "<operator>", $dbTable);
+
+    // example
+
+    $db->table('orders')->groupBy('status')->having('status', 'shipped');
+
+    // output: SELECT * FROM `orders` GROUP BY `status` ASC HAVING `status` = ?
+
+    $db->table('orders')->groupBy('status')->having('total', '>', 100);
+
+    // output: SELECT * FROM `orders` GROUP BY `status` ASC HAVING `total` > ?
+
+    $db->table('orders')->groupBy('status')->having('status', function ($query) {
+        $query->select('status')->table('orders')->where('id', 1);
+    });
+
+    // output: SELECT * FROM `orders` GROUP BY `status` ASC HAVING `status` = (SELECT `status` FROM `orders` WHERE `id` = ?)
+
+    $dbTable = $connection->newQuery()->table('users');
+
+    $db->table('orders')->groupBy('status')->having('status', $dbTable);
+
+    // output: SELECT * FROM `orders` GROUP BY `status` ASC HAVING `status` = (SELECT * FROM `users`)
     ```
 
 1. `orHaving`
@@ -738,6 +991,12 @@ English | [繁體中文](README_ZH.md)
     // or 
 
     $db->orHaving('<columnName1>', "<operator>", $dbTable);
+
+    // example
+
+    $db->table('orders')->groupBy('status')->having('status', 'shipped')->orHaving('status', 'delivered');
+
+    // output: SELECT * FROM `orders` GROUP BY `status` ASC HAVING `status` = ? OR `status` = ?
     ```
 
 ### limit or offset
@@ -751,6 +1010,16 @@ English | [繁體中文](README_ZH.md)
     // or
 
     $db->limit(10, 1); // set query LIMIT
+
+    // example
+
+    $db->table('orders')->limit(1);
+
+    // output: SELECT * FROM `orders` LIMIT ?
+
+    $db->table('orders')->limit(10, 1);
+
+    // output: SELECT * FROM `orders` LIMIT ?, ?
     ```
 
 1. `offset`
@@ -758,6 +1027,12 @@ English | [繁體中文](README_ZH.md)
     ```php
 
     $db->offset(1); // set query OFFSET
+
+    // example
+
+    $db->table('orders')->offset(1);
+
+    // output: SELECT * FROM `orders` OFFSET ?
     ```
 
 ### group by
@@ -809,6 +1084,25 @@ English | [繁體中文](README_ZH.md)
         ],
         ['<columnName2>', 'ASC'],
     ]);
+
+    // example
+
+    $db->table('orders')->groupBy('status', 'DESC');
+
+    // output: SELECT * FROM `orders` GROUP BY `status` DESC
+
+    $db->table('orders')->groupBy([
+        ['status', 'DESC'],
+        ['type', 'ASC'],
+    ]);
+
+    // output: SELECT * FROM `orders` GROUP BY `status` DESC, `type` ASC
+
+    $dbTable = $connection->newQuery()->table('users');
+
+    $db->table('orders')->groupBy($dbTable, 'DESC');
+
+    // output: SELECT * FROM `orders` GROUP BY (SELECT * FROM `users`) DESC
     ```
 
 1. `groupByDesc`
@@ -863,6 +1157,22 @@ English | [繁體中文](README_ZH.md)
         $dbTable,
         '<columnName1>'
     ]);
+
+    // example
+
+    $db->table('orders')->groupByDesc('status');
+
+    // output: SELECT * FROM `orders` GROUP BY `status` DESC
+
+    $db->table('orders')->groupByDesc('status', 'type');
+
+    // output: SELECT * FROM `orders` GROUP BY `status` DESC, `type` DESC
+
+    $dbTable = $connection->newQuery()->table('users');
+
+    $db->table('orders')->groupByDesc($dbTable, 'status');
+
+    // output: SELECT * FROM `orders` GROUP BY (SELECT * FROM `users`) DESC, `status` DESC
     ```
 
 1. `groupByAsc`
@@ -917,6 +1227,12 @@ English | [繁體中文](README_ZH.md)
         $dbTable,
         '<columnName1>'
     ]);
+
+    // example
+
+    $db->table('orders')->groupByAsc('status');
+
+    // output: SELECT * FROM `orders` GROUP BY `status` ASC
     ```
 
 ### order by
@@ -946,6 +1262,19 @@ English | [繁體中文](README_ZH.md)
         ],
         ['<columnName2>', 'ASC'],
     ]);
+
+    // example
+
+    $db->table('orders')->orderBy('created_at', 'DESC');
+
+    // output: SELECT * FROM `orders` ORDER BY `created_at` DESC
+
+    $db->table('orders')->orderBy([
+        ['created_at', 'DESC'],
+        ['id', 'ASC'],
+    ]);
+
+    // output: SELECT * FROM `orders` ORDER BY `created_at` DESC, `id` ASC
     ```
 
 1. `orderByDesc`
@@ -981,6 +1310,16 @@ English | [繁體中文](README_ZH.md)
         }, 
         '<columnName2>'
     ]);
+
+    // example
+
+    $db->table('orders')->orderByDesc('created_at');
+
+    // output: SELECT * FROM `orders` ORDER BY `created_at` DESC
+
+    $db->table('orders')->orderByDesc('created_at', 'id');
+
+    // output: SELECT * FROM `orders` ORDER BY `created_at` DESC, `id` DESC
     ```
 
 1. `orderByAsc`
@@ -1016,6 +1355,12 @@ English | [繁體中文](README_ZH.md)
         }, 
         '<columnName2>'
     ]);
+
+    // example
+
+    $db->table('orders')->orderByAsc('created_at');
+
+    // output: SELECT * FROM `orders` ORDER BY `created_at` ASC
     ```
 
 ### union
@@ -1041,6 +1386,13 @@ English | [繁體中文](README_ZH.md)
 
     $db->union($dbTable);
 
+    // example
+
+    $db->table('orders')->union(function ($query) {
+        $query->table('orders')->where('status', 'pending');
+    });
+
+    // output: SELECT * FROM `orders` UNION SELECT * FROM `orders` WHERE `status` = ?
     ```
 
 1. `unionAll`
@@ -1053,6 +1405,16 @@ English | [繁體中文](README_ZH.md)
     ```php
 
     $db->get(); // get all data
+
+    // example
+
+    $db->table('orders')->get();
+
+    // output (real rows from the `orders` table):
+    // [
+    //     ['id' => 1, 'status' => 'shipped', 'type' => 'online', 'amount' => 150, ...],
+    //     ['id' => 2, 'status' => 'pending', 'type' => 'offline', 'amount' => 80, ...],
+    // ]
     ```
 
 1. `first`
@@ -1060,6 +1422,12 @@ English | [繁體中文](README_ZH.md)
     ```php
 
     $db->first(); // get first data
+
+    // example
+
+    $db->table('orders')->first();
+
+    // output: ['id' => 1, 'status' => 'shipped', 'type' => 'online', 'amount' => 150, ...]
     ```
 
 1. `find`
@@ -1067,6 +1435,12 @@ English | [繁體中文](README_ZH.md)
     ```php
 
     $db->find('<id>'); // get find data
+
+    // example
+
+    $db->table('orders')->find(1);
+
+    // output: ['id' => 1, 'status' => 'shipped', 'type' => 'online', 'amount' => 150, ...]
     ```
 
 ### Update
@@ -1099,6 +1473,12 @@ English | [繁體中文](README_ZH.md)
             // do something
         }
     ]);
+
+    // example
+
+    $db->table('orders')->where('id', '=', 1)->update(['status' => 'delivered']);
+
+    // output: UPDATE `orders` SET `status` = ? WHERE `id` = ?
     ```
 
 1. `increment`
@@ -1114,6 +1494,16 @@ English | [繁體中文](README_ZH.md)
         '<update column 2>' => 'update value 2',
         ...
     ]);
+
+    // example
+
+    $db->table('orders')->increment('amount');
+
+    // output: UPDATE `orders` SET `amount` = `amount` + ?
+
+    $db->table('orders')->increment('amount', 5);
+
+    // output: UPDATE `orders` SET `amount` = `amount` + ?
     ```
 
 1. `decrement`
@@ -1129,6 +1519,16 @@ English | [繁體中文](README_ZH.md)
         '<update column 2>' => 'update value 2',
         ...
     ]);
+
+    // example
+
+    $db->table('orders')->decrement('amount');
+
+    // output: UPDATE `orders` SET `amount` = `amount` - ?
+
+    $db->table('orders')->decrement('amount', 5);
+
+    // output: UPDATE `orders` SET `amount` = `amount` - ?
     ```
 
 ### Insert
@@ -1159,6 +1559,33 @@ English | [繁體中文](README_ZH.md)
     ]);
     ```
 
+    // example
+
+    ```php
+
+    $db->table('orders')->insert([
+        'status' => 'pending',
+        'type' => 'online',
+    ]);
+
+    // output: INSERT INTO `orders` (`status`, `type`) VALUES (?, ?)
+
+    // or
+
+    $db->table('orders')->insert([
+        [
+            'status' => 'pending',
+            'type' => 'online',
+        ],
+        [
+            'status' => 'shipped',
+            'type' => 'offline',
+        ],
+    ]);
+
+    // output: INSERT INTO `orders` (`status`, `type`) VALUES (?, ?), (?, ?)
+    ```
+
 1. `insertSub`
 
     ```php
@@ -1179,6 +1606,18 @@ English | [繁體中文](README_ZH.md)
     // WHERE <Sub columnName3> = <Sub value1> AND <Sub columnName4> = <Sub value2>
     ```
 
+    // example
+
+    ```php
+
+    $db->table('orders')->insertSub(['status', 'type'], function ($query) {
+        $query->from('orders')->select('status', 'type')
+            ->where('id', 1)->where('amount', 100);
+    });
+
+    // output: INSERT INTO `orders` (`status`, `type`) SELECT `status`, `type` FROM `orders` WHERE `id` = ? AND `amount` = ?
+    ```
+
 ### Delete
 
 1. `delete`
@@ -1197,6 +1636,26 @@ English | [繁體中文](README_ZH.md)
     $db->delete();
     ```
 
+    // example
+
+    ```php
+
+    $db->table('orders')->where('id', '=', 1)->delete();
+
+    // output: DELETE FROM `orders` WHERE `id` = ?
+
+    // or
+
+    $orders = $db->table('orders')->where('id', '=', 1);
+
+    $orders->first();
+
+    $orders->delete();
+
+    // output: SELECT * FROM `orders` WHERE `id` = ? LIMIT 1
+    // output: DELETE FROM `orders` WHERE `id` = ?
+    ```
+
 1. `softDelete`
 
     ```php
@@ -1209,6 +1668,26 @@ English | [繁體中文](README_ZH.md)
     $db->where('<columnName1>', "=", '<columnValue1>')->first();
 
     $db->softDelete('<deleteColumnName1>', '<date time format>'); // default deleted_at, "Y-m-d H:i:s"
+    ```
+
+    // example
+
+    ```php
+
+    $db->table('orders')->where('id', '=', 1)->softDelete();
+
+    // output: UPDATE `orders` SET `deleted_at` = ? WHERE `id` = ?
+
+    // or
+
+    $orders = $db->table('orders')->where('id', '=', 1);
+
+    $orders->first();
+
+    $orders->softDelete();
+
+    // output: SELECT * FROM `orders` WHERE `id` = ? LIMIT 1
+    // output: UPDATE `orders` SET `deleted_at` = ? WHERE `id` = ?
     ```
 
 1. `reStore` recovery (`delete` cannot recovery data)
@@ -1225,6 +1704,15 @@ English | [繁體中文](README_ZH.md)
     $db->reStore('<deleteColumnName1>'); // default deleted_at
     ```
 
+    // example
+
+    ```php
+
+    $db->table('orders')->where('id', '=', 1)->reStore();
+
+    // output: UPDATE `orders` SET `deleted_at` = NULL WHERE `id` = ?
+    ```
+
 ### Raw
 
 1. `raw`
@@ -1236,13 +1724,23 @@ English | [繁體中文](README_ZH.md)
     
     // example
 
-    $db->select($db->raw("COUNT(*)"));
+    $db->table('orders')->select($db->raw("COUNT(*)"));
+
+    // output: SELECT COUNT(*) FROM `orders`
 
     // update
 
     $db->update([
         $db->raw("<sql string in select column>"),
     ]);
+
+    // example
+
+    $db->table('orders')->where('id', 1)->update([
+        $db->raw("status = 'shipped'"),
+    ]);
+
+    // output: UPDATE `orders` SET status = 'shipped' WHERE `id` = ?
     ```
 
 ### CASE WHEN
@@ -1380,6 +1878,16 @@ English | [繁體中文](README_ZH.md)
 
     // without alias
     $db->from('<table name>')->caseWhen('<columnName>')->when(...)->end();
+
+    // example
+
+    $db->from('orders')->caseWhen('status')->when('active', 'Active')->otherwise('Inactive')->end('status_label')->select('id')->get();
+
+    // output: SELECT CASE `status` WHEN ? THEN ? ELSE ? END AS `status_label`, `id` FROM `orders`
+
+    $db->from('orders')->caseWhen('status')->when('active', 'Active')->otherwise('Inactive')->end()->get();
+
+    // output: SELECT CASE `status` WHEN ? THEN ? ELSE ? END FROM `orders`
     ```
 
     > `end()` now returns a `CompiledClause` object instead of the parent `Builder`.  
@@ -1601,6 +2109,8 @@ English | [繁體中文](README_ZH.md)
                 ->otherwise('Unknown');  // return CaseClause directly (no end() call)
         },
     ]);
+
+    // output: UPDATE `users` SET `status_label` = CASE `status` WHEN ? THEN ? ELSE ? END WHERE `id` = ?
     ```
 
 1. **Closure form without `return`**: `end()` called inside Closure but not returned → falls back to scalar subquery
@@ -1670,11 +2180,29 @@ English | [繁體中文](README_ZH.md)
     $db->query("SELECT * FROM `<your table name>`")->fetch();
     ```
 
+    // example
+
+    ```php
+
+    $row = $db->query("SELECT * FROM `orders` LIMIT 1")->fetch();
+
+    // output: {"id":2,"status":"pending","type":"offline","amount":81,"user_id":2,"shipped_at":null,"created_at":null,"deleted_at":"2026-09-29 07:04:06"}
+    ```
+
 1. `prepare` execute SQL string
 
     ```php
 
     $db->prepare("<SQL String>")->execute(['<value1>', '<value2>' ...])->fetch();
+    ```
+
+    // example
+
+    ```php
+
+    $row = $db->prepare("SELECT * FROM `orders` WHERE `id` = ?")->execute([2])->fetch();
+
+    // output: {"id":2,"status":"pending","type":"offline","amount":81,"user_id":2,"shipped_at":null,"created_at":null,"deleted_at":"2026-09-29 07:04:06"}
     ```
 
 1. `bindParams` execute SQL string
@@ -1690,29 +2218,132 @@ English | [繁體中文](README_ZH.md)
     $result->fetch();
     ```
 
+    // example
+
+    ```php
+
+    $stat = $db->prepare("SELECT * FROM `orders` WHERE `id` = ?");
+
+    $result = $stat->bindParams([2])->execute();
+
+    $row = $result->fetch();
+
+    // output: {"id":2,"status":"pending","type":"offline","amount":81,"user_id":2,"shipped_at":null,"created_at":null,"deleted_at":"2026-09-29 07:04:06"}
+    ```
+
 1. `execute` execute SQL string
+
+    ```php
+
+    // example
+
+    $db->prepare('SELECT * FROM `orders` WHERE `id` = 2')->execute()->fetch();
+
+    // output: {"id":2,"status":"pending","type":"offline","amount":81,"user_id":2,"shipped_at":null,"created_at":null,"deleted_at":"2026-09-29 07:04:06"}
+    ```
 
 ### SQL Execute result
 
 1. `fetchNumeric` get result key to numeric
 
+    ```php
+
+    // example
+
+    $db->query('SELECT `id`, `status` FROM `orders` WHERE `id` = 2')->fetchNumeric();
+
+    // output: [2, "pending"]
+    ```
+
 1. `fetchAssociative` get result key value
+
+    ```php
+
+    // example
+
+    $db->query('SELECT `id`, `status` FROM `orders` WHERE `id` = 2')->fetchAssociative();
+
+    // output: {"id": 2, "status": "pending"}
+    ```
 
 1. `fetchFirstColumn` get result first column
 
+    ```php
+
+    // example
+
+    $db->query('SELECT `id`, `status` FROM `orders` WHERE `id` = 2')->fetchFirstColumn();
+
+    // output: 2
+    ```
+
 1. `fetchAllNumeric` get all result key to numeric
+
+    ```php
+
+    // example
+
+    $db->query('SELECT `id`, `status` FROM `orders` ORDER BY `id` LIMIT 2')->fetchAllNumeric();
+
+    // output: [[2, "pending"], [3, "pending"]]
+    ```
 
 1. `fetchAllAssociative` get all result key value
 
+    ```php
+
+    // example
+
+    $db->query('SELECT `id`, `status` FROM `orders` ORDER BY `id` LIMIT 2')->fetchAllAssociative();
+
+    // output: [{"id": 2, "status": "pending"}, {"id": 3, "status": "pending"}]
+    ```
+
 1. `fetchAllFirstColumn` get all result first column
 
+    ```php
+
+    // example
+
+    $db->query('SELECT `id`, `status` FROM `orders` ORDER BY `id` LIMIT 2')->fetchAllFirstColumn();
+
+    // output: [2, 3]
+    ```
+
 1. `rowCount` get result
+
+    ```php
+
+    // example
+
+    $db->query('UPDATE `orders` SET `status` = "shipped" WHERE `id` = 2')->rowCount();
+
+    // output: 1
+    ```
 
 1. `free` PDO method `closeCursor` [PHP PDOStatement::closeCursor](https://www.php.net/manual/en/pdostatement.closecursor.php)
 
 1. `fetch` [PDOStatement::fetch](https://www.php.net/manual/en/pdostatement.fetch.php)
 
+    ```php
+
+    // example
+
+    $db->query('SELECT * FROM `orders` WHERE `id` = 2')->fetch();
+
+    // output: {"id":2,"status":"pending","type":"offline","amount":81,"user_id":2,"shipped_at":null,"created_at":null,"deleted_at":"2026-09-29 07:04:06"}
+    ```
+
 1. `fetchAll` [PDOStatement::fetchAll](https://www.php.net/manual/en/pdostatement.fetchall.php)
+
+    ```php
+
+    // example
+
+    $db->query('SELECT * FROM `orders` ORDER BY `id` LIMIT 2')->fetchAll();
+
+    // output: [{"id":2,"status":"pending",...}, {"id":3,"status":"pending",...}]
+    ```
 
 ### Query Log
 
@@ -1729,16 +2360,47 @@ English | [繁體中文](README_ZH.md)
     $db->getQueryLog();
     ```
 
+    // example
+
+    ```php
+
+    $db->enableQueryLog();
+
+    $db->table('orders')->where('status', '=', 'pending')->get();
+
+    $db->getQueryLog();
+
+    // output: [{"query": "SELECT * FROM `orders` WHERE `status` = ?", "bindings": {"1": "pending"}}]
+    ```
+
 1. `getParseQueryLog` or `parseQueryLog` get paser query logs
     ```php
 
     $db->getParseQueryLog();
     ```
 
+    // example
+
+    ```php
+
+    $db->getParseQueryLog();
+
+    // output: ["SELECT * FROM `orders` WHERE `status` = \"pending\""]
+    ```
+
 1. `getLastParseQuery` or `lastParseQuery` get paser query
     ```php
 
     $db->getLastParseQuery();
+    ```
+
+    // example
+
+    ```php
+
+    $db->getLastParseQuery();
+
+    // output: SELECT * FROM `orders` WHERE `status` = "pending"
     ```
 
 ### Lock
@@ -1750,11 +2412,29 @@ English | [繁體中文](README_ZH.md)
     $db->lockForUpdate();
     ```
 
+    // example
+
+    ```php
+
+    $db->table('orders')->where('id', '=', 1)->lockForUpdate()->toSql();
+
+    // output: SELECT * FROM `orders` WHERE `id` = ? FOR UPDATE
+    ```
+
 1. `sharedLock`
 
     ```php
     
     $db->sharedLock();
+    ```
+
+    // example
+
+    ```php
+
+    $db->table('orders')->where('id', '=', 1)->sharedLock()->toSql();
+
+    // output: SELECT * FROM `orders` WHERE `id` = ? LOCK IN SHARE MODE
     ```
 
 ### Page
@@ -1784,6 +2464,21 @@ English | [繁體中文](README_ZH.md)
     $db->getForPage('<prePage>', '<currentPage>'); // get page data
     ```
 
+    // example
+
+    ```php
+
+    $db->table('orders')->currentPage(1)->prePage(2)->getForPage();
+
+    // output: SELECT * FROM `orders` LIMIT ? OFFSET ?
+
+    // or
+
+    $db->table('orders')->getForPage(2, 1); // prePage 2, currentPage 1
+
+    // output: SELECT * FROM `orders` LIMIT ? OFFSET ?
+    ```
+
 ### Transaction
 
 1. `beginTransaction`
@@ -1805,6 +2500,31 @@ English | [繁體中文](README_ZH.md)
     ```php
     
     $db->rollback();
+    ```
+
+    // example
+
+    ```php
+
+    $db->beginTransaction();
+
+    $db->table('orders')->insert(['status' => 'pending', 'type' => 'test-txn']);
+
+    $db->rollback();
+
+    $db->table('orders')->where('type', '=', 'test-txn')->first();
+
+    // output: false (rolled back, row never persisted)
+
+    $db->beginTransaction();
+
+    $db->table('orders')->insert(['status' => 'pending', 'type' => 'test-txn2']);
+
+    $db->commit();
+
+    $db->table('orders')->where('type', '=', 'test-txn2')->first();
+
+    // output: {"id": 8, "status": "pending", "type": "test-txn2", ...} (committed, row persisted)
     ```
 
 ### Connect

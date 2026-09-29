@@ -135,6 +135,36 @@
     ]);
 
     // 輸出: select ... from (select ... from <table name1>) AS `<as name1>`, (select ... from <table name2>) AS `<as name2>`
+
+    // 範例
+
+    $db->table('users');
+
+    // 輸出: SELECT * FROM `users`
+
+    $db->table('users', 'u');
+
+    // 輸出: SELECT * FROM `users` AS `u`
+
+    $db->table(function ($query) {
+        $query->table('users');
+    }, 'u');
+
+    // 輸出: SELECT * FROM (SELECT * FROM `users`) AS `u`
+
+    $db->table([
+        function ($query) { $query->table('users'); },
+        function ($query) { $query->table('posts'); },
+    ]);
+
+    // 輸出: SELECT * FROM (SELECT * FROM `users`), (SELECT * FROM `posts`)
+
+    $db->table([
+        'u' => function ($query) { $query->table('users'); },
+        'p' => function ($query) { $query->table('posts'); },
+    ]);
+
+    // 輸出: SELECT * FROM (SELECT * FROM `users`) AS `u`, (SELECT * FROM `posts`) AS `p`
     ```
 
 ### select
@@ -197,6 +227,30 @@
     );
 
     // 輸出: select (select ...) AS `<as name>`
+
+    // 範例
+
+    $db->table('orders')->select('id', 'status', function ($query) {
+        $query->table('users');
+    });
+
+    // 輸出: SELECT `id`, `status`, (SELECT * FROM `users`) FROM `orders`
+
+    $db->table('orders')->select([
+        'order_id'     => 'id',
+        'order_status' => 'status',
+    ]);
+
+    // 輸出: SELECT `id` AS `order_id`, `status` AS `order_status` FROM `orders`
+
+    $db->table('orders')->select([
+        'id',
+        'status',
+        function ($query) { $query->table('users'); },
+        'user_count' => function ($query) { $query->table('users'); },
+    ]);
+
+    // 輸出: SELECT `id`, `status`, (SELECT * FROM `users`), (SELECT * FROM `users`) AS `user_count` FROM `orders`
     ```
 
 1. `selectSub`
@@ -223,6 +277,20 @@
     );
 
     // 輸出: select (select ...) AS `<as name>`
+
+    // 範例
+
+    $db->selectSub(function ($query) {
+        $query->table('users');
+    });
+
+    // 輸出: SELECT (SELECT * FROM `users`)
+
+    $db->selectSub(function ($query) {
+        $query->table('users');
+    }, 'user_count');
+
+    // 輸出: SELECT (SELECT * FROM `users`) AS `user_count`
     ```
 
 ### join
@@ -252,6 +320,19 @@
     );
 
     // 輸出: select ... join <table name> ON <table name1>.<column1> = <table name2>.<column1> OR <table name1>.<column2> = <table name2>.<column2>
+
+    // 範例
+
+    $db->from('orders')->join('users', 'orders.user_id', 'users.id');
+
+    // 輸出: SELECT * FROM `orders` INNER JOIN `users` ON `orders`.`user_id` = `users`.`id`
+
+    $db->from('orders')->join('users', function ($join) {
+        $join->on('orders.user_id', 'users.id')
+            ->orOn('orders.backup_user_id', 'users.id');
+    });
+
+    // 輸出: SELECT * FROM `orders` INNER JOIN `users` ON `orders`.`user_id` = `users`.`id` OR `orders`.`backup_user_id` = `users`.`id`
     ```
 
 1. `joinWhere`
@@ -279,6 +360,19 @@
     );
 
     // 輸出: select ... join <table name> WHERE <table name1>.<column1> = <table name2>.<column1> OR <table name1>.<column2> = <table name2>.<column2>
+
+    // 範例
+
+    $db->from('orders')->joinWhere('users', 'orders.user_id', 'users.id');
+
+    // 輸出: SELECT * FROM `orders` INNER JOIN `users` WHERE `orders`.`user_id` = `users`.`id`
+
+    $db->from('orders')->joinWhere('users', function ($join) {
+        $join->on('orders.user_id', 'users.id')
+            ->orOn('orders.backup_user_id', 'users.id');
+    });
+
+    // 輸出: SELECT * FROM `orders` INNER JOIN `users` WHERE `orders`.`user_id` = `users`.`id` OR `orders`.`backup_user_id` = `users`.`id`
     ```
 
 1. `joinSub`
@@ -320,6 +414,17 @@
     );
 
     // 輸出: select ... join (select ...) as `<as name2>` ON <table name1>.<column1> = <as name2>.<column1> OR <table name1>.<column2> = <as name2>.<column2>
+
+    // 範例
+
+    $db->from('orders')->joinSub(function ($query) {
+        $query->table('users');
+    }, 'u', function ($join) {
+        $join->on('orders.user_id', 'u.id')
+            ->orOn('orders.backup_user_id', 'u.id');
+    });
+
+    // 輸出: SELECT * FROM `orders` INNER JOIN (SELECT * FROM `users`) AS `u` ON `orders`.`user_id` = `u`.`id` OR `orders`.`backup_user_id` = `u`.`id`
     ```
 
 1. `joinSubWhere`
@@ -361,6 +466,17 @@
     );
 
     // 輸出: select ... join (select ...) as `<as name2>` WHERE <table name1>.<column1> = <as name2>.<column1> OR <table name1>.<column2> = <as name2>.<column2>
+
+    // 範例（真正的方法名稱是 `joinWhereSub`）
+
+    $db->from('orders')->joinWhereSub(function ($query) {
+        $query->table('users');
+    }, 'u', function ($join) {
+        $join->on('orders.user_id', 'u.id')
+            ->orOn('orders.backup_user_id', 'u.id');
+    });
+
+    // 輸出: SELECT * FROM `orders` INNER JOIN (SELECT * FROM `users`) AS `u` WHERE `orders`.`user_id` = `u`.`id` OR `orders`.`backup_user_id` = `u`.`id`
     ```
 
 1. `leftJoin`
@@ -508,6 +624,71 @@
     });
 
     // 輸出: select ... where '<columnName>' <operator> (select ...)
+
+    // 範例
+
+    $db->table('orders')->where([
+        ['status'],
+        ['type'],
+    ]);
+
+    // 輸出: SELECT * FROM `orders` WHERE (`status` IS NULL AND `type` IS NULL)
+
+    $db->table('orders')->where('status');
+
+    // 輸出: SELECT * FROM `orders` WHERE `status` IS NULL
+
+    $db->table('orders')->where([
+        ['status', 'shipped'],
+        ['type', 'online'],
+    ]);
+
+    // 輸出: SELECT * FROM `orders` WHERE (`status` = ? AND `type` = ?)
+
+    $db->table('orders')->where([
+        ['status', '!=', 'cancelled'],
+        ['amount', '>', 100],
+    ]);
+
+    // 輸出: SELECT * FROM `orders` WHERE (`status` != ? AND `amount` > ?)
+
+    $db->table('orders')->where('status', '=', 'shipped');
+
+    // 輸出: SELECT * FROM `orders` WHERE `status` = ?
+
+    $db->table('orders')->where('status', 'shipped')->where('type', 'online');
+
+    // 輸出: SELECT * FROM `orders` WHERE `status` = ? AND `type` = ?
+
+    $db->table('orders')->where('status', '!=', 'cancelled')->where('amount', '>', 100);
+
+    // 輸出: SELECT * FROM `orders` WHERE `status` != ? AND `amount` > ?
+
+    $db->table('orders')->where(function ($query) {
+        $query->where('status', 'shipped')->where('type', 'online');
+    });
+
+    // 輸出: SELECT * FROM `orders` WHERE (`status` = ? AND `type` = ?)
+
+    $dbTable = $connection->newQuery()->table('users');
+
+    $db->table('orders')->where($dbTable);
+
+    // 輸出: SELECT * FROM `orders` WHERE EXISTS (SELECT * FROM `users`)
+
+    $db->table('orders')->where('user_id', $connection->newQuery()->select('id')->table('users'));
+
+    // 輸出: SELECT * FROM `orders` WHERE `user_id` = (SELECT `id` FROM `users`)
+
+    $db->table('orders')->where('user_id', 'in', $connection->newQuery()->select('id')->table('users'));
+
+    // 輸出: SELECT * FROM `orders` WHERE `user_id` IN (SELECT `id` FROM `users`)
+
+    $db->table('orders')->where('amount', '>', function ($query) {
+        $query->table('orders')->select('amount')->where('status', 'shipped');
+    });
+
+    // 輸出: SELECT * FROM `orders` WHERE `amount` > (SELECT `amount` FROM `orders` WHERE `status` = ?)
     ```
 
 1. `orWhere`
@@ -519,6 +700,12 @@
     ```php
 
     $db->whereNull('<columnName1>');
+
+    // 範例
+
+    $db->table('orders')->whereNull('shipped_at');
+
+    // 輸出: SELECT * FROM `orders` WHERE `shipped_at` IS NULL
     ```
 
 1. `orWhereNull`
@@ -556,6 +743,24 @@
     $db->whereIn('<columnName1>', function ($query) {
         $query->select('<columnName2>')->table('<table name1>');
     });
+
+    // 範例
+
+    $db->table('orders')->whereIn('status', ['shipped', 'delivered']);
+
+    // 輸出: SELECT * FROM `orders` WHERE `status` IN (?, ?)
+
+    $dbTable = $connection->newQuery()->select('id')->table('users');
+
+    $db->table('orders')->whereIn('user_id', $dbTable);
+
+    // 輸出: SELECT * FROM `orders` WHERE `user_id` IN (SELECT `id` FROM `users`)
+
+    $db->table('orders')->whereIn('user_id', function ($query) {
+        $query->select('id')->table('users');
+    });
+
+    // 輸出: SELECT * FROM `orders` WHERE `user_id` IN (SELECT `id` FROM `users`)
     ```
 
 1. `orWhereIn`
@@ -575,6 +780,12 @@
     ```php
 
     $db->whereBetween('<columnName1>', ['<columnValue1>', '<columnValue2>']);
+
+    // 範例
+
+    $db->table('orders')->whereBetween('amount', [100, 500]);
+
+    // 輸出: SELECT * FROM `orders` WHERE `amount` BETWEEN ? AND ?
     ```
 
 1. `orWhereBetween`
@@ -614,6 +825,14 @@
     // 相同
 
     $db->where($dbTable);
+
+    // 範例
+
+    $db->table('orders')->whereExists(function ($query) {
+        $query->table('users');
+    });
+
+    // 輸出: SELECT * FROM `orders` WHERE EXISTS (SELECT * FROM `users`)
     ```
 
 1. `whereNotExists`
@@ -633,6 +852,12 @@
     ```php
 
     $db->whereLike('<columnName1>', '<columnValue2>');
+
+    // 範例
+
+    $db->table('orders')->whereLike('status', '%ship%');
+
+    // 輸出: SELECT * FROM `orders` WHERE `status` LIKE ?
     ```
 
 1. `orWhereLike`
@@ -640,6 +865,12 @@
     ```php
 
     $db->orWhereLike('<columnName1>', '<columnValue2>');
+
+    // 範例
+
+    $db->table('orders')->where('id', 1)->orWhereLike('status', '%ship%');
+
+    // 輸出: SELECT * FROM `orders` WHERE `id` = ? OR `status` LIKE ?
     ```
 
 ### having
@@ -690,6 +921,28 @@
     // 或 
 
     $db->having('<columnName1>', "<operator>", $dbTable);
+
+    // 範例
+
+    $db->table('orders')->groupBy('status')->having('status', 'shipped');
+
+    // 輸出: SELECT * FROM `orders` GROUP BY `status` ASC HAVING `status` = ?
+
+    $db->table('orders')->groupBy('status')->having('total', '>', 100);
+
+    // 輸出: SELECT * FROM `orders` GROUP BY `status` ASC HAVING `total` > ?
+
+    $db->table('orders')->groupBy('status')->having('status', function ($query) {
+        $query->select('status')->table('orders')->where('id', 1);
+    });
+
+    // 輸出: SELECT * FROM `orders` GROUP BY `status` ASC HAVING `status` = (SELECT `status` FROM `orders` WHERE `id` = ?)
+
+    $dbTable = $connection->newQuery()->table('users');
+
+    $db->table('orders')->groupBy('status')->having('status', $dbTable);
+
+    // 輸出: SELECT * FROM `orders` GROUP BY `status` ASC HAVING `status` = (SELECT * FROM `users`)
     ```
 
 1. `orHaving`
@@ -738,6 +991,12 @@
     // 或 
 
     $db->orHaving('<columnName1>', "<operator>", $dbTable);
+
+    // 範例
+
+    $db->table('orders')->groupBy('status')->having('status', 'shipped')->orHaving('status', 'delivered');
+
+    // 輸出: SELECT * FROM `orders` GROUP BY `status` ASC HAVING `status` = ? OR `status` = ?
     ```
 
 ### limit 或 offset
@@ -751,6 +1010,16 @@
     // 或
 
     $db->limit(10, 1); // 設定查詢的 LIMIT
+
+    // 範例
+
+    $db->table('orders')->limit(1);
+
+    // 輸出: SELECT * FROM `orders` LIMIT ?
+
+    $db->table('orders')->limit(10, 1);
+
+    // 輸出: SELECT * FROM `orders` LIMIT ?, ?
     ```
 
 1. `offset`
@@ -758,6 +1027,12 @@
     ```php
 
     $db->offset(1); // 設定查詢的 OFFSET
+
+    // 範例
+
+    $db->table('orders')->offset(1);
+
+    // 輸出: SELECT * FROM `orders` OFFSET ?
     ```
 
 ### group by
@@ -809,6 +1084,25 @@
         ],
         ['<columnName2>', 'ASC'],
     ]);
+
+    // 範例
+
+    $db->table('orders')->groupBy('status', 'DESC');
+
+    // 輸出: SELECT * FROM `orders` GROUP BY `status` DESC
+
+    $db->table('orders')->groupBy([
+        ['status', 'DESC'],
+        ['type', 'ASC'],
+    ]);
+
+    // 輸出: SELECT * FROM `orders` GROUP BY `status` DESC, `type` ASC
+
+    $dbTable = $connection->newQuery()->table('users');
+
+    $db->table('orders')->groupBy($dbTable, 'DESC');
+
+    // 輸出: SELECT * FROM `orders` GROUP BY (SELECT * FROM `users`) DESC
     ```
 
 1. `groupByDesc`
@@ -863,6 +1157,22 @@
         $dbTable,
         '<columnName1>'
     ]);
+
+    // 範例
+
+    $db->table('orders')->groupByDesc('status');
+
+    // 輸出: SELECT * FROM `orders` GROUP BY `status` DESC
+
+    $db->table('orders')->groupByDesc('status', 'type');
+
+    // 輸出: SELECT * FROM `orders` GROUP BY `status` DESC, `type` DESC
+
+    $dbTable = $connection->newQuery()->table('users');
+
+    $db->table('orders')->groupByDesc($dbTable, 'status');
+
+    // 輸出: SELECT * FROM `orders` GROUP BY (SELECT * FROM `users`) DESC, `status` DESC
     ```
 
 1. `groupByAsc`
@@ -917,6 +1227,12 @@
         $dbTable,
         '<columnName1>'
     ]);
+
+    // 範例
+
+    $db->table('orders')->groupByAsc('status');
+
+    // 輸出: SELECT * FROM `orders` GROUP BY `status` ASC
     ```
 
 ### order by
@@ -946,6 +1262,19 @@
         ],
         ['<columnName2>', 'ASC'],
     ]);
+
+    // 範例
+
+    $db->table('orders')->orderBy('created_at', 'DESC');
+
+    // 輸出: SELECT * FROM `orders` ORDER BY `created_at` DESC
+
+    $db->table('orders')->orderBy([
+        ['created_at', 'DESC'],
+        ['id', 'ASC'],
+    ]);
+
+    // 輸出: SELECT * FROM `orders` ORDER BY `created_at` DESC, `id` ASC
     ```
 
 1. `orderByDesc`
@@ -981,6 +1310,16 @@
         }, 
         '<columnName2>'
     ]);
+
+    // 範例
+
+    $db->table('orders')->orderByDesc('created_at');
+
+    // 輸出: SELECT * FROM `orders` ORDER BY `created_at` DESC
+
+    $db->table('orders')->orderByDesc('created_at', 'id');
+
+    // 輸出: SELECT * FROM `orders` ORDER BY `created_at` DESC, `id` DESC
     ```
 
 1. `orderByAsc`
@@ -1016,6 +1355,12 @@
         }, 
         '<columnName2>'
     ]);
+
+    // 範例
+
+    $db->table('orders')->orderByAsc('created_at');
+
+    // 輸出: SELECT * FROM `orders` ORDER BY `created_at` ASC
     ```
 
 ### union
@@ -1041,6 +1386,13 @@
 
     $db->union($dbTable);
 
+    // 範例
+
+    $db->table('orders')->union(function ($query) {
+        $query->table('orders')->where('status', 'pending');
+    });
+
+    // 輸出: SELECT * FROM `orders` UNION SELECT * FROM `orders` WHERE `status` = ?
     ```
 
 1. `unionAll`
@@ -1054,6 +1406,16 @@
     ```php
 
     $db->get(); // 取得所有資料
+
+    // 範例
+
+    $db->table('orders')->get();
+
+    // 輸出 (來自 `orders` 資料表的真實資料列):
+    // [
+    //     ['id' => 1, 'status' => 'shipped', 'type' => 'online', 'amount' => 150, ...],
+    //     ['id' => 2, 'status' => 'pending', 'type' => 'offline', 'amount' => 80, ...],
+    // ]
     ```
 
 1. `first`
@@ -1061,6 +1423,12 @@
     ```php
 
     $db->first(); // 取得第一筆資料
+
+    // 範例
+
+    $db->table('orders')->first();
+
+    // 輸出: ['id' => 1, 'status' => 'shipped', 'type' => 'online', 'amount' => 150, ...]
     ```
 
 1. `find`
@@ -1068,6 +1436,12 @@
     ```php
 
     $db->find('<id>'); // 取得指定資料
+
+    // 範例
+
+    $db->table('orders')->find(1);
+
+    // 輸出: ['id' => 1, 'status' => 'shipped', 'type' => 'online', 'amount' => 150, ...]
     ```
 
 ### 更新
@@ -1100,6 +1474,12 @@
             // 做些什麼
         }
     ]);
+
+    // 範例
+
+    $db->table('orders')->where('id', '=', 1)->update(['status' => 'delivered']);
+
+    // 輸出: UPDATE `orders` SET `status` = ? WHERE `id` = ?
     ```
 
 1. `increment`
@@ -1115,6 +1495,16 @@
         '<update column 2>' => 'update value 2',
         ...
     ]);
+
+    // 範例
+
+    $db->table('orders')->increment('amount');
+
+    // 輸出: UPDATE `orders` SET `amount` = `amount` + ?
+
+    $db->table('orders')->increment('amount', 5);
+
+    // 輸出: UPDATE `orders` SET `amount` = `amount` + ?
     ```
 
 1. `decrement`
@@ -1130,6 +1520,16 @@
         '<update column 2>' => 'update value 2',
         ...
     ]);
+
+    // 範例
+
+    $db->table('orders')->decrement('amount');
+
+    // 輸出: UPDATE `orders` SET `amount` = `amount` - ?
+
+    $db->table('orders')->decrement('amount', 5);
+
+    // 輸出: UPDATE `orders` SET `amount` = `amount` - ?
     ```
 
 ### 新增
@@ -1160,6 +1560,33 @@
     ]);
     ```
 
+    // 範例
+
+    ```php
+
+    $db->table('orders')->insert([
+        'status' => 'pending',
+        'type' => 'online',
+    ]);
+
+    // 輸出: INSERT INTO `orders` (`status`, `type`) VALUES (?, ?)
+
+    // 或
+
+    $db->table('orders')->insert([
+        [
+            'status' => 'pending',
+            'type' => 'online',
+        ],
+        [
+            'status' => 'shipped',
+            'type' => 'offline',
+        ],
+    ]);
+
+    // 輸出: INSERT INTO `orders` (`status`, `type`) VALUES (?, ?), (?, ?)
+    ```
+
 1. `insertSub`
 
     ```php
@@ -1180,6 +1607,18 @@
     // WHERE <Sub columnName3> = <Sub value1> AND <Sub columnName4> = <Sub value2>
     ```
 
+    // 範例
+
+    ```php
+
+    $db->table('orders')->insertSub(['status', 'type'], function ($query) {
+        $query->from('orders')->select('status', 'type')
+            ->where('id', 1)->where('amount', 100);
+    });
+
+    // 輸出: INSERT INTO `orders` (`status`, `type`) SELECT `status`, `type` FROM `orders` WHERE `id` = ? AND `amount` = ?
+    ```
+
 ### 刪除
 
 1. `delete`
@@ -1198,6 +1637,26 @@
     $db->delete();
     ```
 
+    // 範例
+
+    ```php
+
+    $db->table('orders')->where('id', '=', 1)->delete();
+
+    // 輸出: DELETE FROM `orders` WHERE `id` = ?
+
+    // 或
+
+    $orders = $db->table('orders')->where('id', '=', 1);
+
+    $orders->first();
+
+    $orders->delete();
+
+    // 輸出: SELECT * FROM `orders` WHERE `id` = ? LIMIT 1
+    // 輸出: DELETE FROM `orders` WHERE `id` = ?
+    ```
+
 1. `softDelete`
 
     ```php
@@ -1210,6 +1669,26 @@
     $db->where('<columnName1>', "=", '<columnValue1>')->first();
 
     $db->softDelete('<deleteColumnName1>', '<date time format>'); // 預設 deleted_at, "Y-m-d H:i:s"
+    ```
+
+    // 範例
+
+    ```php
+
+    $db->table('orders')->where('id', '=', 1)->softDelete();
+
+    // 輸出: UPDATE `orders` SET `deleted_at` = ? WHERE `id` = ?
+
+    // 或
+
+    $orders = $db->table('orders')->where('id', '=', 1);
+
+    $orders->first();
+
+    $orders->softDelete();
+
+    // 輸出: SELECT * FROM `orders` WHERE `id` = ? LIMIT 1
+    // 輸出: UPDATE `orders` SET `deleted_at` = ? WHERE `id` = ?
     ```
 
 1. `reStore` 復原（`delete` 無法復原資料）
@@ -1226,6 +1705,15 @@
     $db->reStore('<deleteColumnName1>'); // 預設 deleted_at
     ```
 
+    // 範例
+
+    ```php
+
+    $db->table('orders')->where('id', '=', 1)->reStore();
+
+    // 輸出: UPDATE `orders` SET `deleted_at` = NULL WHERE `id` = ?
+    ```
+
 ### Raw（原生 SQL）
 
 1. `raw`
@@ -1237,13 +1725,23 @@
     
     // 範例
 
-    $db->select($db->raw("COUNT(*)"));
+    $db->table('orders')->select($db->raw("COUNT(*)"));
+
+    // 輸出: SELECT COUNT(*) FROM `orders`
 
     // update
 
     $db->update([
         $db->raw("<sql string in select column>"),
     ]);
+
+    // 範例
+
+    $db->table('orders')->where('id', 1)->update([
+        $db->raw("status = 'shipped'"),
+    ]);
+
+    // 輸出: UPDATE `orders` SET status = 'shipped' WHERE `id` = ?
     ```
 
 ### CASE WHEN
@@ -1381,6 +1879,16 @@
 
     // 不帶別名
     $db->from('<table name>')->caseWhen('<columnName>')->when(...)->end();
+
+    // 範例
+
+    $db->from('orders')->caseWhen('status')->when('active', 'Active')->otherwise('Inactive')->end('status_label')->select('id')->get();
+
+    // 輸出: SELECT CASE `status` WHEN ? THEN ? ELSE ? END AS `status_label`, `id` FROM `orders`
+
+    $db->from('orders')->caseWhen('status')->when('active', 'Active')->otherwise('Inactive')->end()->get();
+
+    // 輸出: SELECT CASE `status` WHEN ? THEN ? ELSE ? END FROM `orders`
     ```
 
     > `end()` 現在回傳 `CompiledClause` 物件，而不是父層 `Builder`。  
@@ -1602,6 +2110,8 @@
                 ->otherwise('Unknown');  // 直接 return CaseClause（不呼叫 end()）
         },
     ]);
+
+    // 輸出: UPDATE `users` SET `status_label` = CASE `status` WHEN ? THEN ? ELSE ? END WHERE `id` = ?
     ```
 
 1. **不帶 `return` 的 Closure 形式**：Closure 內呼叫了 `end()` 但沒有 return → 退回純量子查詢
@@ -1671,11 +2181,29 @@
     $db->query("SELECT * FROM `<your table name>`")->fetch();
     ```
 
+    // 範例
+
+    ```php
+
+    $row = $db->query("SELECT * FROM `orders` LIMIT 1")->fetch();
+
+    // 輸出: {"id":2,"status":"pending","type":"offline","amount":81,"user_id":2,"shipped_at":null,"created_at":null,"deleted_at":"2026-09-29 07:04:06"}
+    ```
+
 1. `prepare` 執行 SQL 字串
 
     ```php
 
     $db->prepare("<SQL String>")->execute(['<value1>', '<value2>' ...])->fetch();
+    ```
+
+    // 範例
+
+    ```php
+
+    $row = $db->prepare("SELECT * FROM `orders` WHERE `id` = ?")->execute([2])->fetch();
+
+    // 輸出: {"id":2,"status":"pending","type":"offline","amount":81,"user_id":2,"shipped_at":null,"created_at":null,"deleted_at":"2026-09-29 07:04:06"}
     ```
 
 1. `bindParams` 執行 SQL 字串
@@ -1691,29 +2219,132 @@
     $result->fetch();
     ```
 
+    // 範例
+
+    ```php
+
+    $stat = $db->prepare("SELECT * FROM `orders` WHERE `id` = ?");
+
+    $result = $stat->bindParams([2])->execute();
+
+    $row = $result->fetch();
+
+    // 輸出: {"id":2,"status":"pending","type":"offline","amount":81,"user_id":2,"shipped_at":null,"created_at":null,"deleted_at":"2026-09-29 07:04:06"}
+    ```
+
 1. `execute` 執行 SQL 字串
+
+    ```php
+
+    // 範例
+
+    $db->prepare('SELECT * FROM `orders` WHERE `id` = 2')->execute()->fetch();
+
+    // 輸出: {"id":2,"status":"pending","type":"offline","amount":81,"user_id":2,"shipped_at":null,"created_at":null,"deleted_at":"2026-09-29 07:04:06"}
+    ```
 
 ### SQL 執行結果
 
 1. `fetchNumeric` 取得結果，鍵為數字索引
 
+    ```php
+
+    // 範例
+
+    $db->query('SELECT `id`, `status` FROM `orders` WHERE `id` = 2')->fetchNumeric();
+
+    // 輸出: [2, "pending"]
+    ```
+
 1. `fetchAssociative` 取得結果，鍵為欄位名稱
+
+    ```php
+
+    // 範例
+
+    $db->query('SELECT `id`, `status` FROM `orders` WHERE `id` = 2')->fetchAssociative();
+
+    // 輸出: {"id": 2, "status": "pending"}
+    ```
 
 1. `fetchFirstColumn` 取得結果的第一個欄位
 
+    ```php
+
+    // 範例
+
+    $db->query('SELECT `id`, `status` FROM `orders` WHERE `id` = 2')->fetchFirstColumn();
+
+    // 輸出: 2
+    ```
+
 1. `fetchAllNumeric` 取得所有結果，鍵為數字索引
+
+    ```php
+
+    // 範例
+
+    $db->query('SELECT `id`, `status` FROM `orders` ORDER BY `id` LIMIT 2')->fetchAllNumeric();
+
+    // 輸出: [[2, "pending"], [3, "pending"]]
+    ```
 
 1. `fetchAllAssociative` 取得所有結果，鍵為欄位名稱
 
+    ```php
+
+    // 範例
+
+    $db->query('SELECT `id`, `status` FROM `orders` ORDER BY `id` LIMIT 2')->fetchAllAssociative();
+
+    // 輸出: [{"id": 2, "status": "pending"}, {"id": 3, "status": "pending"}]
+    ```
+
 1. `fetchAllFirstColumn` 取得所有結果的第一個欄位
 
+    ```php
+
+    // 範例
+
+    $db->query('SELECT `id`, `status` FROM `orders` ORDER BY `id` LIMIT 2')->fetchAllFirstColumn();
+
+    // 輸出: [2, 3]
+    ```
+
 1. `rowCount` 取得結果筆數
+
+    ```php
+
+    // 範例
+
+    $db->query('UPDATE `orders` SET `status` = "shipped" WHERE `id` = 2')->rowCount();
+
+    // 輸出: 1
+    ```
 
 1. `free` PDO 方法 `closeCursor` [PHP PDOStatement::closeCursor](https://www.php.net/manual/en/pdostatement.closecursor.php)
 
 1. `fetch` [PDOStatement::fetch](https://www.php.net/manual/en/pdostatement.fetch.php)
 
+    ```php
+
+    // 範例
+
+    $db->query('SELECT * FROM `orders` WHERE `id` = 2')->fetch();
+
+    // 輸出: {"id":2,"status":"pending","type":"offline","amount":81,"user_id":2,"shipped_at":null,"created_at":null,"deleted_at":"2026-09-29 07:04:06"}
+    ```
+
 1. `fetchAll` [PDOStatement::fetchAll](https://www.php.net/manual/en/pdostatement.fetchall.php)
+
+    ```php
+
+    // 範例
+
+    $db->query('SELECT * FROM `orders` ORDER BY `id` LIMIT 2')->fetchAll();
+
+    // 輸出: [{"id":2,"status":"pending",...}, {"id":3,"status":"pending",...}]
+    ```
 
 ### 查詢紀錄 (Query Log)
 
@@ -1730,16 +2361,47 @@
     $db->getQueryLog();
     ```
 
+    // 範例
+
+    ```php
+
+    $db->enableQueryLog();
+
+    $db->table('orders')->where('status', '=', 'pending')->get();
+
+    $db->getQueryLog();
+
+    // 輸出: [{"query": "SELECT * FROM `orders` WHERE `status` = ?", "bindings": {"1": "pending"}}]
+    ```
+
 1. `getParseQueryLog` 或 `parseQueryLog` 取得已解析的查詢紀錄
     ```php
 
     $db->getParseQueryLog();
     ```
 
+    // 範例
+
+    ```php
+
+    $db->getParseQueryLog();
+
+    // 輸出: ["SELECT * FROM `orders` WHERE `status` = \"pending\""]
+    ```
+
 1. `getLastParseQuery` 或 `lastParseQuery` 取得最後一次解析的查詢
     ```php
 
     $db->getLastParseQuery();
+    ```
+
+    // 範例
+
+    ```php
+
+    $db->getLastParseQuery();
+
+    // 輸出: SELECT * FROM `orders` WHERE `status` = "pending"
     ```
 
 ### 鎖定 (Lock)
@@ -1751,11 +2413,29 @@
     $db->lockForUpdate();
     ```
 
+    // 範例
+
+    ```php
+
+    $db->table('orders')->where('id', '=', 1)->lockForUpdate()->toSql();
+
+    // 輸出: SELECT * FROM `orders` WHERE `id` = ? FOR UPDATE
+    ```
+
 1. `sharedLock`
 
     ```php
     
     $db->sharedLock();
+    ```
+
+    // 範例
+
+    ```php
+
+    $db->table('orders')->where('id', '=', 1)->sharedLock()->toSql();
+
+    // 輸出: SELECT * FROM `orders` WHERE `id` = ? LOCK IN SHARE MODE
     ```
 
 ### 分頁
@@ -1785,6 +2465,21 @@
     $db->getForPage('<prePage>', '<currentPage>'); // 取得分頁資料
     ```
 
+    // 範例
+
+    ```php
+
+    $db->table('orders')->currentPage(1)->prePage(2)->getForPage();
+
+    // 輸出: SELECT * FROM `orders` LIMIT ? OFFSET ?
+
+    // 或
+
+    $db->table('orders')->getForPage(2, 1); // 每頁筆數 2, 目前頁數 1
+
+    // 輸出: SELECT * FROM `orders` LIMIT ? OFFSET ?
+    ```
+
 ### 交易
 
 1. `beginTransaction`
@@ -1806,6 +2501,31 @@
     ```php
     
     $db->rollback();
+    ```
+
+    // 範例
+
+    ```php
+
+    $db->beginTransaction();
+
+    $db->table('orders')->insert(['status' => 'pending', 'type' => 'test-txn']);
+
+    $db->rollback();
+
+    $db->table('orders')->where('type', '=', 'test-txn')->first();
+
+    // 輸出: false（已回滾，該筆資料未寫入）
+
+    $db->beginTransaction();
+
+    $db->table('orders')->insert(['status' => 'pending', 'type' => 'test-txn2']);
+
+    $db->commit();
+
+    $db->table('orders')->where('type', '=', 'test-txn2')->first();
+
+    // 輸出: {"id": 8, "status": "pending", "type": "test-txn2", ...}（已提交，資料已寫入）
     ```
 
 ### 連線
