@@ -106,7 +106,12 @@ class JoinClause extends Builder
 
         $andOr = strtoupper($andOr);
 
-        $this->queryPush("{$andOr} {$this->contactBacktick($first)} {$operator} {$this->contactBacktick($second)}", 'joins');
+        // Not queryPush(): that method has never existed anywhere in this
+        // codebase — this call fataled unconditionally ("Method:
+        // `queryPush` Not Exists") the moment on()/orOn() actually ran.
+        // addQuery() is the real method doing exactly what this needs:
+        // push a compiled fragment onto $this->queries[$type]['queries'].
+        $this->addQuery("{$andOr} {$this->contactBacktick($first)} {$operator} {$this->contactBacktick($second)}", 'joins');
 
         return $this;
     }

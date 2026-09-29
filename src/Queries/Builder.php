@@ -611,7 +611,18 @@ class Builder
      */
     public function setTable($table, $as = null)
     {
-        return $this->newQuery()->from($table, $as);
+        // Not $this->newQuery()->from(...): newQuery() returns a brand new
+        // instance sharing only the connection/grammar/processor — the
+        // table/from state landed on that throwaway instance, never on
+        // $this. Silently no-oped every documented `function ($query) {
+        // $query->table(...); }` closure pattern throughout this package
+        // (select/join/where/groupBy/orderBy/having subqueries all use it),
+        // and made JoinClause's constructor fatal outright: it calls
+        // setTable() before setParentClass() is set, and the old
+        // newQuery()-based path needed $parentClass already set to build
+        // that throwaway instance. from() mutates $this directly, so
+        // neither problem applies here.
+        return $this->from($table, $as);
     }
 
     /**

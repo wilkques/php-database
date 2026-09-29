@@ -1279,48 +1279,93 @@ class BuilderTest extends MockeryTestCase
     // setTable 隔離測試 (Bug Fix 驗證)
     // =========================================================================
 
-    public function testSetTableReturnsNewQueryInstance()
+    public function testSetTableMutatesInPlaceAndReturnsSelf()
     {
-        $newQuery = Mockery::mock('Wilkques\Database\Queries\Builder');
-        $newQuery->shouldReceive('from')->andReturnSelf();
-
-        $this->query->shouldReceive('newQuery')->andReturn($newQuery);
+        // setTable() used to route through newQuery()->from(...), so the
+        // table/from state landed on a throwaway new instance and never on
+        // $this — silently no-oping every documented
+        // `function ($query) { $query->table(...); }` closure pattern
+        // throughout this package, and making JoinClause's constructor
+        // fatal outright (it calls setTable() before setParentClass() is
+        // set, which the old newQuery()-based path needed already set).
+        // Fixed to call $this->from(...) directly, matching how every
+        // other fluent method here (where(), select(), etc.) mutates
+        // $this and returns it.
+        $this->query->shouldReceive('contactBacktick')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($v) { return "`{$v}`"; });
 
         $result = $this->query->table('users');
 
-        $this->assertNotSame($this->query, $result);
-        $this->assertInstanceOf('Wilkques\Database\Queries\Builder', $result);
+        $this->assertSame($this->query, $result);
+
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+
+        $this->assertNotEmpty($queries['froms']['queries']);
     }
 
-    public function testSetTableCallsNewQueryBeforeFrom()
+    public function testSetTableDoesNotCallNewQuery()
     {
-        $newQuery = Mockery::mock('Wilkques\Database\Queries\Builder');
-        $newQuery->shouldReceive('from')->with('users', null)->once()->andReturnSelf();
+        $this->query->shouldReceive('contactBacktick')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($v) { return "`{$v}`"; });
 
-        $this->query->shouldReceive('newQuery')->once()->andReturn($newQuery);
+        $this->query->shouldNotReceive('newQuery');
 
         $this->query->table('users');
-
-        $newQuery->shouldHaveReceived('from')->once();
     }
 
-    public function testSetTableDoesNotCarryOverWheres()
+    public function testSetTableAccumulatesAcrossMultipleCalls()
     {
-        $firstQuery = Mockery::mock('Wilkques\Database\Queries\Builder');
-        $firstQuery->shouldReceive('from')->andReturnSelf();
-
-        $secondQuery = Mockery::mock('Wilkques\Database\Queries\Builder');
-        $secondQuery->shouldReceive('from')->andReturnSelf();
-
-        $this->query->shouldReceive('newQuery')
-            ->andReturn($firstQuery, $secondQuery);
+        // from() supports multiple sources by design (see the "table or
+        // from" README section's array-of-closures form,
+        // `FROM (select ...), (select ...)`) — it appends rather than
+        // replacing, so two table() calls on the same instance both land,
+        // rather than the second one starting over on a fresh instance.
+        $this->query->shouldReceive('contactBacktick')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function ($v) { return "`{$v}`"; });
 
         $first = $this->query->table('users');
         $second = $this->query->table('posts');
 
-        $this->assertNotSame($first, $second);
-        $this->assertSame($firstQuery, $first);
-        $this->assertSame($secondQuery, $second);
+        $this->assertSame($this->query, $first);
+        $this->assertSame($first, $second);
+
+        $queries = $this->getProtectedProperty($this->query, 'queries');
+
+        $this->assertCount(2, $queries['froms']['queries']);
+    }
+
+    public function testTableInSubqueryClosureActuallyAppliesToTheSubquery()
+    {
+        // Regression test, real objects (no mocking): every documented
+        // `function ($query) { $query->table('<table name>'); }` pattern
+        // throughout this README (select/join/where/groupBy/orderBy/
+        // having subqueries) relied on table() mutating the closure's
+        // $query parameter directly. Before the setTable() fix above, the
+        // closure's effect was silently discarded (it landed on a
+        // throwaway newQuery() instance instead), so a select() subquery
+        // written exactly per the docs compiled to an empty `(SELECT * )`
+        // with no FROM at all.
+        $connection = $this->getMockForAbstractClass(
+            'Wilkques\Database\Connections\Connections',
+            array(),
+            '',
+            false
+        );
+
+        $builder = new \Wilkques\Database\Queries\Builder(
+            $connection,
+            new \Wilkques\Database\Queries\Grammar\Drivers\MySql,
+            new \Wilkques\Database\Queries\Processors\Processor
+        );
+
+        $sql = $builder->select(function ($query) {
+            $query->table('users');
+        })->toSql();
+
+        $this->assertEquals('SELECT (SELECT * FROM `users`)', $sql);
     }
 
     // =========================================================================

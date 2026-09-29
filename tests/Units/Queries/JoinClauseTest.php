@@ -20,7 +20,19 @@ class JoinClauseTest extends TestCase
 
     private function builder()
     {
-        return new Builder($this->connection());
+        // A real Grammar/Processor, not null: JoinClause's constructor
+        // calls setTable() (which needs contactBacktick(), resolved via
+        // Builder::__call()'s resolvers array) as soon as it's built —
+        // this whole test file was never actually wired into either
+        // phpunit-higher.xml or phpunit-lower.xml until now (no
+        // tests/Units/Php/{Higher,Lower}/Queries/JoinClauseTest.php
+        // existed to pull it in via inheritance), so this gap was never
+        // exercised.
+        return new Builder(
+            $this->connection(),
+            new \Wilkques\Database\Queries\Grammar\Drivers\MySql,
+            new \Wilkques\Database\Queries\Processors\Processor
+        );
     }
 
     private function join()
@@ -104,7 +116,11 @@ class JoinClauseTest extends TestCase
 
     public function testOn()
     {
-        $join = $this->join();
+        // Not $this->join() (disableOriginalConstructor()): on() calls
+        // contactBacktick(), resolved via Builder::__call()'s resolvers
+        // array, which is only populated by the real constructor — the
+        // disabled-constructor mock has no Grammar to resolve it with.
+        $join = new JoinClause($this->builder(), 'inner', 'abc');
 
         $join->on('abc.id', 'efg.id');
 
@@ -115,7 +131,7 @@ class JoinClauseTest extends TestCase
             $join->getQuery('joins.queries')
         );
 
-        $join = $this->join();
+        $join = new JoinClause($this->builder(), 'inner', 'abc');
 
         $join->on('abc.id', '=', 'efg.id');
 
@@ -146,7 +162,9 @@ class JoinClauseTest extends TestCase
 
     public function testOrOn()
     {
-        $join = $this->join();
+        // See testOn(): needs a real Grammar to resolve contactBacktick(),
+        // which the disabled-constructor $this->join() mock doesn't have.
+        $join = new JoinClause($this->builder(), 'inner', 'abc');
 
         $join->orOn('abc.id', 'efg.id');
 
@@ -157,7 +175,7 @@ class JoinClauseTest extends TestCase
             $join->getQuery('joins.queries')
         );
 
-        $join = $this->join();
+        $join = new JoinClause($this->builder(), 'inner', 'abc');
 
         $join->orOn('abc.id', '=', 'efg.id');
 
@@ -222,6 +240,43 @@ class JoinClauseTest extends TestCase
 
         $this->assertTrue(
             $join->forSubQuery() instanceof Builder
+        );
+    }
+
+    public function testClosureBasedJoinConditionCompilesCorrectSql()
+    {
+        // Regression test: JoinClause::__construct() used to call
+        // setTable() before setParentClass() was set, but the old
+        // setTable() (routing through newQuery()->from()) needed
+        // $parentClass already set to build its throwaway instance —
+        // fataled ("Class name must be a valid object or a string") the
+        // moment any closure-based join condition was used, i.e. the
+        // entire multi-condition join() API shown in this README's "join"
+        // section. Separately, JoinClause::on() called a queryPush()
+        // method that has never existed anywhere in this codebase, so
+        // even after the constructor crash was fixed, on()/orOn() still
+        // fataled ("Method: `queryPush` Not Exists") the instant they ran.
+        $connection = $this->getMockForAbstractClass(
+            'Wilkques\Database\Connections\Connections',
+            array(),
+            '',
+            false
+        );
+
+        $builder = new Builder(
+            $connection,
+            new \Wilkques\Database\Queries\Grammar\Drivers\MySql,
+            new \Wilkques\Database\Queries\Processors\Processor
+        );
+
+        $sql = $builder->from('orders')->join('users', function ($join) {
+            $join->on('orders.user_id', 'users.id')
+                ->orOn('orders.backup_user_id', 'users.id');
+        })->toSql();
+
+        $this->assertEquals(
+            'SELECT * FROM `orders` INNER JOIN `users` ON `orders`.`user_id` = `users`.`id` OR `orders`.`backup_user_id` = `users`.`id`',
+            $sql
         );
     }
 }
