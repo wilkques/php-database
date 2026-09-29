@@ -2744,7 +2744,13 @@ class Builder
 
             is_object($abstract) && $this->resolverRegister($abstract);
 
-            if ($abstract instanceof Grammar) {
+            // Not just Grammar: Connections setters (setHost/setUsername/
+            // setPassword/setDatabase/newConnection/reConnection/
+            // selectDatabase) return $this (the Connections/PDO driver) for
+            // their own fluent chaining too. Without this, `$db->setHost(...)`
+            // silently swaps $db for the raw driver instance, fataling on the
+            // very next Builder method (e.g. ->table(...)) in the chain.
+            if ($abstract instanceof Grammar || $abstract instanceof Connections) {
                 $abstract = $this;
             }
         }

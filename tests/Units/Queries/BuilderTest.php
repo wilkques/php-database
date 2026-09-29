@@ -2096,4 +2096,41 @@ class BuilderTest extends MockeryTestCase
         $result = $this->query->ifExpr('age >= 18');
         $this->assertInstanceOf('Wilkques\Database\Queries\IfClause', $result);
     }
+
+    public function testMagicCallConnectionSetterReturnsBuilderNotConnection()
+    {
+        // Regression test, real objects (no mocking): __call() only rewrote
+        // the resolver's return value back to $this for Grammar, never for
+        // Connections. Connections setters (setHost/setUsername/setPassword/
+        // setDatabase/newConnection/reConnection/selectDatabase) return $this
+        // for their own fluent chaining too, so `$builder->setHost(...)` was
+        // silently swapping the Builder for the raw Connections/PDO driver,
+        // fataling on the very next Builder method chained after it.
+        //
+        // Not a Mockery spy of Builder for $builder itself: a real (not
+        // "makePartial") object is needed here, since a Builder spy's own
+        // __call() interception layered on top of the real Builder::__call()
+        // it delegates to — which itself calls the protected
+        // resolverRegister() back on that same spy mid-call — segfaults
+        // PHPUnit 4.8/Mockery 0.9 on real PHP 5.3.10 (stack overflow in the
+        // spy's call-recording machinery). The production code path this
+        // test exists to cover never involves a mocked Builder, so a real
+        // instance both avoids the crash and is the more faithful test.
+        $connection = $this->getMockForAbstractClass(
+            'Wilkques\Database\Connections\Connections',
+            array(),
+            '',
+            false
+        );
+
+        $builder = new Builder(
+            $connection,
+            new \Wilkques\Database\Queries\Grammar\Drivers\MySql,
+            new \Wilkques\Database\Queries\Processors\Processor
+        );
+
+        $result = $builder->setHost('127.0.0.1');
+
+        $this->assertSame($builder, $result);
+    }
 }
