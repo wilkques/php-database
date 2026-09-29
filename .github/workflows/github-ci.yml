@@ -16,6 +16,71 @@ env:
   # DB_HOST: mysql
 
 jobs:
+  # GitHub-hosted runners can't provision a real PHP 5.3 interpreter
+  # directly — shivammathur/setup-php (used by the build job below) needs a
+  # newer glibc/Node.js than a PHP 5.3-era build has. This job instead runs
+  # PHP 5.3 itself inside a docker container (cespi/php-5.3:cli, Alpine
+  # 3.4-based) with --network host, so it can reach the services: mysql
+  # container below on 127.0.0.1:3306 the same way the build job does.
+  #
+  # pdo_mysql is compiled from source against that image's actual PHP build
+  # (docker-php-ext-install), not installed via apk: Alpine's own
+  # php5-pdo_mysql package is built for a different PHP 5.6 ABI and isn't
+  # binary-compatible with the 5.3 interpreter actually running here.
+  #
+  # Composer itself has the same "too old a runtime" problem one version up
+  # — 2.3+ dropped PHP <7.2.5 outright — so this downloads the last 2.2.x
+  # LTS release (which still runs on 5.3) instead of using actions/setup or
+  # the composer-cache action below (both assume a modern PHP CLI on the
+  # runner itself to invoke composer with).
+  test-php53:
+    name: "PHPUnit (PHP 5.3)"
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:5.7
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up MySQL configuration
+        run: |
+          sudo cp tests/Drivers/MySql/my.cnf /etc/mysql/conf.d/my.cnf
+          sudo chmod -R 644 /etc/mysql/conf.d/my.cnf
+
+      - name: Create DB And User
+        run: |
+          mysql --protocol=tcp -u ${{ env.DB_USER }} -p${{ env.DB_PASSWORD }} < tests/Drivers/MySql/docker-entrypoint-initdb.d/createdb.sql
+
+      - name: Wait for MySQL to be ready
+        run: |
+          until mysqladmin ping -h${{ env.DB_HOST }} --silent; do
+            echo "Waiting for database connection..."
+            sleep 1
+          done
+
+      - name: Set Config
+        run: cp tests/config.php.example tests/config.php
+
+      - name: Download Composer 2.2 LTS (last release supporting PHP 5.3)
+        run: curl -sSL https://getcomposer.org/download/2.2.25/composer.phar -o composer53.phar
+
+      - name: Install pdo_mysql, install dependencies, and run test suite on PHP 5.3
+        run: |
+          docker run --rm --network host -v "$PWD":/app -w /app cespi/php-5.3:cli sh -c '
+            apk update &&
+            apk add --no-cache mariadb-dev &&
+            docker-php-ext-install pdo_mysql &&
+            php composer53.phar install --no-interaction --prefer-dist &&
+            vendor/bin/phpunit -c phpunit-lower.xml
+          '
+
   build:
     runs-on: ${{ matrix.operating-system }}
 
@@ -47,7 +112,7 @@ jobs:
 
       - name: Mysql Version
         run: mysql --protocol=tcp -u ${{ env.DB_USER }} -p${{ env.DB_PASSWORD }} -e "SELECT VERSION();"
-        
+
       - name: Create DB And User
         run: |
           mysql --protocol=tcp -u ${{ env.DB_USER }} -p${{ env.DB_PASSWORD }} < tests/Drivers/MySql/docker-entrypoint-initdb.d/createdb.sql

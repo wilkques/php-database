@@ -3,24 +3,24 @@
 [![Latest Stable Version](https://poser.pugx.org/wilkques/database/v/stable)](https://packagist.org/packages/wilkques/database)
 [![License](https://poser.pugx.org/wilkques/database/license)](https://packagist.org/packages/wilkques/database)
 
-English | [繁體中文](README_ZH.md)
+[English](README.md) | 繁體中文
 
-## Notice
+## 注意事項
 
-1. `MySQL` Only
-1. Database operate
+1. 僅支援 `MySQL`
+1. 資料庫操作
 
-## ENV
+## 環境需求
 
 1. php >= 5.3
 1. mysql >= 5.6
-1. PDO extension
+1. PDO 擴充套件
 
-## How to use
+## 如何使用
 
-1. Via PHP require  
-    [Download Database](https://github.com/wilkques/Database)  
-    [Download EzLoader and See how to use](https://github.com/wilkques/EzLoader)
+1. 透過 PHP require  
+    [下載 Database](https://github.com/wilkques/Database)  
+    [下載 EzLoader 並查看使用方式](https://github.com/wilkques/EzLoader)
     ```php
 
     require_once "path/to/your/folder/wilkques/Ezloader/src/helpers.php";
@@ -29,7 +29,7 @@ English | [繁體中文](README_ZH.md)
     loadPHP();
     ```
 
-1. Via Composer
+1. 透過 Composer
     `composer require wilkques/database`
 
     ```php
@@ -37,51 +37,51 @@ English | [繁體中文](README_ZH.md)
     require "vendor/autoload.php";
     ```
 
-1. start
+1. 開始
     ```php
     $connection = \Wilkques\Database\Database::connect('<DB driver>', '<host>', '<username>', '<password>', '<database>', '<port>', '<character>');
 
-    // or
+    // 或
 
     $connection = \Wilkques\Database\Database::connect([
         'driver'    => '<DB driver>',   // mysql
-        'host'      => '<host>',        // default localhost
+        'host'      => '<host>',        // 預設 localhost
         'username'  => '<username>',
         'password'  => '<password>',
         'database'  => '<database>',
-        'port'      => '<port>',        // default 3360
-        'charset'   => '<character>',   // default utf8mb4
+        'port'      => '<port>',        // 預設 3360
+        'charset'   => '<character>',   // 預設 utf8mb4
     ]);
     ```
 
-## Methods
+## 方法
 
-### table or from
+### table 或 from
 
-1. `table` or `from` or `fromSub`
-    `table` same `from`
+1. `table` 或 `from` 或 `fromSub`
+    `table` 與 `from` 相同
 
     ```php
 
     $db->table('<table name>');
 
-    // or
+    // 或
 
     $db->table('<table name>', '<as name>');
 
-    // or
+    // 或
 
     $db->table(
         function ($query) {
             $query->table('<table name>');
-            // do something
+            // 做些什麼
         }, 
         '<as name>'
     );
 
-    // output: select ... from (select ... from <table name>) AS `<as name>`
+    // 輸出: select ... from (select ... from <table name>) AS `<as name>`
 
-    // same
+    // 相同
 
     $dbTable = (
         new \Wilkques\Database\Queries\Builder(
@@ -96,21 +96,21 @@ English | [繁體中文](README_ZH.md)
         '<as name>'
     );
 
-    // output: select ... from (select ... from <table name>) AS `<as name>`
+    // 輸出: select ... from (select ... from <table name>) AS `<as name>`
 
-    // same
+    // 相同
 
     $db->fromSub(
         function ($query) {
             $query->table('<table name>');
-            // do something
+            // 做些什麼
         }, 
         '<as name>'
     );
 
-    // output: select ... from (select ... from <table name>) AS `<as name>`
+    // 輸出: select ... from (select ... from <table name>) AS `<as name>`
 
-    // or
+    // 或
 
     $db->table([
         function ($query) {
@@ -121,9 +121,9 @@ English | [繁體中文](README_ZH.md)
         },
     ]);
 
-    // output: select ... from (select ... from <table name1>), (select ... from <table name2>)
+    // 輸出: select ... from (select ... from <table name1>), (select ... from <table name2>)
 
-    // or
+    // 或
 
     $db->table([
         '<as name1>' => function ($query) {
@@ -134,12 +134,12 @@ English | [繁體中文](README_ZH.md)
         },
     ]);
 
-    // output: select ... from (select ... from <table name1>) AS `<as name1>`, (select ... from <table name2>) AS `<as name2>`
+    // 輸出: select ... from (select ... from <table name1>) AS `<as name1>`, (select ... from <table name2>) AS `<as name2>`
     ```
 
 ### select
 
-1. `select` or `selectSub`
+1. `select` 或 `selectSub`
 
     ```php
 
@@ -149,22 +149,22 @@ English | [繁體中文](README_ZH.md)
         '<columnName3>',
         function ($query) {
             $query->table('<table name>');
-            // do something
+            // 做些什麼
         }
     );
 
-    // output: select <columnName1>, <columnName2>, <columnName3>, (select ...)
+    // 輸出: select <columnName1>, <columnName2>, <columnName3>, (select ...)
 
-    // or
+    // 或
 
     $db->select([
         '<as name1>' => '<columnName1>',
         '<as name2>' => '<columnName1>',
     ]);
 
-    // output: select <columnName1> AS `<as name1>`, <columnName2> AS `<as name2>`
+    // 輸出: select <columnName1> AS `<as name1>`, <columnName2> AS `<as name2>`
 
-    // or
+    // 或
 
     $db->select([
         '<columnName1>', 
@@ -172,31 +172,31 @@ English | [繁體中文](README_ZH.md)
         '<columnName3>',
         function ($query) {
             $query->table('<table name>');
-            // do something
+            // 做些什麼
         },
         '<as name>' => function ($query) {
             $query->table('<table name>');
-            // do something
+            // 做些什麼
         },
     ]);
 
-    // output: select <columnName1>, <columnName2>, <columnName3>, (select ...), (select ...) AS `<as name>`
+    // 輸出: select <columnName1>, <columnName2>, <columnName3>, (select ...), (select ...) AS `<as name>`
 
-    // or
+    // 或
 
     $db->select("`<columnName1>`, `<columnName2>`, `<columnName3>`");
 
-    // or
+    // 或
 
     $db->selectSub(
         function ($query) {
             $query->table('<table name>');
-            // do something
+            // 做些什麼
         },
         '<as name>'
     );
 
-    // output: select (select ...) AS `<as name>`
+    // 輸出: select (select ...) AS `<as name>`
     ```
 
 1. `selectSub`
@@ -206,23 +206,23 @@ English | [繁體中文](README_ZH.md)
     $db->selectSub(
         function ($query) {
             $query->table('<table name>');
-            // do something
+            // 做些什麼
         }
     );
 
-    // output: select (select ...)
+    // 輸出: select (select ...)
 
-    // or
+    // 或
 
     $db->selectSub(
         function ($query) {
             $query->table('<table name>');
-            // do something
+            // 做些什麼
         },
         '<as name>'
     );
 
-    // output: select (select ...) AS `<as name>`
+    // 輸出: select (select ...) AS `<as name>`
     ```
 
 ### join
@@ -237,9 +237,9 @@ English | [繁體中文](README_ZH.md)
         '<table name2>.<column1>'
     );
 
-    // output: select ... join <table name> ON <table name1>.<column1> = <table name2>.<column1>
+    // 輸出: select ... join <table name> ON <table name1>.<column1> = <table name2>.<column1>
 
-    // or
+    // 或
 
     $db->from('<table name1>')->join(
         '<table name2>',
@@ -247,11 +247,11 @@ English | [繁體中文](README_ZH.md)
             $join->on('<table name1>.<column1>', '<table name2>.<column1>')
             ->orOn('<table name1>.<column2>', '<table name2>.<column2>');
 
-            // do something
+            // 做些什麼
         }
     );
 
-    // output: select ... join <table name> ON <table name1>.<column1> = <table name2>.<column1> OR <table name1>.<column2> = <table name2>.<column2>
+    // 輸出: select ... join <table name> ON <table name1>.<column1> = <table name2>.<column1> OR <table name1>.<column2> = <table name2>.<column2>
     ```
 
 1. `joinWhere`
@@ -264,9 +264,9 @@ English | [繁體中文](README_ZH.md)
         '<table name2>.<column1>'
     );
 
-    // output: select ... join <table name> WHERE <table name1>.<column1> = <table name2>.<column1>
+    // 輸出: select ... join <table name> WHERE <table name1>.<column1> = <table name2>.<column1>
 
-    // or
+    // 或
 
     $db->from('<table name1>')->joinWhere(
         '<table name2>',
@@ -274,11 +274,11 @@ English | [繁體中文](README_ZH.md)
             $join->on('<table name1>.<column1>', '<table name2>.<column1>')
             ->orOn('<table name1>.<column2>', '<table name2>.<column2>');
 
-            // do something
+            // 做些什麼
         }
     );
 
-    // output: select ... join <table name> WHERE <table name1>.<column1> = <table name2>.<column1> OR <table name1>.<column2> = <table name2>.<column2>
+    // 輸出: select ... join <table name> WHERE <table name1>.<column1> = <table name2>.<column1> OR <table name1>.<column2> = <table name2>.<column2>
     ```
 
 1. `joinSub`
@@ -289,7 +289,7 @@ English | [繁體中文](README_ZH.md)
         function ($query) {
             $query->table('<table name2>');
 
-            // do something
+            // 做些什麼
         },
         '<as name2>',
         function (\Wilkques\Database\Queries\JoinClause $join) {
@@ -298,9 +298,9 @@ English | [繁體中文](README_ZH.md)
         }
     );
 
-    // output: select ... join (select ...) as `<as name2>` ON <table name1>.<column1> = <as name2>.<column1> OR <table name1>.<column2> = <as name2>.<column2>
+    // 輸出: select ... join (select ...) as `<as name2>` ON <table name1>.<column1> = <as name2>.<column1> OR <table name1>.<column2> = <as name2>.<column2>
 
-    // or
+    // 或
 
     $dbTable = (
         new \Wilkques\Database\Queries\Builder(
@@ -319,7 +319,7 @@ English | [繁體中文](README_ZH.md)
         }
     );
 
-    // output: select ... join (select ...) as `<as name2>` ON <table name1>.<column1> = <as name2>.<column1> OR <table name1>.<column2> = <as name2>.<column2>
+    // 輸出: select ... join (select ...) as `<as name2>` ON <table name1>.<column1> = <as name2>.<column1> OR <table name1>.<column2> = <as name2>.<column2>
     ```
 
 1. `joinSubWhere`
@@ -330,7 +330,7 @@ English | [繁體中文](README_ZH.md)
         function ($builder) {
             $builder->table('<table name2>');
 
-            // do something
+            // 做些什麼
         },
         '<as name2>',
         function (\Wilkques\Database\Queries\JoinClause $join) {
@@ -339,9 +339,9 @@ English | [繁體中文](README_ZH.md)
         }
     );
 
-    // output: select ... join (select ...) as `<as name2>` WHERE <table name1>.<column1> = <as name2>.<column1> OR <table name1>.<column2> = <as name2>.<column2>
+    // 輸出: select ... join (select ...) as `<as name2>` WHERE <table name1>.<column1> = <as name2>.<column1> OR <table name1>.<column2> = <as name2>.<column2>
 
-    // or
+    // 或
 
     $dbTable = (
         new \Wilkques\Database\Queries\Builder(
@@ -360,56 +360,56 @@ English | [繁體中文](README_ZH.md)
         }
     );
 
-    // output: select ... join (select ...) as `<as name2>` WHERE <table name1>.<column1> = <as name2>.<column1> OR <table name1>.<column2> = <as name2>.<column2>
+    // 輸出: select ... join (select ...) as `<as name2>` WHERE <table name1>.<column1> = <as name2>.<column1> OR <table name1>.<column2> = <as name2>.<column2>
     ```
 
 1. `leftJoin`
 
-    same `join`
+    與 `join` 相同
 
 1. `leftJoinSub`
 
-    same `joinSub`
+    與 `joinSub` 相同
 
 1. `leftJoinWhere`
 
-    same `join`
+    與 `join` 相同
 
 1. `leftJoinSubWhere`
 
-    same `joinSub`
+    與 `joinSub` 相同
 
 1. `rightJoin`
 
-    same `join`
+    與 `join` 相同
 
 1. `rightJoinSub`
 
-    same `joinSub`
+    與 `joinSub` 相同
 
 1. `rightJoinWhere`
 
-    same `join`
+    與 `join` 相同
 
 1. `rightJoinSubWhere`
 
-    same `joinSub`
+    與 `joinSub` 相同
 
 1. `crossJoin`
 
-    same `join`
+    與 `join` 相同
 
 1. `crossJoinSub`
 
-    same `joinSub`
+    與 `joinSub` 相同
 
 1. `crossJoinWhere`
 
-    same `join`
+    與 `join` 相同
 
 1. `crossJoinSubWhere`
 
-    same `joinSub`
+    與 `joinSub` 相同
 
 ### where
 
@@ -423,15 +423,15 @@ English | [繁體中文](README_ZH.md)
         ['<columnName3>'],
     ]);
 
-    // output: select ... where (<columnName1> IS NULL AND <columnName2> IS NULL AND <columnName3> IS NULL)
+    // 輸出: select ... where (<columnName1> IS NULL AND <columnName2> IS NULL AND <columnName3> IS NULL)
 
-    // or
+    // 或
 
     $db->where('<columnName1>');
 
-    // output: select ... where (<columnName1> IS NULL)
+    // 輸出: select ... where (<columnName1> IS NULL)
 
-    // or
+    // 或
 
     $db->where([
         ['<columnName1>', '<value1>'],
@@ -439,7 +439,7 @@ English | [繁體中文](README_ZH.md)
         ['<columnName3>', '<value3>'],
     ]);
 
-    // or
+    // 或
 
     $db->where([
         ['<columnName1>', '<operator1>', '<value1>'],
@@ -447,31 +447,31 @@ English | [繁體中文](README_ZH.md)
         ['<columnName3>', '<operator3>', '<value3>'],
     ]);
 
-    // or
+    // 或
 
     $db->where('<columnName1>', "<operator>", '<columnValue1>');
 
-    // or
+    // 或
 
     $db->where('<columnName1>', '<value1>')
         ->where('<columnName2>', '<value2>')
         ->where('<columnName3>', '<value3>');
 
-    // or
+    // 或
 
     $db->where('<columnName1>', "<operator>", '<value1>')
         ->where('<columnName2>', "<operator>", '<value2>')
         ->where('<columnName3>', "<operator>", '<value3>');
 
-    // or
+    // 或
 
     $db->where(function ($query) {
         $query->where('<columnName1>', '<value1>')->where('<columnName2>', '<value2>');
     });
 
-    // output: select ... where (<columnName1> = <value1> AND <columnName2> = <value2>)
+    // 輸出: select ... where (<columnName1> = <value1> AND <columnName2> = <value2>)
 
-    // or
+    // 或
 
     $dbTable = (
         new \Wilkques\Database\Queries\Builder(
@@ -483,36 +483,36 @@ English | [繁體中文](README_ZH.md)
 
     $db->where($dbTable);
 
-    // same
+    // 相同
 
     $db->whereExists($dbTable);
 
-    // output: select ... where EXISTS (select ...)
+    // 輸出: select ... where EXISTS (select ...)
 
-    // or
+    // 或
 
     $db->where('<columnName>', $dbTable);
 
-    // output: select ... where '<columnName>' = (select ...)
+    // 輸出: select ... where '<columnName>' = (select ...)
 
-    // or
+    // 或
 
     $db->where('<columnName>', "<operator>", $dbTable);
 
-    // output: select ... where '<columnName>' <operator> (select ...)
+    // 輸出: select ... where '<columnName>' <operator> (select ...)
 
-    // or
+    // 或
 
     $db->where('<columnName>', "<operator>", function ($query) {
         $query->table('<table name>')->where('<columnName1>', '<value1>')->where('<columnName2>', '<value2>');
     });
 
-    // output: select ... where '<columnName>' <operator> (select ...)
+    // 輸出: select ... where '<columnName>' <operator> (select ...)
     ```
 
 1. `orWhere`
 
-    same `where`
+    與 `where` 相同
 
 1. `whereNull`
 
@@ -523,15 +523,15 @@ English | [繁體中文](README_ZH.md)
 
 1. `orWhereNull`
 
-    same `whereNull`
+    與 `whereNull` 相同
 
 1. `whereNotNull`
 
-    same `whereNull`
+    與 `whereNull` 相同
 
 1. `orWhereNotNull`
 
-    same `whereNotNull`
+    與 `whereNotNull` 相同
 
 1. `whereIn`
 
@@ -539,7 +539,7 @@ English | [繁體中文](README_ZH.md)
 
     $db->whereIn('<columnName1>', ['<columnValue1>', '<columnValue2>']);
 
-    // or
+    // 或
 
     $dbTable = (
         new \Wilkques\Database\Queries\Builder(
@@ -551,7 +551,7 @@ English | [繁體中文](README_ZH.md)
 
     $db->whereIn('<columnName1>', $dbTable);
 
-    // or
+    // 或
 
     $db->whereIn('<columnName1>', function ($query) {
         $query->select('<columnName2>')->table('<table name1>');
@@ -560,15 +560,15 @@ English | [繁體中文](README_ZH.md)
 
 1. `orWhereIn`
 
-    same `whereIn`
+    與 `whereIn` 相同
 
 1. `whereNotIn`
 
-    same `whereIn`
+    與 `whereIn` 相同
 
 1. `orWhereNotIn`
 
-    same `whereIn`
+    與 `whereIn` 相同
 
 1. `whereBetween`
 
@@ -579,15 +579,15 @@ English | [繁體中文](README_ZH.md)
 
 1. `orWhereBetween`
 
-    same `whereBetween`
+    與 `whereBetween` 相同
 
 1. `whereNotBetween`
 
-    same `whereBetween`
+    與 `whereBetween` 相同
 
 1. `orWhereNotBetween`
 
-    same `whereBetween`
+    與 `whereBetween` 相同
 
 1. `whereExists`
 
@@ -596,10 +596,10 @@ English | [繁體中文](README_ZH.md)
     $db->whereExists(
         function ($query) {
             $query->table('<table name>');
-            // do something
+            // 做些什麼
     });
 
-    // or
+    // 或
 
     $dbTable = (
         new \Wilkques\Database\Queries\Builder(
@@ -611,22 +611,22 @@ English | [繁體中文](README_ZH.md)
 
     $db->whereExists($dbTable);
 
-    // same
+    // 相同
 
     $db->where($dbTable);
     ```
 
 1. `whereNotExists`
 
-    same `whereExists`
+    與 `whereExists` 相同
 
 1. `orWhereExists`
 
-    same `whereExists`
+    與 `whereExists` 相同
 
 1. `orWhereNotExists`
 
-    same `whereExists`
+    與 `whereExists` 相同
 
 1. `whereLike`
 
@@ -650,32 +650,32 @@ English | [繁體中文](README_ZH.md)
 
     $db->having(`<columnName1>`, `<columnValue1>`);
 
-    // or
+    // 或
 
     $db->having(`<columnName1>`, "<operator>", `<columnValue1>`);
 
-    // or
+    // 或
 
     $db->having(
         `<columnName1>`,
         function ($query) {
             $query->table('<table name>');
-            // do something
+            // 做些什麼
         }
     );
 
-    // or
+    // 或
 
     $db->having(
         `<columnName1>`,
         "<operator>",
         function ($query) {
             $query->table('<table name>');
-            // do something
+            // 做些什麼
         }
     );
 
-    // or
+    // 或
 
     $dbTable = (
         new \Wilkques\Database\Queries\Builder(
@@ -687,7 +687,7 @@ English | [繁體中文](README_ZH.md)
 
     $db->having(`<columnName1>`, $dbTable);
 
-    // or 
+    // 或 
 
     $db->having(`<columnName1>`, "<operator>", $dbTable);
     ```
@@ -698,32 +698,32 @@ English | [繁體中文](README_ZH.md)
 
     $db->orHaving(`<columnName1>`, `<columnValue1>`);
 
-    // or
+    // 或
 
     $db->orHaving(`<columnName1>`, "<operator>", `<columnValue1>`);
 
-    // or
+    // 或
 
     $db->orHaving(
         `<columnName1>`,
         function ($query) {
             $query->table('<table name>');
-            // do something
+            // 做些什麼
         }
     );
 
-    // or
+    // 或
 
     $db->orHaving(
         `<columnName1>`,
         "<operator>",
         function ($query) {
             $query->table('<table name>');
-            // do something
+            // 做些什麼
         }
     );
 
-    // or
+    // 或
 
     $dbTable = (
         new \Wilkques\Database\Queries\Builder(
@@ -735,29 +735,29 @@ English | [繁體中文](README_ZH.md)
 
     $db->orHaving(`<columnName1>`, $dbTable);
 
-    // or 
+    // 或 
 
     $db->orHaving(`<columnName1>`, "<operator>", $dbTable);
     ```
 
-### limit or offset
+### limit 或 offset
 
 1. `limit`
 
     ```php
 
-    $db->limit(1); // set query LIMIT
+    $db->limit(1); // 設定查詢的 LIMIT
 
-    // or
+    // 或
 
-    $db->limit(10, 1); // set query LIMIT
+    $db->limit(10, 1); // 設定查詢的 LIMIT
     ```
 
 1. `offset`
 
     ```php
 
-    $db->offset(1); // set query OFFSET
+    $db->offset(1); // 設定查詢的 OFFSET
     ```
 
 ### group by
@@ -766,29 +766,29 @@ English | [繁體中文](README_ZH.md)
 
     ```php
 
-    $db->groupBy('<columnName1>', 'DESC'); // default ASC
+    $db->groupBy('<columnName1>', 'DESC'); // 預設 ASC
 
-    // or
+    // 或
 
     $db->groupBy([
         ['<columnName1>', 'DESC'],
         ['<columnName2>', 'ASC'],
     ]);
 
-    // or
+    // 或
 
     $db->groupBy([
         [
             function ($query) {
                 $query->table('<table name>');
-                // do something
+                // 做些什麼
             }, 
             'DESC'
         ],
         ['<columnName2>', 'ASC'],
     ]);
 
-    // or
+    // 或
 
     $dbTable = (
         new \Wilkques\Database\Queries\Builder(
@@ -798,9 +798,9 @@ English | [繁體中文](README_ZH.md)
         )
     )->table('<table name1>');
 
-    $db->groupBy($dbTable, 'DESC'); // default ASC
+    $db->groupBy($dbTable, 'DESC'); // 預設 ASC
 
-    // or
+    // 或
 
     $db->groupBy([
         [
@@ -817,35 +817,35 @@ English | [繁體中文](README_ZH.md)
 
     $db->groupByDesc('<columnName1>');
 
-    // or
+    // 或
 
     $db->groupByDesc('<columnName1>', '<columnName2>');
 
-    // or
+    // 或
 
     $db->groupByDesc(
         function ($query) {
             $query->table('<table name>');
-            // do something
+            // 做些什麼
         }, 
         '<columnName2>'
     );
 
-    // or
+    // 或
 
     $db->groupByDesc(['<columnName1>', '<columnName2>']);
 
-    // or
+    // 或
 
     $db->groupByDesc([
         function ($query) {
             $query->table('<table name>');
-            // do something
+            // 做些什麼
         }, 
         '<columnName2>'
     ]);
 
-    // or
+    // 或
 
     $dbTable = (
         new \Wilkques\Database\Queries\Builder(
@@ -855,9 +855,9 @@ English | [繁體中文](README_ZH.md)
         )
     )->table('<table name1>');
 
-    $db->groupByDesc($dbTable, '<columnName1>'); // default ASC
+    $db->groupByDesc($dbTable, '<columnName1>'); // 預設 ASC
 
-    // or
+    // 或
 
     $db->groupByDesc([
         $dbTable,
@@ -871,35 +871,35 @@ English | [繁體中文](README_ZH.md)
 
     $db->groupByAsc('<columnName1>');
 
-    // or
+    // 或
 
     $db->groupByAsc('<columnName1>', '<columnName2>');
 
-    // or
+    // 或
 
     $db->groupByAsc(
         function ($query) {
             $query->table('<table name>');
-            // do something
+            // 做些什麼
         }, 
         '<columnName2>'
     );
 
-    // or
+    // 或
 
     $db->groupByAsc(['<columnName1>', '<columnName2>']);
 
-    // or
+    // 或
 
     $db->groupByAsc([
         function ($query) {
             $query->table('<table name>');
-            // do something
+            // 做些什麼
         }, 
         '<columnName2>'
     ]);
 
-    // or
+    // 或
 
     $dbTable = (
         new \Wilkques\Database\Queries\Builder(
@@ -909,9 +909,9 @@ English | [繁體中文](README_ZH.md)
         )
     )->table('<table name1>');
 
-    $db->groupByAsc($dbTable, '<columnName1>'); // default ASC
+    $db->groupByAsc($dbTable, '<columnName1>'); // 預設 ASC
 
-    // or
+    // 或
 
     $db->groupByAsc([
         $dbTable,
@@ -925,22 +925,22 @@ English | [繁體中文](README_ZH.md)
 
     ```php
 
-    $db->orderBy('<columnName1>', "DESC"); // default ASC
+    $db->orderBy('<columnName1>', "DESC"); // 預設 ASC
 
-    // or
+    // 或
 
     $db->orderBy([
         ['<columnName1>', 'DESC'],
         ['<columnName2>', 'ASC'],
     ]);
 
-    // or
+    // 或
 
     $db->orderBy([
         [
             function ($query) {
                 $query->table('<table name>');
-                // do something
+                // 做些什麼
             }, 
             'DESC'
         ],
@@ -954,30 +954,30 @@ English | [繁體中文](README_ZH.md)
 
     $db->orderByDesc('<columnName1>');
 
-    // or
+    // 或
 
     $db->orderByDesc('<columnName1>', '<columnName2>');
 
-    // or
+    // 或
 
     $db->orderByDesc(
         function ($query) {
             $query->table('<table name>');
-            // do something
+            // 做些什麼
         }, 
         '<columnName2>'
     );
 
-    // or
+    // 或
 
     $db->orderByDesc(['<columnName1>', '<columnName2>']);
 
-    // or
+    // 或
 
     $db->orderByDesc([
         function ($query) {
             $query->table('<table name>');
-            // do something
+            // 做些什麼
         }, 
         '<columnName2>'
     ]);
@@ -989,30 +989,30 @@ English | [繁體中文](README_ZH.md)
 
     $db->orderByAsc('<columnName1>');
 
-    // or
+    // 或
 
     $db->orderByAsc('<columnName1>', '<columnName2>');
 
-    // or
+    // 或
 
     $db->orderByAsc(
         function ($query) {
             $query->table('<table name>');
-            // do something
+            // 做些什麼
         }, 
         '<columnName2>'
     );
 
-    // or
+    // 或
 
     $db->orderByAsc(['<columnName1>', '<columnName2>']);
 
-    // or
+    // 或
 
     $db->orderByAsc([
         function ($query) {
             $query->table('<table name>');
-            // do something
+            // 做些什麼
         }, 
         '<columnName2>'
     ]);
@@ -1026,10 +1026,10 @@ English | [繁體中文](README_ZH.md)
 
     $db->union(function ($query) {
         $query->table('<table name>');
-        // do something
+        // 做些什麼
     });
 
-    // or
+    // 或
 
     $dbTable = (
         new \Wilkques\Database\Queries\Builder(
@@ -1044,32 +1044,33 @@ English | [繁體中文](README_ZH.md)
     ```
 
 1. `unionAll`
-    sam `union`
 
-### Get Data
+    與 `union` 相同
+
+### 取得資料
 
 1. `get`
 
     ```php
 
-    $db->get(); // get all data
+    $db->get(); // 取得所有資料
     ```
 
 1. `first`
 
     ```php
 
-    $db->first(); // get first data
+    $db->first(); // 取得第一筆資料
     ```
 
 1. `find`
 
     ```php
 
-    $db->find('<id>'); // get find data
+    $db->find('<id>'); // 取得指定資料
     ```
 
-### Update
+### 更新
 
 1. `update`
 
@@ -1080,7 +1081,7 @@ English | [繁體中文](README_ZH.md)
             '<updateColumnName1>' => '<updateColumnValue1>'
         ]);
 
-    // or
+    // 或
 
     $db->where('<columnName1>', "=", '<columnValue1>')->first();
 
@@ -1088,7 +1089,7 @@ English | [繁體中文](README_ZH.md)
         '<updateColumnName1>' => '<updateColumnValue1>'
     ]);
 
-    // or
+    // 或
 
     $db->where('<columnName1>', "=", '<columnValue1>')->first();
 
@@ -1096,7 +1097,7 @@ English | [繁體中文](README_ZH.md)
         '<updateColumnName1>' => function ($query) {
             $query->table('<table name>')->select('<column name>');
 
-            // do something
+            // 做些什麼
         }
     ]);
     ```
@@ -1107,7 +1108,7 @@ English | [繁體中文](README_ZH.md)
 
     $db->increment('<columnName>');
 
-    // or
+    // 或
 
     $db->increment('<columnName>', '<numeric>', [
         '<update column 1>' => 'update value 1',
@@ -1122,7 +1123,7 @@ English | [繁體中文](README_ZH.md)
 
     $db->decrement('<columnName>');
 
-    // or
+    // 或
 
     $db->decrement('<columnName>', '<numeric>', [
         '<update column 1>' => 'update value 1',
@@ -1131,7 +1132,7 @@ English | [繁體中文](README_ZH.md)
     ]);
     ```
 
-### Insert
+### 新增
 
 1. `insert`
 
@@ -1143,7 +1144,7 @@ English | [繁體中文](README_ZH.md)
             ...
         ]);
 
-    // or
+    // 或
 
     $db->insert([
         [
@@ -1175,11 +1176,11 @@ English | [繁體中文](README_ZH.md)
         )->where('<Sub columnName3>', '<Sub value1>')->where('<Sub columnName4>', '<Sub value2>');
     });
 
-    // output: Insert <table> (<ColumnName1>, <ColumnName2>) SELECT <Sub ColumnName1>, <Sub ColumnName2> FROM <Sub table name>
+    // 輸出: Insert <table> (<ColumnName1>, <ColumnName2>) SELECT <Sub ColumnName1>, <Sub ColumnName2> FROM <Sub table name>
     // WHERE <Sub columnName3> = <Sub value1> AND <Sub columnName4> = <Sub value2>
     ```
 
-### Delete
+### 刪除
 
 1. `delete`
 
@@ -1190,7 +1191,7 @@ English | [繁體中文](README_ZH.md)
             '<deleteColumnName1>' => '<deleteColumnValue1>'
         ]);
 
-    // or
+    // 或
 
     $db->where('<columnName1>', "=", '<columnValue1>')->first();
 
@@ -1202,30 +1203,30 @@ English | [繁體中文](README_ZH.md)
     ```php
 
     $db->where('<columnName1>', "=", '<columnValue1>')
-        ->softDelete('<deleteColumnName1>', '<date time format>'); // default deleted_at, "Y-m-d H:i:s"
+        ->softDelete('<deleteColumnName1>', '<date time format>'); // 預設 deleted_at, "Y-m-d H:i:s"
 
-    // or
+    // 或
 
     $db->where('<columnName1>', "=", '<columnValue1>')->first();
 
-    $db->softDelete('<deleteColumnName1>', '<date time format>'); // default deleted_at, "Y-m-d H:i:s"
+    $db->softDelete('<deleteColumnName1>', '<date time format>'); // 預設 deleted_at, "Y-m-d H:i:s"
     ```
 
-1. `reStore` recovery (`delete` cannot recovery data)
+1. `reStore` 復原（`delete` 無法復原資料）
 
     ```php
 
     $db->where('<columnName1>', "=", '<columnValue1>')
-        ->reStore('<deleteColumnName1>'); // default deleted_at
+        ->reStore('<deleteColumnName1>'); // 預設 deleted_at
 
-    // or
+    // 或
 
     $db->where('<columnName1>', "=", '<columnValue1>')->first();
 
-    $db->reStore('<deleteColumnName1>'); // default deleted_at
+    $db->reStore('<deleteColumnName1>'); // 預設 deleted_at
     ```
 
-### Raw
+### Raw（原生 SQL）
 
 1. `raw`
     ```php
@@ -1234,7 +1235,7 @@ English | [繁體中文](README_ZH.md)
 
     $db->select($db->raw("<sql string in select column>"));
     
-    // example
+    // 範例
 
     $db->select($db->raw("COUNT(*)"));
 
@@ -1247,7 +1248,7 @@ English | [繁體中文](README_ZH.md)
 
 ### CASE WHEN
 
-1. `caseWhen` - Simple CASE (with column)
+1. `caseWhen` - 簡單 CASE（帶欄位）
 
     ```php
 
@@ -1258,10 +1259,10 @@ English | [繁體中文](README_ZH.md)
         ->otherwise('<default result>')
         ->end('<alias>');
 
-    // output: select CASE `<columnName>` WHEN ? THEN ? WHEN ? THEN ? ELSE ? END AS `<alias>` from `<table name>`
+    // 輸出: select CASE `<columnName>` WHEN ? THEN ? WHEN ? THEN ? ELSE ? END AS `<alias>` from `<table name>`
     ```
 
-1. `caseWhen` - Searched CASE (without column, string condition)
+1. `caseWhen` - 搜尋式 CASE（不帶欄位，字串條件）
 
     ```php
 
@@ -1271,7 +1272,7 @@ English | [繁體中文](README_ZH.md)
         ->otherwise('<default result>')
         ->end('<alias>');
 
-    // example
+    // 範例
 
     $db->from('users')
         ->caseWhen()
@@ -1279,10 +1280,10 @@ English | [繁體中文](README_ZH.md)
         ->otherwise('Minor')
         ->end('age_group');
 
-    // output: select CASE WHEN age > 18 THEN ? ELSE ? END AS `age_group` from `users`
+    // 輸出: select CASE WHEN age > 18 THEN ? ELSE ? END AS `age_group` from `users`
     ```
 
-1. `caseWhen` - Searched CASE (Closure WHERE condition)
+1. `caseWhen` - 搜尋式 CASE（Closure WHERE 條件）
 
     ```php
 
@@ -1294,10 +1295,10 @@ English | [繁體中文](README_ZH.md)
         ->otherwise('<default result>')
         ->end('<alias>');
 
-    // output: select CASE WHEN (<columnName> <operator> ?) THEN ? ELSE ? END AS `<alias>` from `<table name>`
+    // 輸出: select CASE WHEN (<columnName> <operator> ?) THEN ? ELSE ? END AS `<alias>` from `<table name>`
     ```
 
-1. `caseWhen` - Searched CASE (Closure with `from()` → EXISTS subquery)
+1. `caseWhen` - 搜尋式 CASE（Closure 搭配 `from()` → EXISTS 子查詢）
 
     ```php
 
@@ -1309,10 +1310,10 @@ English | [繁體中文](README_ZH.md)
         ->otherwise('<default result>')
         ->end('<alias>');
 
-    // output: select CASE WHEN EXISTS(SELECT `<columnName>` FROM `<sub table name>`) THEN ? ELSE ? END AS `<alias>` from `<table name>`
+    // 輸出: select CASE WHEN EXISTS(SELECT `<columnName>` FROM `<sub table name>`) THEN ? ELSE ? END AS `<alias>` from `<table name>`
     ```
 
-1. `caseWhen` - Nested CASE as THEN value
+1. `caseWhen` - 巢狀 CASE 作為 THEN 值
 
     ```php
 
@@ -1326,10 +1327,10 @@ English | [繁體中文](README_ZH.md)
         ->otherwise('<outer default>')
         ->end('<alias>');
 
-    // output: select CASE `<columnName2>` WHEN ? THEN CASE `<columnName1>` WHEN ? THEN ? ELSE ? END ELSE ? END AS `<alias>` from `<table name>`
+    // 輸出: select CASE `<columnName2>` WHEN ? THEN CASE `<columnName1>` WHEN ? THEN ? ELSE ? END ELSE ? END AS `<alias>` from `<table name>`
     ```
 
-1. `caseWhen` - `Expression` as THEN / ELSE value (embed raw SQL, no binding)
+1. `caseWhen` - 使用 `Expression` 作為 THEN / ELSE 值（嵌入原生 SQL，不做綁定）
 
     ```php
 
@@ -1339,7 +1340,7 @@ English | [繁體中文](README_ZH.md)
         ->otherwise(new \Wilkques\Database\Queries\Expression('NULL'))
         ->end('<alias>');
 
-    // example
+    // 範例
 
     $db->from('orders')
         ->caseWhen('status')
@@ -1347,10 +1348,10 @@ English | [繁體中文](README_ZH.md)
         ->otherwise(new \Wilkques\Database\Queries\Expression('NULL'))
         ->end('shipped_at');
 
-    // output: select CASE `status` WHEN ? THEN NOW() ELSE NULL END AS `shipped_at` from `orders`
+    // 輸出: select CASE `status` WHEN ? THEN NOW() ELSE NULL END AS `shipped_at` from `orders`
     ```
 
-1. `caseWhen` - `Expression` as Simple CASE column (raw SQL, no backtick wrapping)
+1. `caseWhen` - 使用 `Expression` 作為簡單 CASE 的欄位（原生 SQL，不加反引號包裹）
 
     ```php
 
@@ -1360,7 +1361,7 @@ English | [繁體中文](README_ZH.md)
         ->otherwise('<default>')
         ->end('<alias>');
 
-    // example
+    // 範例
 
     $db->from('orders')
         ->caseWhen(new \Wilkques\Database\Queries\Expression('YEAR(created_at)'))
@@ -1368,29 +1369,29 @@ English | [繁體中文](README_ZH.md)
         ->otherwise('Other')
         ->end('year_label');
 
-    // output: select CASE YEAR(created_at) WHEN ? THEN ? ELSE ? END AS `year_label` from `orders`
+    // 輸出: select CASE YEAR(created_at) WHEN ? THEN ? ELSE ? END AS `year_label` from `orders`
     ```
 
-1. `end` - Compile and add to SELECT, returns `CompiledClause` (proxies to parent Builder)
+1. `end` - 編譯並加入 SELECT，回傳 `CompiledClause`（代理回父層 Builder）
 
     ```php
 
-    // with alias — returns CompiledClause, chain via proxy
+    // 帶別名 — 回傳 CompiledClause，透過代理繼續串接
     $db->from('<table name>')->caseWhen('<columnName>')->when(...)->end('<alias>')->select('name')->get();
 
-    // without alias
+    // 不帶別名
     $db->from('<table name>')->caseWhen('<columnName>')->when(...)->end();
     ```
 
-    > `end()` now returns a `CompiledClause` object instead of the parent `Builder`.  
-    > All method calls on `CompiledClause` are transparently proxied to the parent `Builder`,  
-    > so existing fluent chains continue to work unchanged.
+    > `end()` 現在回傳 `CompiledClause` 物件，而不是父層 `Builder`。  
+    > `CompiledClause` 上的所有方法呼叫都會透明地代理給父層 `Builder`，  
+    > 所以既有的鏈式呼叫不受影響，可以照常使用。
 
-### IF Expression
+### IF 表達式
 
-> ⚠️ `IF()` is MySQL-specific. For other databases use `caseWhen()` instead.
+> ⚠️ `IF()` 是 MySQL 專屬語法。若使用其他資料庫請改用 `caseWhen()`。
 
-1. `ifExpr` - Simple scalar condition
+1. `ifExpr` - 簡單純量條件
 
     ```php
 
@@ -1400,7 +1401,7 @@ English | [繁體中文](README_ZH.md)
         ->otherwise('<false result>')
         ->end('<alias>');
 
-    // example
+    // 範例
 
     $db->from('users')
         ->ifExpr('age >= 18')
@@ -1408,10 +1409,10 @@ English | [繁體中文](README_ZH.md)
         ->otherwise('Minor')
         ->end('age_group');
 
-    // output: select IF(age >= 18, ?, ?) AS `age_group` from `users`
+    // 輸出: select IF(age >= 18, ?, ?) AS `age_group` from `users`
     ```
 
-1. `ifExpr` - Nested IF (pass IfClause instance as value)
+1. `ifExpr` - 巢狀 IF（將 IfClause 實例作為值傳入）
 
     ```php
 
@@ -1423,10 +1424,10 @@ English | [繁體中文](README_ZH.md)
         ->otherwise($inner)
         ->end('<alias>');
 
-    // output: select IF(<condition2>, ?, IF(<condition1>, ?, ?)) AS `<alias>` from `<table name>`
+    // 輸出: select IF(<condition2>, ?, IF(<condition1>, ?, ?)) AS `<alias>` from `<table name>`
     ```
 
-1. `ifExpr` - Closure with `from()` → EXISTS subquery
+1. `ifExpr` - Closure 搭配 `from()` → EXISTS 子查詢
 
     ```php
 
@@ -1438,10 +1439,10 @@ English | [繁體中文](README_ZH.md)
         ->otherwise('<false result>')
         ->end('<alias>');
 
-    // output: select IF(EXISTS(SELECT `<columnName>` FROM `<sub table name>` WHERE `<columnName2>` = ?), ?, ?) AS `<alias>` from `<table name>`
+    // 輸出: select IF(EXISTS(SELECT `<columnName>` FROM `<sub table name>` WHERE `<columnName2>` = ?), ?, ?) AS `<alias>` from `<table name>`
     ```
 
-1. `ifExpr` as CASE WHEN THEN value
+1. `ifExpr` 作為 CASE WHEN THEN 值
 
     ```php
 
@@ -1453,10 +1454,10 @@ English | [繁體中文](README_ZH.md)
         ->otherwise('<default>')
         ->end('<alias>');
 
-    // output: select CASE `<columnName>` WHEN ? THEN IF(<condition>, ?, ?) ELSE ? END AS `<alias>` from `<table name>`
+    // 輸出: select CASE `<columnName>` WHEN ? THEN IF(<condition>, ?, ?) ELSE ? END AS `<alias>` from `<table name>`
     ```
 
-1. `caseWhen` as `ifExpr` THEN / ELSE value
+1. `caseWhen` 作為 `ifExpr` 的 THEN / ELSE 值
 
     ```php
 
@@ -1470,16 +1471,16 @@ English | [繁體中文](README_ZH.md)
         ->otherwise('<fallback>')
         ->end('<alias>');
 
-    // output: select IF(<condition>, CASE `<columnName>` WHEN ? THEN ? ELSE ? END, ?) AS `<alias>` from `<table name>`
+    // 輸出: select IF(<condition>, CASE `<columnName>` WHEN ? THEN ? ELSE ? END, ?) AS `<alias>` from `<table name>`
     ```
 
-### CASE WHEN / IF in `select()` and `update()` Array Form
+### 在 `select()` 與 `update()` 陣列形式中使用 CASE WHEN / IF
 
-> Pass `CaseClause` / `IfClause` / `CompiledClause` directly inside `select([...])` or `update([...])` arrays.
+> 可以直接把 `CaseClause` / `IfClause` / `CompiledClause` 放進 `select([...])` 或 `update([...])` 的陣列裡。
 
-#### `select([...])` — three forms
+#### `select([...])` — 三種形式
 
-1. **Direct form** (recommended for ordering guarantee): alias via array key, no `end()` call
+1. **直接形式**（建議用來保證順序）：別名透過陣列鍵指定，不需要呼叫 `end()`
 
     ```php
 
@@ -1493,13 +1494,13 @@ English | [繁體中文](README_ZH.md)
             ->otherwise('Minor'),
     ])->get();
 
-    // output: SELECT `name`,
+    // 輸出: SELECT `name`,
     //         CASE `status` WHEN ? THEN ? ELSE ? END AS `status_label`,
     //         IF(age >= 18, ?, ?) AS `age_group`
     //         FROM `users`
     ```
 
-1. **`end()` form**: alias provided by `end()`, array key is ignored
+1. **`end()` 形式**：別名由 `end()` 提供，陣列鍵會被忽略
 
     ```php
 
@@ -1510,18 +1511,18 @@ English | [繁體中文](README_ZH.md)
             ->end('status_label'),
     ])->get();
 
-    // output: SELECT CASE `status` WHEN ? THEN ? ELSE ? END AS `status_label` FROM `users`
+    // 輸出: SELECT CASE `status` WHEN ? THEN ? ELSE ? END AS `status_label` FROM `users`
     ```
 
-    > ⚠️ **Column ordering**: `end()` triggers a `selectRaw` side-effect when evaluated by PHP,  
-    > so `end()`-form columns always appear **before** other columns in the SELECT list,  
-    > regardless of their position in the array. Use the direct form to guarantee order.
+    > ⚠️ **欄位順序**：`end()` 在被 PHP 求值時會觸發 `selectRaw` 的副作用，  
+    > 所以 `end()` 形式的欄位一定會出現在 SELECT 清單中**其他欄位之前**，  
+    > 不論它在陣列裡的位置為何。若要保證順序請改用直接形式。
 
-1. **Closure form**: Closure must `return` the clause; no return falls back to scalar subquery mode
+1. **Closure 形式**：Closure 必須 `return` 該子句；沒有 return 就會退回純量子查詢模式
 
     ```php
 
-    // ✅ with return — CASE expression inserted directly
+    // ✅ 有 return — CASE 表達式直接被插入
     $db->from('users')->select([
         function ($q) {
             return $q->caseWhen('status')
@@ -1531,22 +1532,22 @@ English | [繁體中文](README_ZH.md)
         },
     ])->get();
 
-    // output: SELECT CASE `status` WHEN ? THEN ? ELSE ? END AS `status_label` FROM `users`
+    // 輸出: SELECT CASE `status` WHEN ? THEN ? ELSE ? END AS `status_label` FROM `users`
 
-    // ⚠️ without return — falls back to subquery (wraps the SELECT as a scalar subquery)
+    // ⚠️ 沒有 return — 退回子查詢（把該 SELECT 包成純量子查詢）
     $db->from('users')->select([
         function ($q) {
             $q->caseWhen('status')->when('active', 'Active User')->end('status_label');
-            // no return → $q's SELECT has the CASE, but it becomes (SELECT CASE ...)
+            // 沒有 return → $q 的 SELECT 裡有 CASE，但會變成 (SELECT CASE ...)
         },
     ])->get();
 
-    // output: SELECT (SELECT CASE `status` WHEN ? THEN ? END AS `status_label`) FROM `users`
+    // 輸出: SELECT (SELECT CASE `status` WHEN ? THEN ? END AS `status_label`) FROM `users`
     ```
 
-#### `update([...])` — four forms
+#### `update([...])` — 四種形式
 
-1. **Direct form without `end()`** (recommended): column from array key, no alias side-effect
+1. **不帶 `end()` 的直接形式**（建議）：欄位名稱來自陣列鍵，沒有別名副作用
 
     ```php
 
@@ -1559,13 +1560,13 @@ English | [繁體中文](README_ZH.md)
             ->otherwise('Minor'),
     ]);
 
-    // output: UPDATE `users`
+    // 輸出: UPDATE `users`
     //         SET `status_label` = CASE `status` WHEN ? THEN ? ELSE ? END,
     //             `age_group` = IF(age >= 18, ?, ?)
     //         WHERE `id` = ?
     ```
 
-1. **Direct form with `end()`**: `end()` alias is ignored in UPDATE; column name comes from array key
+1. **帶 `end()` 的直接形式**：`end()` 的別名在 UPDATE 中會被忽略；欄位名稱來自陣列鍵
 
     ```php
 
@@ -1574,23 +1575,23 @@ English | [繁體中文](README_ZH.md)
             ->when('active', 'Active User')
             ->when('inactive', 'Inactive User')
             ->otherwise('Unknown')
-            ->end('status_label'),  // 'status_label' is ignored; column is 'status' from array key
+            ->end('status_label'),  // 'status_label' 會被忽略；欄位是陣列鍵的 'status'
         'status2' => $db->ifExpr('age >= 18')
             ->then('Adult')
             ->otherwise('Minor')
-            ->end('age_group'),     // 'age_group' is ignored; column is 'status2' from array key
+            ->end('age_group'),     // 'age_group' 會被忽略；欄位是陣列鍵的 'status2'
     ]);
 
-    // output: UPDATE `users`
+    // 輸出: UPDATE `users`
     //         SET `status` = CASE `status` WHEN ? THEN ? WHEN ? THEN ? ELSE ? END,
     //             `status2` = IF(age >= 18, ?, ?)
     //         WHERE `id` = ?
     ```
 
-    > ⚠️ `end()` still fires a `selectRaw` side-effect on the parent builder.  
-    > For clean UPDATE without side-effects, prefer the form without `end()`.
+    > ⚠️ `end()` 仍然會在父層 builder 上觸發 `selectRaw` 的副作用。  
+    > 若想要乾淨、沒有副作用的 UPDATE，建議使用不帶 `end()` 的形式。
 
-1. **Closure form with `return`**: Closure must `return` the clause
+1. **帶 `return` 的 Closure 形式**：Closure 必須 `return` 該子句
 
     ```php
 
@@ -1598,12 +1599,12 @@ English | [繁體中文](README_ZH.md)
         'status_label' => function ($q) {
             return $q->caseWhen('status')
                 ->when('active', 'Active User')
-                ->otherwise('Unknown');  // return CaseClause directly (no end() call)
+                ->otherwise('Unknown');  // 直接 return CaseClause（不呼叫 end()）
         },
     ]);
     ```
 
-1. **Closure form without `return`**: `end()` called inside Closure but not returned → falls back to scalar subquery
+1. **不帶 `return` 的 Closure 形式**：Closure 內呼叫了 `end()` 但沒有 return → 退回純量子查詢
 
     ```php
 
@@ -1613,29 +1614,29 @@ English | [繁體中文](README_ZH.md)
                 ->when('active', 'Active User')
                 ->when('inactive', 'Inactive User')
                 ->otherwise('Unknown')
-                ->end('status_label2');  // no return — becomes a scalar subquery
+                ->end('status_label2');  // 沒有 return — 會變成純量子查詢
         },
     ]);
 
-    // output: UPDATE `users`
+    // 輸出: UPDATE `users`
     //         SET `status2` = (SELECT CASE `status` WHEN ? THEN ? WHEN ? THEN ? ELSE ? END AS `status_label2`)
     //         WHERE `id` = ?
     ```
 
-    > ⚠️ Without `return`, the Closure falls back to subquery mode — the CASE becomes a scalar subquery  
-    > instead of a direct SET expression. Use the `return` form or direct form to avoid this.
+    > ⚠️ 沒有 `return` 的話，Closure 會退回子查詢模式 — CASE 會變成純量子查詢，  
+    > 而不是直接的 SET 表達式。請使用 `return` 形式或直接形式以避免這個狀況。
 
-1. **Mixed forms** (same as REPORT example — valid but with caveats noted above)
+1. **混合形式**（與上面 REPORT 範例相同 — 可行，但要留意上述注意事項）
 
     ```php
 
     $db->from('users')->where('id', 1)->update([
-        'status' => $db->caseWhen('status')        // end() form: alias ignored, column from key
+        'status' => $db->caseWhen('status')        // end() 形式：別名被忽略，欄位來自陣列鍵
             ->when('active', 'Active User')
             ->when('inactive', 'Inactive User')
             ->otherwise('Unknown')
             ->end('status_label'),
-        'status2' => function ($q) {               // Closure without return: scalar subquery
+        'status2' => function ($q) {               // 不帶 return 的 Closure：純量子查詢
             $q->caseWhen('status')
                 ->when('active', 'Active User')
                 ->when('inactive', 'Inactive User')
@@ -1644,40 +1645,40 @@ English | [繁體中文](README_ZH.md)
         },
     ]);
 
-    // output: UPDATE `users`
+    // 輸出: UPDATE `users`
     //         SET `status`  = CASE `status` WHEN ? THEN ? WHEN ? THEN ? ELSE ? END,
     //             `status2` = (SELECT CASE `status` WHEN ? THEN ? WHEN ? THEN ? ELSE ? END AS `status_label2`)
     //         WHERE `id` = ?
     ```
 
-#### Notes
+#### 備註
 
-- In `update()`, **the array key always determines the column name**. `end()` aliases are never used in SET clauses.
-- `compileSql()` always returns SQL **without** alias — safe for `UPDATE SET` expressions.
-- Closure without `return` → scalar subquery (wraps the SELECT); Closure with `return` → direct expression.
-- `CaseClause` and `IfClause` implement `CompilableClause` interface, so any future expression type that also implements `compileSql()` will work automatically in `select()` / `update()`.
+- 在 `update()` 中，**陣列鍵一律決定欄位名稱**。`end()` 的別名絕不會用在 SET 子句中。
+- `compileSql()` 永遠回傳**不含**別名的 SQL — 對 `UPDATE SET` 表達式來說是安全的。
+- 沒有 `return` 的 Closure → 純量子查詢（把該 SELECT 包起來）；有 `return` 的 Closure → 直接表達式。
+- `CaseClause` 與 `IfClause` 都實作了 `CompilableClause` 介面，所以未來任何實作了 `compileSql()` 的表達式型別，都能自動在 `select()` / `update()` 中使用。
 
-### SQL Execute
+### SQL 執行
 
-1. `query` set SQL string
+1. `query` 設定 SQL 字串
 
     ```php
 
     $db->query("<SQL String>")->fetch();
 
-    // for example
+    // 舉例來說
 
     $db->query("SELECT * FROM `<your table name>`")->fetch();
     ```
 
-1. `prepare` execute SQL string
+1. `prepare` 執行 SQL 字串
 
     ```php
 
     $db->prepare("<SQL String>")->execute(['<value1>', '<value2>' ...])->fetch();
     ```
 
-1. `bindParams` execute SQL string
+1. `bindParams` 執行 SQL 字串
 
     ```php
 
@@ -1688,58 +1689,58 @@ English | [繁體中文](README_ZH.md)
     $stat->fetch();
     ```
 
-1. `execute` execute SQL string
+1. `execute` 執行 SQL 字串
 
-### SQL Execute result
+### SQL 執行結果
 
-1. `fetchNumeric` get result key to numeric
+1. `fetchNumeric` 取得結果，鍵為數字索引
 
-1. `fetchAssociative` get result key value
+1. `fetchAssociative` 取得結果，鍵為欄位名稱
 
-1. `fetchFirstColumn` get result first column
+1. `fetchFirstColumn` 取得結果的第一個欄位
 
-1. `fetchAllNumeric` get all result key to numeric
+1. `fetchAllNumeric` 取得所有結果，鍵為數字索引
 
-1. `fetchAllAssociative` get all result key value
+1. `fetchAllAssociative` 取得所有結果，鍵為欄位名稱
 
-1. `fetchAllFirstColumn` get all result first column
+1. `fetchAllFirstColumn` 取得所有結果的第一個欄位
 
-1. `rowCount` get result
+1. `rowCount` 取得結果筆數
 
-1. `free` PDO method `closeCursor` [PHP PDOStatement::closeCursor](https://www.php.net/manual/en/pdostatement.closecursor.php)
+1. `free` PDO 方法 `closeCursor` [PHP PDOStatement::closeCursor](https://www.php.net/manual/en/pdostatement.closecursor.php)
 
 1. `fetch` [PDOStatement::fetch](https://www.php.net/manual/en/pdostatement.fetch.php)
 
 1. `fetchAll` [PDOStatement::fetchAll](https://www.php.net/manual/en/pdostatement.fetchall.php)
 
-### Query Log
+### 查詢紀錄 (Query Log)
 
-1. `enableQueryLog` enable query logs
+1. `enableQueryLog` 啟用查詢紀錄
     ```php
 
     $db->enableQueryLog();
     ```
 
-1. `getQueryLog` get all query string and bind data
+1. `getQueryLog` 取得所有查詢字串與綁定資料
 
     ```php
 
     $db->getQueryLog();
     ```
 
-1. `getParseQueryLog` or `parseQueryLog` get paser query logs
+1. `getParseQueryLog` 或 `parseQueryLog` 取得已解析的查詢紀錄
     ```php
 
     $db->getParseQueryLog();
     ```
 
-1. `getLastParseQuery` or `lastParseQuery` get paser query
+1. `getLastParseQuery` 或 `lastParseQuery` 取得最後一次解析的查詢
     ```php
 
     $db->getLastParseQuery();
     ```
 
-### Lock
+### 鎖定 (Lock)
 
 1. `lockForUpdate`
 
@@ -1755,34 +1756,34 @@ English | [繁體中文](README_ZH.md)
     $db->sharedLock();
     ```
 
-### Page
+### 分頁
 
 1. `currentPage`
 
     ```php
 
-    $db->currentPage(1); // now page
+    $db->currentPage(1); // 目前頁數
     ```
 
 1. `prePage`
 
     ```php
 
-    $db->prePage(15); // pre page
+    $db->prePage(15); // 每頁筆數
     ```
 
 1. `getForPage`
 
     ```php
 
-    $db->getForPage(); // get page data
+    $db->getForPage(); // 取得分頁資料
 
-    // or
+    // 或
 
-    $db->getForPage('<prePage>', '<currentPage>'); // get page data
+    $db->getForPage('<prePage>', '<currentPage>'); // 取得分頁資料
     ```
 
-### Transaction
+### 交易
 
 1. `beginTransaction`
 
@@ -1805,7 +1806,7 @@ English | [繁體中文](README_ZH.md)
     $db->rollback();
     ```
 
-### Connect
+### 連線
 
 1. `host`
 
@@ -1841,7 +1842,7 @@ English | [繁體中文](README_ZH.md)
 
     $db->newConnection();
 
-    // or
+    // 或
 
     $db->newConnection("<sql server dns string>");
     ```
@@ -1852,7 +1853,7 @@ English | [繁體中文](README_ZH.md)
 
     $db->reConnection();
 
-    // or
+    // 或
 
     $db->reConnection("<sql server dns string>");
     ```
