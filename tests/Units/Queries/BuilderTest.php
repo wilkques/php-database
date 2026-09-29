@@ -8,6 +8,7 @@ use Mockery\Adapter\Phpunit\MockeryTestCase;
 use stdClass;
 use Wilkques\Database\Queries\Builder;
 use Wilkques\Database\Queries\Expression;
+use Wilkques\Database\Tests\Units\Queries\Support\ConnectionsStub;
 
 class BuilderTest extends MockeryTestCase
 {
@@ -1348,15 +1349,10 @@ class BuilderTest extends MockeryTestCase
         // throwaway newQuery() instance instead), so a select() subquery
         // written exactly per the docs compiled to an empty `(SELECT * )`
         // with no FROM at all.
-        $connection = $this->getMockForAbstractClass(
-            'Wilkques\Database\Connections\Connections',
-            array(),
-            '',
-            false
-        );
-
+        // Not $this->getMockForAbstractClass(): removed in PHPUnit 12, which
+        // "phpunit/phpunit": "*" silently resolved to on PHP 8.3 CI runs.
         $builder = new \Wilkques\Database\Queries\Builder(
-            $connection,
+            new ConnectionsStub,
             new \Wilkques\Database\Queries\Grammar\Drivers\MySql,
             new \Wilkques\Database\Queries\Processors\Processor
         );
@@ -2116,15 +2112,8 @@ class BuilderTest extends MockeryTestCase
         // spy's call-recording machinery). The production code path this
         // test exists to cover never involves a mocked Builder, so a real
         // instance both avoids the crash and is the more faithful test.
-        $connection = $this->getMockForAbstractClass(
-            'Wilkques\Database\Connections\Connections',
-            array(),
-            '',
-            false
-        );
-
         $builder = new Builder(
-            $connection,
+            new ConnectionsStub,
             new \Wilkques\Database\Queries\Grammar\Drivers\MySql,
             new \Wilkques\Database\Queries\Processors\Processor
         );

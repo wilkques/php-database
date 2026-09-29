@@ -5,17 +5,15 @@ namespace Wilkques\Database\Tests\Units\Queries;
 use PHPUnit\Framework\TestCase;
 use Wilkques\Database\Queries\Builder;
 use Wilkques\Database\Queries\JoinClause;
+use Wilkques\Database\Tests\Units\Queries\Support\ConnectionsStub;
 
 class JoinClauseTest extends TestCase
 {
     private function connection()
     {
-        return $this->getMockForAbstractClass(
-            'Wilkques\Database\Connections\Connections',
-            array(),
-            '',
-            false
-        );
+        // Not $this->getMockForAbstractClass(): removed in PHPUnit 12, which
+        // "phpunit/phpunit": "*" silently resolved to on PHP 8.3 CI runs.
+        return new ConnectionsStub;
     }
 
     private function builder()
@@ -33,18 +31,6 @@ class JoinClauseTest extends TestCase
             new \Wilkques\Database\Queries\Grammar\Drivers\MySql,
             new \Wilkques\Database\Queries\Processors\Processor
         );
-    }
-
-    private function join()
-    {
-        $abstract = $this->getMockBuilder('Wilkques\Database\Queries\JoinClause');
-
-        $abstract->disableOriginalConstructor();
-
-        /** @var \Wilkques\Database\Queries\Builder */
-        $abstract = $abstract->getMockForAbstractClass();
-
-        return $abstract;
     }
 
     public function testConstruct()
@@ -76,7 +62,9 @@ class JoinClauseTest extends TestCase
 
     public function testSetType()
     {
-        $join = $this->join();
+        // Not $this->join() (removed, see testOn()'s note above): a real
+        // JoinClause built the same way as every other test in this file.
+        $join = new JoinClause($this->builder(), 'inner', 'abc');
 
         $join->setType('left');
 
@@ -102,7 +90,9 @@ class JoinClauseTest extends TestCase
 
     public function testSetParentClass()
     {
-        $join = $this->join();
+        // Not $this->join() (removed, see testOn()'s note above): a real
+        // JoinClause built the same way as every other test in this file.
+        $join = new JoinClause($this->builder(), 'inner', 'abc');
 
         $join->setParentClass(
             'Wilkques\Database\Queries\Builder'
@@ -116,10 +106,8 @@ class JoinClauseTest extends TestCase
 
     public function testOn()
     {
-        // Not $this->join() (disableOriginalConstructor()): on() calls
-        // contactBacktick(), resolved via Builder::__call()'s resolvers
-        // array, which is only populated by the real constructor — the
-        // disabled-constructor mock has no Grammar to resolve it with.
+        // Needs a real Grammar to resolve contactBacktick(), which is only
+        // populated by JoinClause's real constructor.
         $join = new JoinClause($this->builder(), 'inner', 'abc');
 
         $join->on('abc.id', 'efg.id');
@@ -162,8 +150,7 @@ class JoinClauseTest extends TestCase
 
     public function testOrOn()
     {
-        // See testOn(): needs a real Grammar to resolve contactBacktick(),
-        // which the disabled-constructor $this->join() mock doesn't have.
+        // See testOn(): needs a real Grammar to resolve contactBacktick().
         $join = new JoinClause($this->builder(), 'inner', 'abc');
 
         $join->orOn('abc.id', 'efg.id');
@@ -256,15 +243,8 @@ class JoinClauseTest extends TestCase
         // method that has never existed anywhere in this codebase, so
         // even after the constructor crash was fixed, on()/orOn() still
         // fataled ("Method: `queryPush` Not Exists") the instant they ran.
-        $connection = $this->getMockForAbstractClass(
-            'Wilkques\Database\Connections\Connections',
-            array(),
-            '',
-            false
-        );
-
         $builder = new Builder(
-            $connection,
+            $this->connection(),
             new \Wilkques\Database\Queries\Grammar\Drivers\MySql,
             new \Wilkques\Database\Queries\Processors\Processor
         );
