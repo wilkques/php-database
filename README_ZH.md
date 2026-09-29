@@ -648,16 +648,16 @@
 
     ```php
 
-    $db->having(`<columnName1>`, `<columnValue1>`);
+    $db->having('<columnName1>', '<columnValue1>');
 
     // 或
 
-    $db->having(`<columnName1>`, "<operator>", `<columnValue1>`);
+    $db->having('<columnName1>', "<operator>", '<columnValue1>');
 
     // 或
 
     $db->having(
-        `<columnName1>`,
+        '<columnName1>',
         function ($query) {
             $query->table('<table name>');
             // 做些什麼
@@ -667,7 +667,7 @@
     // 或
 
     $db->having(
-        `<columnName1>`,
+        '<columnName1>',
         "<operator>",
         function ($query) {
             $query->table('<table name>');
@@ -685,27 +685,27 @@
         )
     )->table('<table name1>');
 
-    $db->having(`<columnName1>`, $dbTable);
+    $db->having('<columnName1>', $dbTable);
 
     // 或 
 
-    $db->having(`<columnName1>`, "<operator>", $dbTable);
+    $db->having('<columnName1>', "<operator>", $dbTable);
     ```
 
 1. `orHaving`
 
     ```php
 
-    $db->orHaving(`<columnName1>`, `<columnValue1>`);
+    $db->orHaving('<columnName1>', '<columnValue1>');
 
     // 或
 
-    $db->orHaving(`<columnName1>`, "<operator>", `<columnValue1>`);
+    $db->orHaving('<columnName1>', "<operator>", '<columnValue1>');
 
     // 或
 
     $db->orHaving(
-        `<columnName1>`,
+        '<columnName1>',
         function ($query) {
             $query->table('<table name>');
             // 做些什麼
@@ -715,7 +715,7 @@
     // 或
 
     $db->orHaving(
-        `<columnName1>`,
+        '<columnName1>',
         "<operator>",
         function ($query) {
             $query->table('<table name>');
@@ -733,11 +733,11 @@
         )
     )->table('<table name1>');
 
-    $db->orHaving(`<columnName1>`, $dbTable);
+    $db->orHaving('<columnName1>', $dbTable);
 
     // 或 
 
-    $db->orHaving(`<columnName1>`, "<operator>", $dbTable);
+    $db->orHaving('<columnName1>', "<operator>", $dbTable);
     ```
 
 ### limit 或 offset
@@ -1165,8 +1165,8 @@
     ```php
 
     $db->insertSub([
-        '<ColumnName1>'
-        '<ColumnName2>'
+        '<ColumnName1>',
+        '<ColumnName2>',
         ...
     ], function ($query) {
         $query->from('<Sub table name>')->select(
@@ -1683,10 +1683,12 @@
     ```php
 
     $stat = $db->prepare("<SQL String>");
-    
-    $stat->bindParams(['<value1>', '<value2>' ...])->execute();
-    
-    $stat->fetch();
+
+    // execute() 回傳的是一個新的 Result——fetch() 要呼叫在這個回傳值上,
+    // 不是 $stat 本身(Statement 本身沒有 fetch() 方法)。
+    $result = $stat->bindParams(['<value1>', '<value2>' ...])->execute();
+
+    $result->fetch();
     ```
 
 1. `execute` 執行 SQL 字串
@@ -1808,32 +1810,40 @@
 
 ### 連線
 
-1. `host`
+1. `setHost` / `getHost`
 
     ```php
 
-    $db->host('<DB host>');
+    $db->setHost('<DB host>');
+
+    $db->getHost();
     ```
 
-1. `username`
+1. `setUsername` / `getUsername`
 
     ```php
 
-    $db->username('<DB username>');
+    $db->setUsername('<DB username>');
+
+    $db->getUsername();
     ```
 
-1. `password`
+1. `setPassword` / `getPassword`
 
     ```php
 
-    $db->password('<DB password>');
+    $db->setPassword('<DB password>');
+
+    $db->getPassword();
     ```
 
-1. `database`
+1. `setDatabase` / `getDatabase`
 
     ```php
 
-    $db->database('<DB name>');
+    $db->setDatabase('<DB name>');
+
+    $db->getDatabase();
     ```
 
 1. `newConnection`
