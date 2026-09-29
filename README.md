@@ -2593,3 +2593,14 @@ English | [繁體中文](README_ZH.md)
 
     $db->selectDatabase('<database>');
     ```
+
+    All of the setters above (`setHost`/`setUsername`/`setPassword`/`setDatabase`/`newConnection`/`reConnection`/`selectDatabase`) return `$db` itself, so they chain into the rest of the query builder like any other setter.
+
+    ```php
+
+    // example
+
+    $db->setHost('127.0.0.1')->setUsername('root')->setPassword('root')->setDatabase('test')->table('orders')->toSql();
+
+    // output: SELECT * FROM `orders`
+    ```

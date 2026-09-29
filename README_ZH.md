@@ -2594,3 +2594,14 @@
 
     $db->selectDatabase('<database>');
     ```
+
+    以上所有 setter（`setHost`/`setUsername`/`setPassword`/`setDatabase`/`newConnection`/`reConnection`/`selectDatabase`）都會回傳 `$db` 自己，所以可以跟其他查詢建構子方法一樣串接下去。
+
+    ```php
+
+    // 範例
+
+    $db->setHost('127.0.0.1')->setUsername('root')->setPassword('root')->setDatabase('test')->table('orders')->toSql();
+
+    // 輸出: SELECT * FROM `orders`
+    ```
