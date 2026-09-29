@@ -1618,6 +1618,59 @@ English | [繁體中文](README_ZH.md)
     // output: INSERT INTO `orders` (`status`, `type`) SELECT `status`, `type` FROM `orders` WHERE `id` = ? AND `amount` = ?
     ```
 
+1. `insertGetId` insert and return the new row's auto-increment id
+
+    ```php
+
+    $db->insertGetId([
+        '<ColumnName1>' => '<ColumnValue1>',
+        '<ColumnName2>' => '<ColumnValue2>',
+        ...
+    ]);
+
+    // or, with a custom sequence name
+
+    $db->insertGetId([
+        '<ColumnName1>' => '<ColumnValue1>',
+        '<ColumnName2>' => '<ColumnValue2>',
+        ...
+    ], '<sequence name>');
+    ```
+
+    // example
+
+    ```php
+
+    $db->table('orders')->insertGetId([
+        'status' => 'pending',
+        'type' => 'online',
+    ]);
+
+    // output: 10 (the new row's auto-increment id)
+    ```
+
+1. `getLastInsertId` or `lastInsertId` get the id of the last inserted row
+
+    ```php
+
+    $db->getLastInsertId();
+
+    // or, with a custom sequence name
+
+    $db->getLastInsertId('<sequence name>');
+    ```
+
+    // example
+
+    ```php
+
+    $db->table('orders')->insert(['status' => 'pending', 'type' => 'online']);
+
+    $db->getLastInsertId();
+
+    // output: "11"
+    ```
+
 ### Delete
 
 1. `delete`
@@ -2353,11 +2406,15 @@ English | [繁體中文](README_ZH.md)
     $db->enableQueryLog();
     ```
 
-1. `getQueryLog` get all query string and bind data
+1. `getQueryLog` or `queryLog` get all query string and bind data
 
     ```php
 
     $db->getQueryLog();
+
+    // or
+
+    $db->queryLog();
     ```
 
     // example
@@ -2371,6 +2428,30 @@ English | [繁體中文](README_ZH.md)
     $db->getQueryLog();
 
     // output: [{"query": "SELECT * FROM `orders` WHERE `status` = ?", "bindings": {"1": "pending"}}]
+    ```
+
+1. `getLastQueryLog` or `lastQueryLog` get the most recent query string and bind data
+
+    ```php
+
+    $db->getLastQueryLog();
+
+    // or
+
+    $db->lastQueryLog();
+    ```
+
+    // example
+
+    ```php
+
+    $db->enableQueryLog();
+
+    $db->table('orders')->where('status', '=', 'pending')->get();
+
+    $db->getLastQueryLog();
+
+    // output: {"query": "SELECT * FROM `orders` WHERE `status` = ?", "bindings": {"1": "pending"}}
     ```
 
 1. `getParseQueryLog` or `parseQueryLog` get paser query logs
@@ -2529,38 +2610,54 @@ English | [繁體中文](README_ZH.md)
 
 ### Connect
 
-1. `setHost` / `getHost`
+1. `setHost` or `host` / `getHost`
 
     ```php
 
     $db->setHost('<DB host>');
 
+    // or
+
+    $db->host('<DB host>');
+
     $db->getHost();
     ```
 
-1. `setUsername` / `getUsername`
+1. `setUsername` or `username` / `getUsername`
 
     ```php
 
     $db->setUsername('<DB username>');
 
+    // or
+
+    $db->username('<DB username>');
+
     $db->getUsername();
     ```
 
-1. `setPassword` / `getPassword`
+1. `setPassword` or `password` / `getPassword`
 
     ```php
 
     $db->setPassword('<DB password>');
 
+    // or
+
+    $db->password('<DB password>');
+
     $db->getPassword();
     ```
 
-1. `setDatabase` / `getDatabase`
+1. `setDatabase` or `database` / `getDatabase`
 
     ```php
 
     $db->setDatabase('<DB name>');
+
+    // or
+
+    $db->database('<DB name>');
 
     $db->getDatabase();
     ```
@@ -2594,13 +2691,19 @@ English | [繁體中文](README_ZH.md)
     $db->selectDatabase('<database>');
     ```
 
-    All of the setters above (`setHost`/`setUsername`/`setPassword`/`setDatabase`/`newConnection`/`reConnection`/`selectDatabase`) return `$db` itself, so they chain into the rest of the query builder like any other setter.
+    All of the setters above (`setHost`/`setUsername`/`setPassword`/`setDatabase`/`newConnection`/`reConnection`/`selectDatabase`, and their shortened `host`/`username`/`password`/`database` forms) return `$db` itself, so they chain into the rest of the query builder like any other setter.
 
     ```php
 
     // example
 
     $db->setHost('127.0.0.1')->setUsername('root')->setPassword('root')->setDatabase('test')->table('orders')->toSql();
+
+    // output: SELECT * FROM `orders`
+
+    // or, using the shortened forms
+
+    $db->host('127.0.0.1')->username('root')->password('root')->database('test')->table('orders')->toSql();
 
     // output: SELECT * FROM `orders`
     ```

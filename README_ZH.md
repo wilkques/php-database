@@ -1619,6 +1619,59 @@
     // 輸出: INSERT INTO `orders` (`status`, `type`) SELECT `status`, `type` FROM `orders` WHERE `id` = ? AND `amount` = ?
     ```
 
+1. `insertGetId` 新增資料並回傳新資料列的自增 id
+
+    ```php
+
+    $db->insertGetId([
+        '<ColumnName1>' => '<ColumnValue1>',
+        '<ColumnName2>' => '<ColumnValue2>',
+        ...
+    ]);
+
+    // 或，指定自訂的 sequence name
+
+    $db->insertGetId([
+        '<ColumnName1>' => '<ColumnValue1>',
+        '<ColumnName2>' => '<ColumnValue2>',
+        ...
+    ], '<sequence name>');
+    ```
+
+    // 範例
+
+    ```php
+
+    $db->table('orders')->insertGetId([
+        'status' => 'pending',
+        'type' => 'online',
+    ]);
+
+    // 輸出: 10（新資料列的自增 id）
+    ```
+
+1. `getLastInsertId` 或 `lastInsertId` 取得最後一筆新增資料列的 id
+
+    ```php
+
+    $db->getLastInsertId();
+
+    // 或，指定自訂的 sequence name
+
+    $db->getLastInsertId('<sequence name>');
+    ```
+
+    // 範例
+
+    ```php
+
+    $db->table('orders')->insert(['status' => 'pending', 'type' => 'online']);
+
+    $db->getLastInsertId();
+
+    // 輸出: "11"
+    ```
+
 ### 刪除
 
 1. `delete`
@@ -2354,11 +2407,15 @@
     $db->enableQueryLog();
     ```
 
-1. `getQueryLog` 取得所有查詢字串與綁定資料
+1. `getQueryLog` 或 `queryLog` 取得所有查詢字串與綁定資料
 
     ```php
 
     $db->getQueryLog();
+
+    // 或
+
+    $db->queryLog();
     ```
 
     // 範例
@@ -2372,6 +2429,30 @@
     $db->getQueryLog();
 
     // 輸出: [{"query": "SELECT * FROM `orders` WHERE `status` = ?", "bindings": {"1": "pending"}}]
+    ```
+
+1. `getLastQueryLog` 或 `lastQueryLog` 取得最近一筆查詢字串與綁定資料
+
+    ```php
+
+    $db->getLastQueryLog();
+
+    // 或
+
+    $db->lastQueryLog();
+    ```
+
+    // 範例
+
+    ```php
+
+    $db->enableQueryLog();
+
+    $db->table('orders')->where('status', '=', 'pending')->get();
+
+    $db->getLastQueryLog();
+
+    // 輸出: {"query": "SELECT * FROM `orders` WHERE `status` = ?", "bindings": {"1": "pending"}}
     ```
 
 1. `getParseQueryLog` 或 `parseQueryLog` 取得已解析的查詢紀錄
@@ -2530,38 +2611,54 @@
 
 ### 連線
 
-1. `setHost` / `getHost`
+1. `setHost` 或 `host` / `getHost`
 
     ```php
 
     $db->setHost('<DB host>');
 
+    // 或
+
+    $db->host('<DB host>');
+
     $db->getHost();
     ```
 
-1. `setUsername` / `getUsername`
+1. `setUsername` 或 `username` / `getUsername`
 
     ```php
 
     $db->setUsername('<DB username>');
 
+    // 或
+
+    $db->username('<DB username>');
+
     $db->getUsername();
     ```
 
-1. `setPassword` / `getPassword`
+1. `setPassword` 或 `password` / `getPassword`
 
     ```php
 
     $db->setPassword('<DB password>');
 
+    // 或
+
+    $db->password('<DB password>');
+
     $db->getPassword();
     ```
 
-1. `setDatabase` / `getDatabase`
+1. `setDatabase` 或 `database` / `getDatabase`
 
     ```php
 
     $db->setDatabase('<DB name>');
+
+    // 或
+
+    $db->database('<DB name>');
 
     $db->getDatabase();
     ```
@@ -2595,13 +2692,19 @@
     $db->selectDatabase('<database>');
     ```
 
-    以上所有 setter（`setHost`/`setUsername`/`setPassword`/`setDatabase`/`newConnection`/`reConnection`/`selectDatabase`）都會回傳 `$db` 自己，所以可以跟其他查詢建構子方法一樣串接下去。
+    以上所有 setter（`setHost`/`setUsername`/`setPassword`/`setDatabase`/`newConnection`/`reConnection`/`selectDatabase`，以及縮減過的 `host`/`username`/`password`/`database` 寫法）都會回傳 `$db` 自己，所以可以跟其他查詢建構子方法一樣串接下去。
 
     ```php
 
     // 範例
 
     $db->setHost('127.0.0.1')->setUsername('root')->setPassword('root')->setDatabase('test')->table('orders')->toSql();
+
+    // 輸出: SELECT * FROM `orders`
+
+    // 或，使用縮減過的寫法
+
+    $db->host('127.0.0.1')->username('root')->password('root')->database('test')->table('orders')->toSql();
 
     // 輸出: SELECT * FROM `orders`
     ```
