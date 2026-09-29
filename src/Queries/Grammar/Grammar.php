@@ -405,8 +405,14 @@ class Grammar
         $columns = join(', ', $columns);
 
         if (!$sql) {
-            $values = Arrays::map($data, function ($values) use ($query) {
-                return join(', ', $this->arrayNested($values, "?"));
+            // Not $this directly inside the closure: PHP 5.3 closures
+            // don't auto-bind $this from the enclosing method (added in
+            // PHP 5.4) — fatals with "Using $this when not in object
+            // context" there.
+            $self = $this;
+
+            $values = Arrays::map($data, function ($values) use ($self, $query) {
+                return join(', ', $self->arrayNested($values, "?"));
             });
 
             $values = join('), (', $values);

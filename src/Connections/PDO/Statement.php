@@ -216,10 +216,15 @@ class Statement
 
         $datas = $callback ? $callback($params) : $params;
 
-        array_map(function ($item, $index) use ($bindMethod) {
+        // Not $this directly inside the closure: PHP 5.3 closures don't
+        // auto-bind $this from the enclosing method (added in PHP 5.4) —
+        // fatals with "Using $this when not in object context" there.
+        $self = $this;
+
+        array_map(function ($item, $index) use ($self, $bindMethod) {
             is_numeric($index) && ++$index;
 
-            call_user_func_array(array($this, $bindMethod), array($index, $item));
+            call_user_func_array(array($self, $bindMethod), array($index, $item));
         }, $datas, array_keys($datas));
 
         return $this;

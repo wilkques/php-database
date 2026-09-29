@@ -483,7 +483,7 @@ class BuilderTest extends MockeryTestCase
 
         $this->query->shouldReceive('getQuery')->with('component1.bindings')->andReturn(null);
 
-        $this->query->shouldReceive('getQuery')->with('component2.bindings')->andReturn([]);
+        $this->query->shouldReceive('getQuery')->with('component2.bindings')->andReturn(array());
 
         $result = $this->query->getBindings();
 
@@ -709,7 +709,14 @@ class BuilderTest extends MockeryTestCase
 
     public function testSetFrom()
     {
-        $initialFroms = isset($this->query->queries['froms']['queries']) ? $this->query->queries['froms']['queries'] : array();
+        // Not $this->query->queries directly: reading an inaccessible
+        // (protected) property through isset() silently returns false on
+        // PHP 7.4/8.3, but fatals ("Cannot access protected property") on
+        // PHP 5.3 — use the same reflection-based helper the rest of this
+        // file already uses to read protected state uniformly.
+        $initialQueries = $this->getProtectedProperty($this->query, 'queries');
+
+        $initialFroms = isset($initialQueries['froms']['queries']) ? $initialQueries['froms']['queries'] : array();
 
         $this->assertEmpty($initialFroms);
 
@@ -808,11 +815,11 @@ class BuilderTest extends MockeryTestCase
             ->with($subQuery, null)
             ->andReturnSelf();
 
-        $result = $this->query->from([
+        $result = $this->query->from(array(
             $alias => $tableName,
             $closure,
             $subQuery
-        ]);
+        ));
 
         $this->assertSame($this->query, $result);
     }
@@ -1071,7 +1078,7 @@ class BuilderTest extends MockeryTestCase
             ->with('`users`.`id` AS `user_id`', 'columns')
             ->andReturnSelf();
 
-        $result = $this->query->select([$alias => $column]);
+        $result = $this->query->select(array($alias => $column));
 
         $this->assertSame($this->query, $result);
     }
@@ -1164,7 +1171,7 @@ class BuilderTest extends MockeryTestCase
     {
         $expression = new Expression('COUNT(*)');
 
-        $bindings = [];
+        $bindings = array();
 
         $this->query->shouldReceive('createSub')
             ->with($expression)
@@ -1238,7 +1245,7 @@ class BuilderTest extends MockeryTestCase
     {
         $this->assertTrue($this->query->invalidOperator(123)); // 整數
         $this->assertTrue($this->query->invalidOperator(null)); // null
-        $this->assertTrue($this->query->invalidOperator([])); // 陣列
+        $this->assertTrue($this->query->invalidOperator(array())); // 陣列
         $this->assertTrue($this->query->invalidOperator(new stdClass())); // 對象
     }
 
