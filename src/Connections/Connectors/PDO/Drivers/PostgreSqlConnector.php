@@ -5,7 +5,7 @@ namespace Wilkques\Database\Connections\Connectors\PDO\Drivers;
 use Wilkques\Database\Connections\Connectors\Connector;
 use Wilkques\Helpers\Arrays;
 
-class MySqlConnector extends Connector
+class PostgreSqlConnector extends Connector
 {
     /**
      * @var array
@@ -15,13 +15,13 @@ class MySqlConnector extends Connector
         'username'  => null,
         'password'  => null,
         'database'  => null,
-        'port'      => 3306,
-        'charset'   => 'utf8mb4',
+        'port'      => 5432,
+        'charset'   => 'UTF8',
     );
 
     /**
      * @param array $config
-     * 
+     *
      * @return \Wilkques\Database\Connections\Connections
      */
     public function connection($config)
@@ -40,21 +40,18 @@ class MySqlConnector extends Connector
 
         $charset = Arrays::get($config, 'charset');
 
-        /** 
-         * @var \Wilkques\Database\Connections\Connections|\Wilkques\Database\Connections\PDO\Drivers\MySql
+        /**
+         * @var \Wilkques\Database\Connections\Connections|\Wilkques\Database\Connections\PDO\Drivers\PostgreSql
          */
-        $connection = new \Wilkques\Database\Connections\PDO\Drivers\MySql;
+        $connection = new \Wilkques\Database\Connections\PDO\Drivers\PostgreSql;
 
         $connection->setHost($host)
             ->setUsername($username)
             ->setPassword($password)
             ->setPort($port)
             ->setCharacterSet($charset)
+            ->setDatabase($database)
             ->newConnection();
-
-        if ($database) {
-            $connection->selectDatabase($database);
-        }
 
         return $connection;
     }

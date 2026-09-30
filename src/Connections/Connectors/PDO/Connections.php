@@ -20,6 +20,9 @@ class Connections
             case 'mysql':
                 return \Wilkques\Database\Connections\Connectors\PDO\Drivers\MySqlConnector::connect($config);
                 break;
+            case 'pgsql':
+                return \Wilkques\Database\Connections\Connectors\PDO\Drivers\PostgreSqlConnector::connect($config);
+                break;
         }
 
         throw new InvalidArgumentException("Unsupported driver [{$driver}].");

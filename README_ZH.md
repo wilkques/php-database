@@ -7,14 +7,14 @@
 
 ## 注意事項
 
-1. 僅支援 `MySQL`
+1. 支援 `MySQL`、`PostgreSQL`
 1. 資料庫操作
 
 ## 環境需求
 
 1. php >= 5.3
-1. mysql >= 5.6
-1. PDO 擴充套件
+1. mysql >= 5.6 或 postgresql >= 9.4
+1. PDO 擴充套件（`pdo_mysql` 和/或 `pdo_pgsql`）
 
 ## 如何使用
 
@@ -44,15 +44,23 @@
     // 或
 
     $connection = \Wilkques\Database\Database::connect([
-        'driver'    => '<DB driver>',   // mysql
+        'driver'    => '<DB driver>',   // mysql, pgsql
         'host'      => '<host>',        // 預設 localhost
         'username'  => '<username>',
         'password'  => '<password>',
         'database'  => '<database>',
-        'port'      => '<port>',        // 預設 3360
-        'charset'   => '<character>',   // 預設 utf8mb4
+        'port'      => '<port>',        // 預設 3306 (mysql) / 5432 (pgsql)
+        'charset'   => '<character>',   // 預設 utf8mb4 (mysql) / UTF8 (pgsql)
     ]);
     ```
+
+### PostgreSQL 注意事項
+
+1. 資料表、欄位等 identifier 會自動改用雙引號（`"..."`）引用，不是 MySQL 的反引號——不需要另外調整程式碼。
+1. `selectDatabase()` 是用新的資料庫名稱重新連線做到的，因為 PostgreSQL 沒有 `USE <db>` 這種語法。
+1. `IF()` / `ifExpr()` 仍然只支援 MySQL（見上方「IF 表達式」章節）——在 PostgreSQL 上請改用 `caseWhen()`。
+1. 帶 `JOIN` 的 `UPDATE` / `DELETE` 不會被轉譯成 PostgreSQL 的 `UPDATE ... FROM` / `DELETE ... USING` 語法，請在 PostgreSQL 上避免使用 join 形式的 update/delete。
+1. 在 PostgreSQL 上使用 `insertGetId()` / `getLastInsertId()`，除非同一個連線 session 之前已經用過某個 sequence，否則需要明確傳入 sequence 名稱（例如 `<table>_<column>_seq`）。
 
 ## 方法
 

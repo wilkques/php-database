@@ -12,14 +12,14 @@ class Database
      * @param string $username
      * @param string $password
      * @param string $database
-     * @param string|int $port
-     * @param string $characterSet
-     * 
+     * @param string|int|null $port
+     * @param string|null $characterSet
+     *
      * @return \Wilkques\Database\Queries\Builder
-     * 
+     *
      * @throws \InvalidArgumentException
      */
-    protected function boot($driver, $host = null, $username = null, $password = null, $database = null, $port = 3306, $characterSet = "utf8mb4")
+    protected function boot($driver, $host = null, $username = null, $password = null, $database = null, $port = null, $characterSet = null)
     {
         $connection = \Wilkques\Database\Connections\Connectors\PDO\Connections::connect(get_defined_vars());
 
@@ -35,6 +35,11 @@ class Database
                     new \Wilkques\Database\Queries\Grammar\Drivers\MySql
                 );
                 break;
+            case 'pgsql':
+                return $builder->setGrammar(
+                    new \Wilkques\Database\Queries\Grammar\Drivers\PostgreSql
+                );
+                break;
         }
 
         throw new \InvalidArgumentException("Unsupported driver [{$driver}].");
@@ -46,14 +51,14 @@ class Database
      * @param string $username
      * @param string $password
      * @param string $database
-     * @param string|int $port
-     * @param string $characterSet
-     * 
+     * @param string|int|null $port
+     * @param string|null $characterSet
+     *
      * @return \Wilkques\Database\Queries\Builder
-     * 
+     *
      * @throws \InvalidArgumentException
      */
-    public static function connect($driver, $host = null, $username = null, $password = null, $database = null, $port = 3306, $characterSet = "utf8mb4")
+    public static function connect($driver, $host = null, $username = null, $password = null, $database = null, $port = null, $characterSet = null)
     {
         $vars = get_defined_vars();
 

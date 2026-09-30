@@ -8,4 +8,11 @@
   'DB_PASSWORD' => 'root',
   'DB_NAME_1' => 'test',
   'DB_NAME_2' => 'try',
+  'PGSQL_DRIVER' => 'pgsql',
+  'PGSQL_HOST' => '127.0.0.1',
+  'PGSQL_PORT' => '5432',
+  'PGSQL_USER' => 'user',
+  'PGSQL_PASSWORD' => 'root',
+  'PGSQL_DB_NAME_1' => 'test',
+  'PGSQL_DB_NAME_2' => 'try',
 );

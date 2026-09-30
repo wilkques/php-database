@@ -14,6 +14,10 @@ env:
   DB_USER: root
   DB_HOST: '127.0.0.1'
   # DB_HOST: mysql
+  PGSQL_HOST: '127.0.0.1'
+  PGSQL_PORT: 5432
+  PGSQL_USER: user
+  PGSQL_PASSWORD: root
 
 jobs:
   build:
@@ -27,6 +31,14 @@ jobs:
         ports:
           - 3306:3306
         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: root
+        ports:
+          - 5432:5432
+        options: --health-cmd="pg_isready" --health-interval=10s --health-timeout=5s --health-retries=3
 
     strategy:
       matrix:
@@ -72,11 +84,22 @@ jobs:
             sleep 1
           done
 
+      - name: Wait for PostgreSQL to be ready
+        run: |
+          until pg_isready -h ${{ env.PGSQL_HOST }} -p ${{ env.PGSQL_PORT }}; do
+            echo "Waiting for database connection..."
+            sleep 1
+          done
+
+      - name: Create DB And User (PostgreSQL)
+        run: |
+          PGPASSWORD=root psql -h ${{ env.PGSQL_HOST }} -p ${{ env.PGSQL_PORT }} -U postgres -f tests/Drivers/PostgreSql/docker-entrypoint-initdb.d/createdb.sql
+
       - name: Install PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php-versions }}
-          extensions: mbstring,pdo,pdo_mysql,intl #optional
+          extensions: mbstring,pdo,pdo_mysql,pdo_pgsql,intl #optional
           ini-values: "post_max_size=256M" #optional
 
       - name: Cache Composer packages

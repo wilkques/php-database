@@ -7,14 +7,14 @@ English | [繁體中文](README_ZH.md)
 
 ## Notice
 
-1. `MySQL` Only
+1. `MySQL`, `PostgreSQL` Support
 1. Database operate
 
 ## ENV
 
 1. php >= 5.3
-1. mysql >= 5.6
-1. PDO extension
+1. mysql >= 5.6 or postgresql >= 9.4
+1. PDO extension (`pdo_mysql` and/or `pdo_pgsql`)
 
 ## How to use
 
@@ -44,15 +44,23 @@ English | [繁體中文](README_ZH.md)
     // or
 
     $connection = \Wilkques\Database\Database::connect([
-        'driver'    => '<DB driver>',   // mysql
+        'driver'    => '<DB driver>',   // mysql, pgsql
         'host'      => '<host>',        // default localhost
         'username'  => '<username>',
         'password'  => '<password>',
         'database'  => '<database>',
-        'port'      => '<port>',        // default 3360
-        'charset'   => '<character>',   // default utf8mb4
+        'port'      => '<port>',        // default 3306 (mysql) / 5432 (pgsql)
+        'charset'   => '<character>',   // default utf8mb4 (mysql) / UTF8 (pgsql)
     ]);
     ```
+
+### PostgreSQL notes
+
+1. Identifiers (tables, columns) are automatically quoted with double quotes (`"..."`) instead of MySQL's backticks — no code changes needed on your end.
+1. `selectDatabase()` reconnects with the new database in the connection string, since PostgreSQL has no `USE <db>` statement.
+1. `IF()` / `ifExpr()` remains MySQL-only (see the [IF Expression](#if-expression) section) — use `caseWhen()` instead on PostgreSQL.
+1. `UPDATE` / `DELETE` with `JOIN` is not translated to PostgreSQL's `UPDATE ... FROM` / `DELETE ... USING` syntax; avoid join-style updates/deletes on PostgreSQL.
+1. `insertGetId()` / `getLastInsertId()` needs an explicit sequence name on PostgreSQL (e.g. `<table>_<column>_seq`) unless a sequence was already used earlier in the same connection session.
 
 ## Methods
 

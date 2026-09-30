@@ -23,6 +23,8 @@
     },
     "suggest": {
         "wilkques/container": "PHP with Container",
-        "ext-pdo": "Required to use the PDO"
+        "ext-pdo": "Required to use the PDO",
+        "ext-pdo_mysql": "Required to use the MySQL driver",
+        "ext-pdo_pgsql": "Required to use the PostgreSQL driver"
     }
 }
