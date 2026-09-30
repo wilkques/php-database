@@ -343,6 +343,15 @@ English | [繁體中文](README_ZH.md)
     // output: SELECT * FROM `orders` INNER JOIN `users` ON `orders`.`user_id` = `users`.`id` OR `orders`.`backup_user_id` = `users`.`id`
     ```
 
+    `join` has no separate `$as` parameter (unlike `table`/`from`), so to alias a joined table, put `as <alias>` directly in the `$table` string. Only a literal ` as ` keyword (case-insensitive) is treated as an alias — plain whitespace is not, so it can't be confused with a schema-qualified `schema.table` reference.
+
+    ```php
+
+    $db->from('orders')->join('order_items as oi', 'orders.id', 'oi.order_id');
+
+    // output: SELECT * FROM `orders` INNER JOIN `order_items` AS `oi` ON `orders`.`id` = `oi`.`order_id`
+    ```
+
 1. `joinWhere`
 
     ```php

@@ -343,6 +343,15 @@
     // 輸出: SELECT * FROM `orders` INNER JOIN `users` ON `orders`.`user_id` = `users`.`id` OR `orders`.`backup_user_id` = `users`.`id`
     ```
 
+    `join`沒有像 `table`/`from` 那樣的獨立 `$as` 參數，所以要幫 join 的表取別名，直接把 `as <alias>`寫進 `$table` 字串裡即可。只有明確的 ` as ` 關鍵字（不分大小寫）才會被當成別名，單純的空白不會，所以不會跟 `schema.table` 這種跨資料庫寫法搞混。
+
+    ```php
+
+    $db->from('orders')->join('order_items as oi', 'orders.id', 'oi.order_id');
+
+    // 輸出: SELECT * FROM `orders` INNER JOIN `order_items` AS `oi` ON `orders`.`id` = `oi`.`order_id`
+    ```
+
 1. `joinWhere`
 
     ```php
