@@ -4,7 +4,7 @@
     "license": "MIT",
     "require": {
         "php": ">=5.3",
-        "wilkques/php-helper": "^5.13.0"
+        "wilkques/php-helper": "^6.0.0"
     },
     "require-dev": {
         "phpunit/phpunit": "*",
