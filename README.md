@@ -60,7 +60,7 @@ English | [繁體中文](README_ZH.md)
 1. `selectDatabase()` reconnects with the new database in the connection string, since PostgreSQL has no `USE <db>` statement.
 1. `IF()` / `ifExpr()` remains MySQL-only (see the [IF Expression](#if-expression) section) — use `caseWhen()` instead on PostgreSQL.
 1. `UPDATE` / `DELETE` with `JOIN` is not translated to PostgreSQL's `UPDATE ... FROM` / `DELETE ... USING` syntax; avoid join-style updates/deletes on PostgreSQL.
-1. `insertGetId()` / `getLastInsertId()` needs an explicit sequence name on PostgreSQL (e.g. `<table>_<column>_seq`) unless a sequence was already used earlier in the same connection session.
+1. `insertGetId()` / `getLastInsertId()` should always be called with an explicit sequence name on PostgreSQL (e.g. `<table>_<column>_seq`). Without one, the result depends on the installed `pdo_pgsql` version — older versions return `false`, newer ones may resolve the session's last-used sequence — so don't rely on the no-argument form.
 
 ## Methods
 

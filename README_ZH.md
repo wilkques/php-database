@@ -60,7 +60,7 @@
 1. `selectDatabase()` 是用新的資料庫名稱重新連線做到的，因為 PostgreSQL 沒有 `USE <db>` 這種語法。
 1. `IF()` / `ifExpr()` 仍然只支援 MySQL（見上方「IF 表達式」章節）——在 PostgreSQL 上請改用 `caseWhen()`。
 1. 帶 `JOIN` 的 `UPDATE` / `DELETE` 不會被轉譯成 PostgreSQL 的 `UPDATE ... FROM` / `DELETE ... USING` 語法，請在 PostgreSQL 上避免使用 join 形式的 update/delete。
-1. 在 PostgreSQL 上使用 `insertGetId()` / `getLastInsertId()`，除非同一個連線 session 之前已經用過某個 sequence，否則需要明確傳入 sequence 名稱（例如 `<table>_<column>_seq`）。
+1. 在 PostgreSQL 上使用 `insertGetId()` / `getLastInsertId()` 請務必明確傳入 sequence 名稱（例如 `<table>_<column>_seq`）。不傳的話結果會依安裝的 `pdo_pgsql` 版本而不同——舊版會回傳 `false`，新版可能會吃到 session 裡最後用過的 sequence——所以不要依賴不傳參數的寫法。
 
 ## 方法
 

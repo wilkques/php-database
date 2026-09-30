@@ -147,7 +147,20 @@ class PostgreSqlTest extends BaseTestCase
     {
         $this->connection->exec("INSERT INTO users_for_test (info) VALUES (?)", array('Jane Doe'));
 
+        // Unlike MySQL's auto-increment, whether PDO_PGSQL's
+        // lastInsertId() can resolve a value without an explicit sequence
+        // name depends on the installed libpq/pdo_pgsql version: older
+        // ones (confirmed on PHP 5.4 in CI) return false, newer ones
+        // (confirmed on PHP 8.3) fall back to the session's last-used
+        // sequence. Accept either outcome here; real code should always
+        // pass an explicit sequence name (see testGetLastInsertIdWithSequence).
         $lastInsertId = $this->connection->getLastInsertId();
+
+        if ($lastInsertId === false) {
+            $this->assertFalse($lastInsertId);
+
+            return;
+        }
 
         $result = $this->connection->exec("SELECT id FROM users_for_test WHERE info = ?", array('Jane Doe'));
 
