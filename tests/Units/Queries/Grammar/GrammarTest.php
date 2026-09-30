@@ -13,6 +13,35 @@ class GrammarTest extends MockeryTestCase
 
     protected $query;
 
+    public function testContactBacktickWithDottedIdentifier()
+    {
+        $result = $this->grammar->contactBacktick('users.name');
+
+        $this->assertEquals('`users`.`name`', $result);
+    }
+
+    public function testContactBacktickWithPlainIdentifier()
+    {
+        $result = $this->grammar->contactBacktick('users');
+
+        $this->assertEquals('`users`', $result);
+    }
+
+    public function testContactBacktickWithAsAlias()
+    {
+        $result = $this->grammar->contactBacktick('loginlog as lg1');
+
+        $this->assertEquals('`loginlog` AS `lg1`', $result);
+    }
+
+    public function testContactBacktickDoesNotSplitOnPlainWhitespace()
+    {
+        // "table alias"（沒有 as 關鍵字）不該被誤判成 schema.table
+        $result = $this->grammar->contactBacktick('loginlog lg1');
+
+        $this->assertEquals('`loginlog lg1`', $result);
+    }
+
     public function testArrayNestedWithExpressions()
     {
         $expression = new Expression('NOW()');

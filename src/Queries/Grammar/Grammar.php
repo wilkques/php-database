@@ -65,13 +65,20 @@ class Grammar
         if (func_num_args() > 1) {
             $value = func_get_args();
         } else if (is_string($value)) {
-            preg_match_all('/(\w+)/', $value, $matches);
+            // "table AS alias"：比照 Laravel 的 wrap()，只有明確的 as 關鍵字才視為別名，
+            // 不能拿任意空白當 "." 的替代分隔符，否則像 "loginlog lg1" 這種
+            // "表名 別名"（沒有 as）會被誤判成兩層 schema.table -> `loginlog`.`lg1`
+            if (preg_match('/^(.*?)\s+as\s+(.*)$/i', $value, $matches)) {
+                return $this->contactBacktick(trim($matches[1]))
+                    . ' AS '
+                    . $this->contactBacktick(trim($matches[2]));
+            }
 
-            $value = array_pop($matches);
+            $value = explode('.', $value);
         }
 
         $value = Arrays::map($value, function ($value) {
-            $value = trim($value, '`');
+            $value = trim(trim($value), '`');
 
             return "`{$value}`";
         });

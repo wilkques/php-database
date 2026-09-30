@@ -31,6 +31,21 @@ class PostgreSqlGrammarTest extends MockeryTestCase
         $this->assertEquals('"users"."name"', $result);
     }
 
+    public function testContactBacktickWithAsAlias()
+    {
+        $result = $this->grammar->contactBacktick('loginlog as lg1');
+
+        $this->assertEquals('"loginlog" AS "lg1"', $result);
+    }
+
+    public function testContactBacktickDoesNotSplitOnPlainWhitespace()
+    {
+        // "table alias"（沒有 as 關鍵字）不該被誤判成 schema.table
+        $result = $this->grammar->contactBacktick('loginlog lg1');
+
+        $this->assertEquals('"loginlog lg1"', $result);
+    }
+
     public function testCompilerCount()
     {
         // Mock the compilerSelect method
